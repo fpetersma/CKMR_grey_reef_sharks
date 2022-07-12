@@ -16,5 +16,8 @@ load(file = "data/data_for_testing_estimator.RData")
 pairs <- findRelativesPar(indiv = indiv, 
                           sampled = TRUE, 
                           nCores = 30)
-POPs <- pairs[pairs$OneTwo == 1,] ## Parent-Offspring pairs
+POPs <- pairs[pairs$OneTwo == 1, ] ## Parent-Offspring pairs
+
+## Save data
+save.image("data/data_for_testing_estimator.RData")
 
