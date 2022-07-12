@@ -12,7 +12,7 @@
 ## Load packages and source custom functions ===================================
 library(fishSim)
 library(ids)
-source("C:/Users/felix/OneDrive - University of St Andrews/Documents/University of St Andrews/PhD/Sharks/Close-kin mark-recapture/simulation_software/custom_functions_fishSim.R")
+source("source/simulating/custom_functions_fishSim.R")
 
 ## Initialise parameters =======================================================
 ## Set life history parameters
@@ -116,11 +116,15 @@ for (y in years) {
 ## How many individuals are still alive in 'indiv'?
 nrow(indiv[is.na(indiv$DeathY), ])
 
+## Save data for fitting
+
 ## Looking up relationship between captured pairs
 pairs <- findRelativesPar(indiv = indiv, 
                           sampled = TRUE, 
                           nCores = 6)
 POPs <- pairs[pairs$OneTwo == 1,] ## Parent-Offspring pairs
+
+
 
 ## Start 100  simulations ======================================================
 indiv_alive <- rep(NA, 10)
