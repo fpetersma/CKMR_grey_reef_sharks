@@ -112,7 +112,6 @@ nrow(indiv[is.na(indiv$DeathY), ])
 # View(indiv[is.na(indiv$DeathY), ])
 
 ## Save data for fitting
-save(list = "indiv", file = "data/data_for_testing_estimator.RData")
 
 ## Looking up relationship between captured pairs
 pairs <- findRelativesPar(indiv = indiv, 
