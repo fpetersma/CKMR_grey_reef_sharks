@@ -45,7 +45,7 @@ double nllPOPCKMRcppAgeKnown(List dat, List par) {
   const double r = exp(double(dat["r"]));             // growth parameter
   // const double sigma_vbgf = exp(double(dat["sigma_vbgf"]));
   // const double phi = exp(double(dat["phi"])) /        // survival parameter
-  //   (1.0 + exp(double(dat["phi"])));                  
+  //   (1.0 + exp(double(dat["phi"])));
   
   
   // ===========================================================================
@@ -80,8 +80,8 @@ double nllPOPCKMRcppAgeKnown(List dat, List par) {
     if (y2 >= y1 + alpha_f + 1) {
       
       if (s1[index] == "F") {
-        // What are the birthing  years?
-        NumericVector birthing_years = NumericVector::create(13, 15, 17, 19);
+        // What are the birthing ages?
+        NumericVector birthing_years = NumericVector::create(12, 14, 16, 18);
 
         // Was mother at birthing age when offspring was born?
         if (is_true(any(birthing_years == y2 - y1))) {
@@ -92,7 +92,7 @@ double nllPOPCKMRcppAgeKnown(List dat, List par) {
           
           // Account for survival of parent i if j was born after c1 
           if (c1[index] < y2) {
-            std::cout << "parent i if j was born after c1 + 1! " << std::endl;
+            // std::cout << "parent i if j was born after c1 + 1! " << std::endl;
             prob *=  pow(phi, c1[index] - y2);
           }
         }
@@ -104,7 +104,7 @@ double nllPOPCKMRcppAgeKnown(List dat, List par) {
 
         // Account for survival of parent i if j was born after c1 + 1
         if (c1[index] + 1 < y2) {
-          std::cout << "parent i if j was born after c1 + 1! " << std::endl;
+          // std::cout << "parent i if j was born after c1 + 1! " << std::endl;
           prob *=  pow(phi, c1[index] - y2 - 1);
         }
       }

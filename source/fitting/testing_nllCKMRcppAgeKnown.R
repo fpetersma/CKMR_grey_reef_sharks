@@ -9,10 +9,10 @@ load("data/df_sufficient_age_known.RData")
 sourceCpp("source/fitting/nllCKMRcppAgeKnown.cpp")
 
 par <- list(
-  # phi = boot::logit(0.5), # same as plogis(0.9) -- boot::inv.logit() is qlogis()
+  # phi = boot::logit(0.87), # same as plogis(0.9) -- boot::inv.logit() is qlogis()
   N_t0_m = log(500), 
+  r = log(1.03),
   N_t0_f = log(500))
-# r = log(1.03)) 
 # sigma_vbgf = log(2))
 
 df_select <- df[, ]
@@ -21,12 +21,12 @@ df_select <- df_sufficient[, ]
 dat <- list(alpha_m = 10, 
             alpha_f = 12,
             
-            r = log(1.02),
+            # r = log(1.00),
             # sigma_vbgf = log(0.000001),
-            # phi = boot::logit(0.87),
+            phi = boot::logit(0.9),
             
             max_age = 19,
-            t0 = 40,
+            t0 = 140,
             # vbgf_l_inf = 175,
             # vbgf_k = 0.1,
             # vbgf_t0 = -3.5,
