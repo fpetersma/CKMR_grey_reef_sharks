@@ -5,7 +5,7 @@
 
 addPregnancy <- function(indiv, matingAges) {
   
-  pregnant_females <- indiv$Sex == "F" & indiv$AgeLast %in% (matingAges + 1)
+  pregnant_females <- indiv$Sex == "F" & indiv$AgeLast %in% (matingAges)
   
   indiv$Pregnant <- pregnant_females
   
@@ -62,7 +62,7 @@ mateOrBirth <- function (indiv,
   
   ## Subset the birthing females
   mothers <- subset(indiv, indiv[, 2] == "F" &   # are they female
-                      indiv[, 8] >= firstBreedFemale & # are they old enough to breed
+                      indiv[, 8] > firstBreedFemale & # are they old enough to breed
                       is.na(indiv[, 6]) &        # are they alive
                       indiv[, 10] == 1)          # are they pregnant?
   if (nrow(mothers) == 0) {

@@ -37,7 +37,7 @@ sex_ratio <- c(0.5, 0.5)        # the offspring male/female sex ratio
 single_paternity <- TRUE        # is there a single father to a litter?
 
 ## Set simulation and sampling parameters
-years <- 1:40             # number of years to run simulation
+years <- 101:140             # number of years to run simulation
 sampling_years <- c(max(years) - 1, max(years))     # years in which sampling occurs
 sample_size <- c(rep(0, sampling_years[1] - 1), 
                  600, 700)   # number of sampled individuals in each year
@@ -49,30 +49,36 @@ indiv <-  makeFounders(
   pop = 8500,                   # starting pop. size 8500 from literature
   osr = sex_ratio,
   stocks = c(1),                # a single stock
-  maxAge = max_age,             #
-  survCurv = surv_rate ^ (1:max_age) / sum(surv_rate ^ (1:max_age))
+  maxAge = max_age + 1,             #
+  survCurv = surv_rate ^ (1:(max_age + 1)) / sum(surv_rate ^ (1:(max_age + 1)))
 )
 
+## Remove 1 year from the ages in indiv to match my system
+indiv$AgeLast <- indiv$AgeLast - 1
 
 ## Add marker to pregnant females
 indiv <- addPregnancy(
   indiv = indiv,
-  matingAges = c(12, 14, 16, 18)
-)
+  matingAges = c(12, 14, 16, 18))
 
-# ## Add birth recovery remaining THIS IS OLD
-# indiv <- addBirthRecovery(
-#   indiv = indiv,
-#   recoveryTime = recovery_time,
-#   maturityAge = first_breed,
-#   random = FALSE,
-#   breedingYears <- c(13, 15, 17, 19)
-# )
 
 ## Start the simulation ========================================================
 for (y in years) {
   cat("Starting simulation of year:", y, "...")
-  # 1. Mating
+  
+  ## 1. Survival
+  indiv <- mort(
+    indiv = indiv, 
+    year = y, 
+    type = mort_type, 
+    mortRate = mort_rate,
+    maxAge = max_age - 1
+  )
+  
+  ## 2. Age incrementation
+  indiv <- birthdays(indiv)
+  
+  ## 3. Mating/birth
   indiv <- mateOrBirth(
     indiv = indiv,
     batchSize = batch_size,
@@ -88,19 +94,7 @@ for (y in years) {
     maleCurve = male_curve,   
     femaleCurve = female_curve
   )
-  
-  ## 2. Mortality
-  indiv <- mort(
-    indiv = indiv, 
-    year = y, 
-    type = mort_type, 
-    mortRate = mort_rate,
-    maxAge = max_age
-  )
-  
-  ## 3. Birthdays
-  indiv <- birthdays(indiv)
-  
+
   ## 4. Sampling
   if (y %in% sampling_years) {
     indiv <- capture(
@@ -115,6 +109,7 @@ for (y in years) {
 
 ## How many individuals are still alive in 'indiv'?
 nrow(indiv[is.na(indiv$DeathY), ])
+# View(indiv[is.na(indiv$DeathY), ])
 
 ## Save data for fitting
 

@@ -44,6 +44,8 @@ double nllPOPCKMRcpp(List dat, List par) {
   // Add parameters to be kept as constants here
   const double r = exp(double(dat["r"]));             // growth parameter
   const double sigma_vbgf = exp(double(dat["sigma_vbgf"]));
+  const double phi = exp(double(dat["phi"])) /        // survival parameter
+    (1.0 + exp(double(dat["phi"])));                  
   
 
   // ===========================================================================
@@ -51,8 +53,8 @@ double nllPOPCKMRcpp(List dat, List par) {
   // ===========================================================================
   // 2. EXTRACT INDIVIDUAL PARAMETERS
   // ---------------------------------------------------------------------------
-  const double phi = exp(double(par["phi"])) /        // survival parameter
-    (1.0 + exp(double(par["phi"])));                  
+  // const double phi = exp(double(par["phi"])) /        // survival parameter
+  //   (1.0 + exp(double(par["phi"])));                  
   const double N_t0_m = exp(double(par["N_t0_m"]));   // male abundance
   const double N_t0_f = exp(double(par["N_t0_f"]));   // female abundance
   // const double sigma_vbgf = exp(double(par["sigma_vbgf"]));
@@ -88,7 +90,7 @@ double nllPOPCKMRcpp(List dat, List par) {
       int max_age_offspring = 0; // place holder to allow compiling
       // Set maximum age for the offspring
       if (s1[index] == "F") {
-         max_age_offspring = c2[index] - c1[index] - alpha_f + a1 - 1;
+        max_age_offspring = c2[index] - c1[index] - alpha_f + a1 - 1;
       } 
       if (s1[index] == "M") {
         max_age_offspring = c2[index] - c1[index] - alpha_m + a1 - 1;
@@ -107,45 +109,95 @@ double nllPOPCKMRcpp(List dat, List par) {
         
         // std::cout << "max_age_offspring: " << max_age_offspring << std::endl;
         
-        // Loop over ages for offspring
-        for (int index_age_offspring = 0; index_age_offspring < n_ages_offspring; index_age_offspring++) {
-          int a2 = ages_offspring[index_age_offspring];
-          int y2 =  c2[index] - a2;
-          
-          double out = 0.0; // place holder to allow compiling
-          
-          if (s1[index] == "F") {
-            // Derive the ERRO in the year before the birth year of the offspring
-            out = 1.0 / (N_t0_f * pow(r, y2 - 1 - t0));
-            // out = 1.0 / (N_t0_f * pow(1.0 + r, y2 - 1 - t0)); # old, no need to add the 1 to r I think
+        if (s1[index] == "F") {
+          // Loop over ages for offspring
+          for (int index_age_offspring = 0; index_age_offspring < n_ages_offspring / 2; index_age_offspring++) {
             
-            // Account for survival of parent i if j was born after c1 
-            if (c1[index] < y2) {
-              out *=  pow(phi, c1[index] - y2);
-            }
-          } 
-          if (s1[index] == "M") {
-            // Derive the ERRO in the year before the birth year of the offspring
-            out = 1.0 / (N_t0_m * pow(r, y2 - 1 - t0));
-            // out = 1.0 / (N_t0_m * pow(1.0 + r, y2 - 1 - t0)); # old, no need to add the 1 to r I think
+            // testing!
+            int correct_offspring_age_index = index_age_offspring * 2;
             
-            // Account for survival of parent i if j was born after c1 + 1
-            if (c1[index] < y2 - 1) {
-              out *=  pow(phi, c1[index] - y2 - 1);
-            }
-          } 
-          
-          // Find expected length baharased on age and VBGF parameters
-          double l2_exp = vbgf_l_inf * (1 - exp(-vbgf_k * (a2 - vbgf_t0)));
-          
-          // Multiply above by probability density of offspring age
-          out *= R::dnorm(l2[index], l2_exp, sigma_vbgf, false);
-          
-          // Add to output_offspring_level
-          output_offspring_level += out;
-          
-          // std::cout << "out: " << out << std::endl;
-        } 
+            int a2 = ages_offspring[correct_offspring_age_index];
+            int y2 =  c2[index] - a2;
+            
+            double out = 0.0; // place holder to allow compiling
+            
+            if (s1[index] == "F") {
+              // Derive the ERRO in the year before the birth year of the offspring
+              out = 1.0 / (N_t0_f * pow(r, y2 - 1 - t0));
+              // std::cout << "Female abundance in year " << y2 << " is: " << N_t0_f * pow(r, y2 - 1 - t0) << std::endl;
+              // out = 1.0 / (N_t0_f * pow(1.0 + r, y2 - 1 - t0)); # old, no need to add the 1 to r I think
+              
+              // Account for survival of parent i if j was born after c1 
+              if (c1[index] < y2) {
+                out *=  pow(phi, c1[index] - y2);
+              }
+            } 
+            // if (s1[index] == "M") {
+            //   // Derive the ERRO in the year before the birth year of the offspring
+            //   out = 1.0 / (N_t0_m * pow(r, y2 - 1 - t0));
+            //   // out = 1.0 / (N_t0_m * pow(1.0 + r, y2 - 1 - t0)); # old, no need to add the 1 to r I think
+            //   
+            //   // Account for survival of parent i if j was born after c1 + 1
+            //   if (c1[index] < y2 - 1) {
+            //     out *=  pow(phi, c1[index] - y2 - 1);
+            //   }
+            // } 
+            
+            // Find expected length baharased on age and VBGF parameters
+            double l2_exp = vbgf_l_inf * (1 - exp(-vbgf_k * (a2 - vbgf_t0)));
+            
+            // Multiply above by probability density of offspring age
+            out *= R::dnorm(l2[index], l2_exp, sigma_vbgf, false);
+            
+            // Add to output_offspring_level
+            output_offspring_level += out;
+            
+            // std::cout << "out: " << out << std::endl;
+          }
+        } else if (s1[index] == "M") {
+          // Loop over ages for offspring
+          for (int index_age_offspring = 0; index_age_offspring < n_ages_offspring; index_age_offspring++) {
+            
+            int a2 = ages_offspring[index_age_offspring];
+            int y2 =  c2[index] - a2;
+            
+            double out = 0.0; // place holder to allow compiling
+            
+            // if (s1[index] == "F") {
+            //   // Derive the ERRO in the year before the birth year of the offspring
+            //   out = 1.0 / (N_t0_f * pow(r, y2 - 1 - t0));
+            //   std::cout << "Female abundance in year " << y2 << " is: " << N_t0_f * pow(r, y2 - 1 - t0) << std::endl;
+            //   // out = 1.0 / (N_t0_f * pow(1.0 + r, y2 - 1 - t0)); # old, no need to add the 1 to r I think
+            //   
+            //   // Account for survival of parent i if j was born after c1 
+            //   if (c1[index] < y2) {
+            //     out *=  pow(phi, c1[index] - y2);
+            //   }
+            // } 
+            if (s1[index] == "M") {
+              // Derive the ERRO in the year before the birth year of the offspring
+              out = 1.0 / (N_t0_m * pow(r, y2 - 1 - t0));
+              // out = 1.0 / (N_t0_m * pow(1.0 + r, y2 - 1 - t0)); # old, no need to add the 1 to r I think
+              
+              // Account for survival of parent i if j was born after c1 + 1
+              if (c1[index] < y2 - 1) {
+                out *=  pow(phi, c1[index] - y2 - 1);
+              }
+            } 
+            
+            // Find expected length baharased on age and VBGF parameters
+            double l2_exp = vbgf_l_inf * (1 - exp(-vbgf_k * (a2 - vbgf_t0)));
+            
+            // Multiply above by probability density of offspring age
+            out *= R::dnorm(l2[index], l2_exp, sigma_vbgf, false);
+            
+            // Add to output_offspring_level
+            output_offspring_level += out;
+            
+            // std::cout << "out: " << out << std::endl;
+          }
+        }
+      
         
         // // Sum the probabilities for every potential offspring age
         // double output_offspring_level = output_offspring_level.sum(); 
@@ -172,9 +224,9 @@ double nllPOPCKMRcpp(List dat, List par) {
     
     // std::cout << "prob: " << prob << std::endl;
     
-    // if (prob == 0) {
-    //   prob = pow(10, -60);
-    // }
+    if (prob == 0) {
+      prob = pow(10, -60);
+    }
     
     // Update the negative log-likelihood
     nll -= log(prob) * cov_combo_freq[index];
