@@ -43,6 +43,79 @@ sample_size <- c(rep(0, sampling_years[1] - 1),
                  600, 700)   # number of sampled individuals in each year
 lethal_sampling <- FALSE        # is sampling lethal?
 
+## Store simdata sets
+simulated_data_sets <- list()
+
+for (i in 1:100) {
+  
+  ## Create initial population ===================================================
+  ## Set initial population in year 0
+  indiv <-  makeFounders(
+    pop = 8500,                   # starting pop. size 8500 from literature
+    osr = sex_ratio,
+    stocks = c(1),                # a single stock
+    maxAge = max_age + 1,             #
+    survCurv = surv_rate ^ (1:(max_age + 1)) / sum(surv_rate ^ (1:(max_age + 1)))
+  )
+  
+  ## Remove 1 year from the ages in indiv to match my system
+  indiv$AgeLast <- indiv$AgeLast - 1
+  
+  ## Add marker to pregnant females
+  indiv <- addPregnancy(
+    indiv = indiv,
+    matingAges = c(12, 14, 16, 18))
+  
+  
+  ## Start the simulation ========================================================
+  for (y in years) {
+    cat("Starting simulation of year:", y, "...")
+    
+    ## 1. Survival
+    indiv <- mort(
+      indiv = indiv, 
+      year = y, 
+      type = mort_type, 
+      mortRate = mort_rate,
+      maxAge = max_age - 1
+    )
+    
+    ## 2. Age incrementation
+    indiv <- birthdays(indiv)
+    
+    ## 3. Mating/birth
+    indiv <- mateOrBirth(
+      indiv = indiv,
+      batchSize = batch_size,
+      fecundityDist = fecundity_dist, # uniform is custom
+      osr = sex_ratio,
+      year = y,
+      firstBreedFemale = first_breed_female,
+      firstBreedMale = first_breed_male,
+      firstLitter = first_litter, # firstLitter is custom
+      type = mate_type, 
+      maxClutch = max_clutch,
+      singlePaternity = single_paternity,  
+      maleCurve = male_curve,   
+      femaleCurve = female_curve
+    )
+    
+    ## 4. Sampling
+    if (y %in% sampling_years) {
+      indiv <- capture(
+        indiv = indiv, 
+        n = sample_size[y], 
+        year = y, 
+        fatal = lethal_sampling
+      )
+    }
+    cat(" Cycle completed!\n")
+  }
+  
+  simulated_data_sets[[i]] <- indiv
+}
+
+
 ## Create initial population ===================================================
 ## Set initial population in year 0
 indiv <-  makeFounders(

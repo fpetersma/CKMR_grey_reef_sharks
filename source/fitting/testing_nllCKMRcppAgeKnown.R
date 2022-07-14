@@ -23,7 +23,7 @@ dat <- list(alpha_m = 10,
             
             # r = log(1.00),
             # sigma_vbgf = log(0.000001),
-            phi = boot::logit(0.9),
+            phi = boot::logit(0.87),
             
             max_age = 19,
             t0 = 140,

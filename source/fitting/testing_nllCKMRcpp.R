@@ -4,7 +4,7 @@
 
 library(Rcpp)
 
-load("data/df_sufficient_no_length_error.RData")
+load("data/df_sufficient_age_known.RData")
 
 sourceCpp("source/fitting/nllCKMRcpp.cpp")
 
@@ -21,12 +21,12 @@ df_select <- df_sufficient[, ]
 dat <- list(alpha_m = 10, 
             alpha_f = 12,
             
-            r = log(1.02),
-            sigma_vbgf = log(0.000001),
+            r = log(1.00),
+            sigma_vbgf = log(0.00001),
             phi = boot::logit(0.87),
             
             max_age = 19,
-            t0 = 0,
+            t0 = 140,
             vbgf_l_inf = 175,
             vbgf_k = 0.1,
             vbgf_t0 = -3.5,

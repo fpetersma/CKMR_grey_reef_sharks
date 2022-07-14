@@ -44,8 +44,8 @@ double nllPOPCKMRcppAgeKnown(List dat, List par) {
   // Add parameters to be kept as constants here
   const double r = exp(double(dat["r"]));             // growth parameter
   // const double sigma_vbgf = exp(double(dat["sigma_vbgf"]));
-  // const double phi = exp(double(dat["phi"])) /        // survival parameter
-  //   (1.0 + exp(double(dat["phi"])));
+  const double phi = exp(double(dat["phi"])) /        // survival parameter
+    (1.0 + exp(double(dat["phi"])));
   
   
   // ===========================================================================
@@ -53,8 +53,8 @@ double nllPOPCKMRcppAgeKnown(List dat, List par) {
   // ===========================================================================
   // 2. EXTRACT INDIVIDUAL PARAMETERS
   // ---------------------------------------------------------------------------
-  const double phi = exp(double(par["phi"])) /        // survival parameter
-    (1.0 + exp(double(par["phi"])));
+  // const double phi = exp(double(par["phi"])) /        // survival parameter
+  //   (1.0 + exp(double(par["phi"])));
   const double N_t0_m = exp(double(par["N_t0_m"]));   // male abundance
   const double N_t0_f = exp(double(par["N_t0_f"]));   // female abundance
   // const double sigma_vbgf = exp(double(par["sigma_vbgf"]));

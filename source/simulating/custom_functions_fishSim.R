@@ -3,6 +3,236 @@
 ## grey reef shark case study from Palmyra.                                   ##  
 ## ========================================================================== ##
 
+findRelativesCustom <- function (indiv, sampled = TRUE, verbose = TRUE, 
+                                 nCores = detectCores() - 1, delimitIndiv = TRUE) 
+{
+  registerDoParallel(nCores)
+  if (sampled) {
+    if (sum(!is.na(indiv[, 9])) == 0) 
+      stop("no sampled individuals")
+    if (verbose) 
+      print(data.frame(table(indiv[!is.na(indiv[, 9]), 
+                                   9], dnn = "Sample Year")))
+    sampled <- indiv[!is.na(indiv[, 9]), 1]
+  } else {
+    sampled <- indiv[, 1]
+  }
+  if (delimitIndiv) {
+    keepers <- indiv$Me %in% sampled | indiv$Me %in% indiv$Mum | 
+      indiv$Me %in% indiv$Dad
+    indiv <- indiv[keepers, ]
+  }
+  ancestors <- matrix(data = sampled, nrow = length(sampled))
+  parents.o <- foreach(i = 1:nrow(ancestors), .combine = rbind) %dopar% 
+    {
+      fishSim::parents(ancestors[i, 1], indiv)
+    }
+  print(paste("parents found at ", Sys.time(), sep = ""))
+  grandparents.o <- foreach(i = 1:nrow(ancestors), .combine = rbind) %dopar% 
+    {
+      fishSim::grandparents(ancestors[i, 1], indiv)
+    }
+  print(paste("grandparents found at ", Sys.time()))
+  ggrandparents.o <- foreach(i = 1:nrow(ancestors), .combine = rbind) %dopar% 
+    {
+      fishSim::great.grandparents(ancestors[i, 1], indiv)
+    }
+  print(paste("great-grandparents found at ", Sys.time(), 
+              sep = ""))
+  # gggrandparents.o <- foreach(i = 1:nrow(ancestors), .combine = rbind) %dopar% 
+  #   {
+  #     great2.grandparents(ancestors[i, 1], indiv)
+  #   }
+  # print(paste("great-great-grandparents found at ", Sys.time(), 
+  #             sep = ""))
+  # ggggrandparents.o <- foreach(i = 1:nrow(ancestors), .combine = rbind) %dopar% 
+  #   {
+  #     great3.grandparents(ancestors[i, 1], indiv)
+  #   }
+  # print(paste("great-great-great-grandparents found at ", 
+  #             Sys.time(), sep = ""))
+  # gggggrandparents.o <- foreach(i = 1:nrow(ancestors), .combine = rbind) %dopar% 
+  #   {
+  #     great4.grandparents(ancestors[i, 1], indiv)
+  #   }
+  # print(paste("great-great-great-great-grandparents found at ", 
+  #             Sys.time(), sep = ""))
+  ancestors <- cbind(ancestors, parents.o, grandparents.o, ggrandparents.o) #, 
+                     # gggrandparents.o, ggggrandparents.o, 
+                     # gggggrandparents.o)
+  colnames(ancestors) <- c("self", "father", "mother", 
+                           "FF", "FM", "MF", "MM", 
+                           "FFF", "FFM", "FMF", "FMM", "MFF",  "MFM", "MMF", "MMM") #, 
+                           # "FFFF", "FFFM", "FFMF", "FFMM", 
+                           # "FMFF", "FMFM", "FMMF", "FMMM", "MFFF", "MFFM", "MFMF", 
+                           # "MFMM", "MMFF", "MMFM", "MMMF", "MMMM", "FFFFF", "FFFFM", 
+                           # "FFFMF", "FFFMM", "FFMFF", "FFMFM", "FFMMF", "FFMMM", 
+                           # "FMFFF", "FMFFM", "FMFMF", "FMFMM", "FMMFF", "FMMFM", 
+                           # "FMMMF", "FMMMM", "MFFFF", "MFFFM", "MFFMF", "MFFMM", 
+                           # "MFMFF", "MFMFM", "MFMMF", "MFMMM", "MMFFF", "MMFFM", 
+                           # "MMFMF", "MMFMM", "MMMFF", "MMMFM", "MMMMF", "MMMMM", 
+                           # "FFFFFF", "FFFFFM", "FFFFMF", "FFFFMM", "FFFMFF", "FFFMFM", 
+                           # "FFFMMF", "FFFMMM", "FFMFFF", "FFMFFM", "FFMFMF", "FFMFMM", 
+                           # "FFMMFF", "FFMMFM", "FFMMMF", "FFMMMM", "FMFFFF", "FMFFFM", 
+                           # "FMFFMF", "FMFFMM", "FMFMFF", "FMFMFM", "FMFMMF", "FMFMMM", 
+                           # "FMMFFF", "FMMFFM", "FMMFMF", "FMMFMM", "FMMMFF", "FMMMFM", 
+                           # "FMMMMF", "FMMMMM", "MFFFFF", "MFFFFM", "MFFFMF", "MFFFMM", 
+                           # "MFFMFF", "MFFMFM", "MFFMMF", "MFFMMM", "MFMFFF", "MFMFFM", 
+                           # "MFMFMF", "MFMFMM", "MFMMFF", "MFMMFM", "MFMMMF", "MFMMMM", 
+                           # "MMFFFF", "MMFFFM", "MMFFMF", "MMFFMM", "MMFMFF", "MMFMFM", 
+                           # "MMFMMF", "MMFMMM", "MMMFFF", "MMMFFM", "MMMFMF", "MMMFMM", 
+                           # "MMMMFF", "MMMMFM", "MMMMMF", "MMMMMM")
+  expand.grid.unique <- function(x, y, include.equals = FALSE) {
+    x <- unique(x)
+    y <- unique(y)
+    g <- function(i) {
+      z <- setdiff(y, x[seq_len(i - include.equals)])
+      if (length(z)) 
+        cbind(x[i], z, deparse.level = 0)
+    }
+    do.call(rbind, lapply(seq_along(x), g))
+  }
+  print("made it")
+  
+  pairs <- expand.grid.unique(ancestors[, 1], ancestors[, 1])
+  
+
+  
+  colnames(pairs) <- c("Var1", "Var2")
+  related <- c(rep(NA, nrow(pairs)))
+  totalRelatives <- c(rep(NA, nrow(pairs)))
+  OneTwo <- c(rep(NA, nrow(pairs)))
+  OneThree <- c(rep(NA, nrow(pairs)))
+  OneFour <- c(rep(NA, nrow(pairs)))
+  OneFive <- c(rep(NA, nrow(pairs)))
+  OneSix <- c(rep(NA, nrow(pairs)))
+  OneSeven <- c(rep(NA, nrow(pairs)))
+  TwoTwo <- c(rep(NA, nrow(pairs)))
+  TwoThree <- c(rep(NA, nrow(pairs)))
+  TwoFour <- c(rep(NA, nrow(pairs)))
+  TwoFive <- c(rep(NA, nrow(pairs)))
+  TwoSix <- c(rep(NA, nrow(pairs)))
+  TwoSeven <- c(rep(NA, nrow(pairs)))
+  ThreeThree <- c(rep(NA, nrow(pairs)))
+  ThreeFour <- c(rep(NA, nrow(pairs)))
+  ThreeFive <- c(rep(NA, nrow(pairs)))
+  ThreeSix <- c(rep(NA, nrow(pairs)))
+  ThreeSeven <- c(rep(NA, nrow(pairs)))
+  FourFour <- c(rep(NA, nrow(pairs)))
+  FourFive <- c(rep(NA, nrow(pairs)))
+  FourSix <- c(rep(NA, nrow(pairs)))
+  FourSeven <- c(rep(NA, nrow(pairs)))
+  FiveFive <- c(rep(NA, nrow(pairs)))
+  FiveSix <- c(rep(NA, nrow(pairs)))
+  FiveSeven <- c(rep(NA, nrow(pairs)))
+  SixSix <- c(rep(NA, nrow(pairs)))
+  SixSeven <- c(rep(NA, nrow(pairs)))
+  SevenSeven <- c(rep(NA, nrow(pairs)))
+  for (i in 1:length(related)) {
+    # allAncestors <- ancestors[ancestors[, 1] == pairs[i, 
+    #                                                   1], 1:127] %in% ancestors[ancestors[, 1] == pairs[i, 
+    #                                                                                                     2], 1:127]
+    allAncestors <- ancestors[ancestors[, 1] == pairs[i, 1], 1:15] %in% 
+      ancestors[ancestors[, 1] == pairs[i,2], 1:15]
+                                                                                                        
+    indi1 <- pairs[i, 1]
+    indi2 <- pairs[i, 2]
+    indi1Par <- ancestors[ancestors[, 1] == pairs[i, 1], 
+                          2:3]
+    indi2Par <- ancestors[ancestors[, 1] == pairs[i, 2], 
+                          2:3]
+    indi1GP <- ancestors[ancestors[, 1] == pairs[i, 1], 
+                         4:7]
+    indi2GP <- ancestors[ancestors[, 1] == pairs[i, 2], 
+                         4:7]
+    indi1GGP <- ancestors[ancestors[, 1] == pairs[i, 1], 
+                          8:15]
+    indi2GGP <- ancestors[ancestors[, 1] == pairs[i, 2], 
+                          8:15]
+    # indi1GGGP <- ancestors[ancestors[, 1] == pairs[i, 1], 
+    #                        16:31]
+    # indi2GGGP <- ancestors[ancestors[, 1] == pairs[i, 2], 
+    #                        16:31]
+    # indi1GGGGP <- ancestors[ancestors[, 1] == pairs[i, 1], 
+    #                         32:63]
+    # indi2GGGGP <- ancestors[ancestors[, 1] == pairs[i, 2], 
+    #                         32:63]
+    # indi1GGGGGP <- ancestors[ancestors[, 1] == pairs[i, 
+    #                                                  1], 64:127]
+    # indi2GGGGGP <- ancestors[ancestors[, 1] == pairs[i, 
+    #                                                  2], 64:127]
+    related[i] <- any(allAncestors)
+    totalRelatives[i] <- sum(allAncestors)
+    OneTwo[i] <- sum(c(indi1 %in% indi2Par, indi2 %in% indi1Par))
+    OneThree[i] <- sum(c(indi1 %in% indi2GP, indi2 %in% 
+                           indi1GP))
+    OneFour[i] <- sum(c(indi1 %in% indi2GGP, indi2 %in% 
+                          indi1GGP))
+    # OneFive[i] <- sum(c(indi1 %in% indi2GGGP, indi2 %in% 
+    #                       indi1GGGP))
+    # OneSix[i] <- sum(c(indi1 %in% indi2GGGGP, indi2 %in% 
+    #                      indi1GGGGP))
+    # OneSeven[i] <- sum(c(indi1 %in% indi2GGGGGP, indi2 %in% 
+    #                        indi1GGGGGP))
+    TwoTwo[i] <- sum(c(indi1Par %in% indi2Par))
+    TwoThree[i] <- sum(c(indi1Par %in% indi2GP, indi2Par %in% 
+                           indi1GP))
+    TwoFour[i] <- sum(c(indi1Par %in% indi2GGP, indi2Par %in% 
+                          indi1GGP))
+    # TwoFive[i] <- sum(c(indi1Par %in% indi2GGGP, indi2Par %in% 
+    #                       indi1GGGP))
+    # TwoSix[i] <- sum(c(indi1Par %in% indi2GGGGP, indi2Par %in% 
+    #                      indi1GGGGP))
+    # TwoSeven[i] <- sum(c(indi1Par %in% indi2GGGGGP, indi2Par %in% 
+    #                        indi1GGGGGP))
+    ThreeThree[i] <- sum(c(indi1GP %in% indi2GP))
+    ThreeFour[i] <- sum(c(indi1GP %in% indi2GGP, indi2GP %in% 
+                            indi1GGP))
+    # ThreeFive[i] <- sum(c(indi1GP %in% indi2GGGP, indi2GP %in% 
+    #                         indi1GGGP))
+    # ThreeSix[i] <- sum(c(indi1GP %in% indi2GGGGP, indi2GP %in% 
+    #                        indi1GGGGP))
+    # ThreeSeven[i] <- sum(c(indi1GP %in% indi2GGGGGP, indi2GP %in% 
+    #                          indi1GGGGGP))
+    FourFour[i] <- sum(c(indi1GGP %in% indi2GGP))
+    # FourFive[i] <- sum(c(indi1GGP %in% indi2GGGP, indi2GGP %in% 
+    #                        indi1GGGP))
+    # FourSix[i] <- sum(c(indi1GGP %in% indi2GGGGP, indi2GGP %in% 
+    #                       indi1GGGGP))
+    # FourSeven[i] <- sum(c(indi1GGP %in% indi2GGGGGP, indi2GGP %in% 
+    #                         indi1GGGGGP))
+    # FiveFive[i] <- sum(c(indi1GGGP %in% indi2GGGP))
+    # FiveSix[i] <- sum(c(indi1GGGP %in% indi2GGGGP, indi2GGGP %in% 
+    #                       indi1GGGGP))
+    # FiveSeven[i] <- sum(c(indi1GGGP %in% indi2GGGGGP, indi2GGGP %in% 
+    #                         indi1GGGGGP))
+    # SixSix[i] <- sum(c(indi1GGGGP %in% indi2GGGGP))
+    # SixSeven[i] <- sum(c(indi1GGGGP %in% indi2GGGGGP, indi2GGGGP %in% 
+    #                        indi1GGGGGP))
+    # SevenSeven[i] <- sum(c(indi1GGGGGP %in% indi2GGGGGP))
+    if (i%%1000 == 0) {
+      cat("\r", i, " of ", length(related), " comparisons", 
+          sep = "")
+      flush.console()
+    }
+  }
+  pairs <- data.frame(pairs, related, totalRelatives, OneTwo, 
+                      OneThree, OneFour, 
+                      #OneFive, OneSix, OneSeven, 
+                      TwoTwo, TwoThree, TwoFour, 
+                      #TwoFive, TwoSix, TwoSeven, 
+                      ThreeThree, ThreeFour, 
+                      # ThreeFive, ThreeSix, ThreeSeven, 
+                      FourFour #, 
+                      # FourFive, FourSix, FourSeven, FiveFive, FiveSix, FiveSeven, 
+                      # SixSix, SixSeven, SevenSeven
+                      )
+  stopImplicitCluster()
+  return(pairs)
+}
+
+
+
 addPregnancy <- function(indiv, matingAges) {
   
   pregnant_females <- indiv$Sex == "F" & indiv$AgeLast %in% (matingAges)
