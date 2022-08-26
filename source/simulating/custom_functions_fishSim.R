@@ -1,7 +1,74 @@
 ## ========================================================================== ##
-## Some custom functions to add to fishSim to make it more similar to the     ##
-## grey reef shark case study from Palmyra.                                   ##  
+## A new file with custom functions to add to fishSim to make it more similar ##
+## to the grey reef shark case study from Palmyra. Recovered after            ##
+## accidentally replacing the file. Very stupid.                              ##  
 ## ========================================================================== ##
+
+addBirthRecovery <- function(indiv, 
+                             recoveryTime, 
+                             maturityAge,
+                             random = TRUE,
+                             breedingYears = NA) {
+  if (random) {
+    potential_recovery <- 0:(recoveryTime - 1) # -1 to match the order
+    
+    indiv$Recovery <- 0
+    # Add random years since offspring for mature females
+    indiv$Recovery[indiv$Sex == "F" & indiv$AgeLast >= maturityAge] <- 
+      sample(potential_recovery, 
+             sum(indiv$Sex == "F" & indiv$AgeLast >= maturityAge), 
+             TRUE)
+  } else {
+    indiv$Recovery <- 0
+    # Add random years since offspring for mature females
+    indiv$Recovery[indiv$Sex == "F" & 
+                     indiv$AgeLast >= maturityAge &
+                     indiv$AgeLast %in% (breedingYears + 1)] <- 1
+  }
+  return(indiv)
+}
+
+addPregnancy <- function(indiv, matingAges) {
+  
+  is_pregnant <- indiv$Sex == "F" & indiv$AgeLast %in% (matingAges + 1)
+  
+  indiv$Pregnant <- is_pregnant
+  
+  return(indiv)
+}
+
+captureOnlyFirst <- function (indiv, 
+                              n = 1, 
+                              year = "-1", 
+                              fatal = FALSE, 
+                              sex = NULL, 
+                              age = NULL) {
+  if (!is.null(sex)) {
+    is.sex <- indiv[, 2] == sex
+  } else is.sex <- TRUE
+  
+  if (!is.null(age)) {
+    is.age <- indiv[, 8] %in% age
+  } else is.age <- TRUE
+  
+  is.alive <- is.na(indiv[, 6]) & is.sex & is.age 
+  is.dead <- !is.alive
+  n.alive <- sum(is.alive)
+  n <- min(n, n.alive)
+  if (n > 0) {
+    sample.loc <- sample.int(n.alive, size = n)
+    ## The line below is different from fishSim::capture(). 
+    ## Ensure that we only consider individuals that have not been
+    ## captured before. Basically, from the sampled individuals, only updated
+    ## the sample year of the ones that don't have a sample year yet
+    sample_loc_new <- sample.loc[is.na(indiv[is.alive, ][sample.loc, 9])]
+    indiv[is.alive, ][sample_loc_new, 9] <- year
+    if (fatal) {
+      indiv[is.alive, ][sample_loc_new, 6] <- year
+    }
+  }
+  return(indiv)
+}
 
 findRelativesCustom <- function (indiv, sampled = TRUE, verbose = TRUE, 
                                  nCores = detectCores() - 1, delimitIndiv = TRUE) 
@@ -58,30 +125,30 @@ findRelativesCustom <- function (indiv, sampled = TRUE, verbose = TRUE,
   # print(paste("great-great-great-great-grandparents found at ", 
   #             Sys.time(), sep = ""))
   ancestors <- cbind(ancestors, parents.o, grandparents.o, ggrandparents.o) #, 
-                     # gggrandparents.o, ggggrandparents.o, 
-                     # gggggrandparents.o)
+  # gggrandparents.o, ggggrandparents.o, 
+  # gggggrandparents.o)
   colnames(ancestors) <- c("self", "father", "mother", 
                            "FF", "FM", "MF", "MM", 
                            "FFF", "FFM", "FMF", "FMM", "MFF",  "MFM", "MMF", "MMM") #, 
-                           # "FFFF", "FFFM", "FFMF", "FFMM", 
-                           # "FMFF", "FMFM", "FMMF", "FMMM", "MFFF", "MFFM", "MFMF", 
-                           # "MFMM", "MMFF", "MMFM", "MMMF", "MMMM", "FFFFF", "FFFFM", 
-                           # "FFFMF", "FFFMM", "FFMFF", "FFMFM", "FFMMF", "FFMMM", 
-                           # "FMFFF", "FMFFM", "FMFMF", "FMFMM", "FMMFF", "FMMFM", 
-                           # "FMMMF", "FMMMM", "MFFFF", "MFFFM", "MFFMF", "MFFMM", 
-                           # "MFMFF", "MFMFM", "MFMMF", "MFMMM", "MMFFF", "MMFFM", 
-                           # "MMFMF", "MMFMM", "MMMFF", "MMMFM", "MMMMF", "MMMMM", 
-                           # "FFFFFF", "FFFFFM", "FFFFMF", "FFFFMM", "FFFMFF", "FFFMFM", 
-                           # "FFFMMF", "FFFMMM", "FFMFFF", "FFMFFM", "FFMFMF", "FFMFMM", 
-                           # "FFMMFF", "FFMMFM", "FFMMMF", "FFMMMM", "FMFFFF", "FMFFFM", 
-                           # "FMFFMF", "FMFFMM", "FMFMFF", "FMFMFM", "FMFMMF", "FMFMMM", 
-                           # "FMMFFF", "FMMFFM", "FMMFMF", "FMMFMM", "FMMMFF", "FMMMFM", 
-                           # "FMMMMF", "FMMMMM", "MFFFFF", "MFFFFM", "MFFFMF", "MFFFMM", 
-                           # "MFFMFF", "MFFMFM", "MFFMMF", "MFFMMM", "MFMFFF", "MFMFFM", 
-                           # "MFMFMF", "MFMFMM", "MFMMFF", "MFMMFM", "MFMMMF", "MFMMMM", 
-                           # "MMFFFF", "MMFFFM", "MMFFMF", "MMFFMM", "MMFMFF", "MMFMFM", 
-                           # "MMFMMF", "MMFMMM", "MMMFFF", "MMMFFM", "MMMFMF", "MMMFMM", 
-                           # "MMMMFF", "MMMMFM", "MMMMMF", "MMMMMM")
+  # "FFFF", "FFFM", "FFMF", "FFMM", 
+  # "FMFF", "FMFM", "FMMF", "FMMM", "MFFF", "MFFM", "MFMF", 
+  # "MFMM", "MMFF", "MMFM", "MMMF", "MMMM", "FFFFF", "FFFFM", 
+  # "FFFMF", "FFFMM", "FFMFF", "FFMFM", "FFMMF", "FFMMM", 
+  # "FMFFF", "FMFFM", "FMFMF", "FMFMM", "FMMFF", "FMMFM", 
+  # "FMMMF", "FMMMM", "MFFFF", "MFFFM", "MFFMF", "MFFMM", 
+  # "MFMFF", "MFMFM", "MFMMF", "MFMMM", "MMFFF", "MMFFM", 
+  # "MMFMF", "MMFMM", "MMMFF", "MMMFM", "MMMMF", "MMMMM", 
+  # "FFFFFF", "FFFFFM", "FFFFMF", "FFFFMM", "FFFMFF", "FFFMFM", 
+  # "FFFMMF", "FFFMMM", "FFMFFF", "FFMFFM", "FFMFMF", "FFMFMM", 
+  # "FFMMFF", "FFMMFM", "FFMMMF", "FFMMMM", "FMFFFF", "FMFFFM", 
+  # "FMFFMF", "FMFFMM", "FMFMFF", "FMFMFM", "FMFMMF", "FMFMMM", 
+  # "FMMFFF", "FMMFFM", "FMMFMF", "FMMFMM", "FMMMFF", "FMMMFM", 
+  # "FMMMMF", "FMMMMM", "MFFFFF", "MFFFFM", "MFFFMF", "MFFFMM", 
+  # "MFFMFF", "MFFMFM", "MFFMMF", "MFFMMM", "MFMFFF", "MFMFFM", 
+  # "MFMFMF", "MFMFMM", "MFMMFF", "MFMMFM", "MFMMMF", "MFMMMM", 
+  # "MMFFFF", "MMFFFM", "MMFFMF", "MMFFMM", "MMFMFF", "MMFMFM", 
+  # "MMFMMF", "MMFMMM", "MMMFFF", "MMMFFM", "MMMFMF", "MMMFMM", 
+  # "MMMMFF", "MMMMFM", "MMMMMF", "MMMMMM")
   expand.grid.unique <- function(x, y, include.equals = FALSE) {
     x <- unique(x)
     y <- unique(y)
@@ -96,7 +163,7 @@ findRelativesCustom <- function (indiv, sampled = TRUE, verbose = TRUE,
   
   pairs <- expand.grid.unique(ancestors[, 1], ancestors[, 1])
   
-
+  
   
   colnames(pairs) <- c("Var1", "Var2")
   related <- c(rep(NA, nrow(pairs)))
@@ -134,7 +201,7 @@ findRelativesCustom <- function (indiv, sampled = TRUE, verbose = TRUE,
     #                                                                                                     2], 1:127]
     allAncestors <- ancestors[ancestors[, 1] == pairs[i, 1], 1:15] %in% 
       ancestors[ancestors[, 1] == pairs[i,2], 1:15]
-                                                                                                        
+    
     indi1 <- pairs[i, 1]
     indi2 <- pairs[i, 2]
     indi1Par <- ancestors[ancestors[, 1] == pairs[i, 1], 
@@ -226,52 +293,17 @@ findRelativesCustom <- function (indiv, sampled = TRUE, verbose = TRUE,
                       FourFour #, 
                       # FourFive, FourSix, FourSeven, FiveFive, FiveSix, FiveSeven, 
                       # SixSix, SixSeven, SevenSeven
-                      )
+  )
   stopImplicitCluster()
   return(pairs)
 }
 
-
-
-addPregnancy <- function(indiv, matingAges) {
-  
-  pregnant_females <- indiv$Sex == "F" & indiv$AgeLast %in% (matingAges)
-  
-  indiv$Pregnant <- pregnant_females
-  
-  return(indiv)
-}
-
-
-#' mateOrBirth
-#'
-#' @param indiv 
-#' @param batchSize 
-#' @param fecundityDist 
-#' @param osr 
-#' @param year 
-#' @param firstBreedFemale 
-#' @param firstBreedMale 
-#' @param firstLitter 
-#' @param type 
-#' @param maxClutch 
-#' @param singlePaternity 
-#' @param exhaustFathers 
-#' @param maturityCurve 
-#' @param maleCurve 
-#' @param femaleCurve 
-#' @param quiet 
-#'
-#' @return
-#' @export
-#'
-#' @examples
 mateOrBirth <- function (indiv,
                          batchSize = 0.5, 
                          fecundityDist = "uniform", 
                          osr = c(0.5, 0.5), 
                          year = "-1", 
-                         firstBreedFemale = 12, # only for females
+                         firstBreedFemale = 10, # only for females
                          firstBreedMale = 10,
                          firstLitter = NA,
                          type = "flat", 
@@ -281,6 +313,7 @@ mateOrBirth <- function (indiv,
                          maturityCurve, 
                          maleCurve, 
                          femaleCurve,
+                         no_gestation = TRUE,
                          quiet = TRUE) {
   if (!(type %in% c("flat", "age", "ageSex"))) {
     stop("'type' must be one of 'flat', 'age', or 'ageSex'.")
@@ -290,99 +323,91 @@ mateOrBirth <- function (indiv,
     stop("'fecundityDist' must be one of 'poisson', 'truncPoisson', 'binomial', or 'uniform.")
   }
   
-  ## Subset the birthing females
-  mothers <- subset(indiv, indiv[, 2] == "F" &   # are they female
-                      indiv[, 8] > firstBreedFemale & # are they old enough to breed
-                      is.na(indiv[, 6]) &        # are they alive
-                      indiv[, 10] == 1)          # are they pregnant?
-  if (nrow(mothers) == 0) {
-    warning("There are no carrying females in the population")
-  }
-  ## Subset the mating females
-  mating_females <- subset(indiv, indiv[, 2] == "F" &   # are they female
+  if (no_gestation) {
+    ## Subset the birthing females
+    mothers <- subset(indiv, indiv[, 2] == "F" &   # are they female
+                        indiv[, 8] >= firstBreedFemale & # are they old enough to breed
+                        is.na(indiv[, 6]))       # are they alive
+    if (nrow(mothers) == 0) {
+      warning("There are no carrying females in the population")
+    }
+    ## Subset potential fathers
+    fathers <- subset(indiv, indiv[, 2] == "M" & 
+                        indiv[, 8] >= firstBreedMale & # only include males that were mature a year ago
+                        is.na(indiv[, 6])) # either alive 
+    
+    if (nrow(fathers) == 0) {
+      warning("There were no mature males in the population one year ago.")
+    }
+  } else {
+    ## Subset the birthing females
+    mothers <- subset(indiv, indiv[, 2] == "F" &   # are they female
+                        indiv[, 8] > firstBreedFemale & # are they old enough to breed
+                        is.na(indiv[, 6]) &        # are they alive
+                        indiv[, 10] == 1)          # are they pregnant?
+    if (nrow(mothers) == 0) {
+      warning("There are no carrying females in the population")
+    }
+    ## Subset the mating females
+    mating_females <- subset(indiv, indiv[, 2] == "F" &   # are they female
                                indiv[, 8] >= firstBreedFemale & # are they old enough to breed
                                is.na(indiv[, 6]) &        # are they alive
                                indiv[, 10] == 0)          # are they pregnant?
-  if (nrow(mating_females) == 0)  {
-    warning("There are no mating females in the population")
-  }
-  ## Subset potential fathers = all mature males that were alive ONE YEAR AGO!
-  fathers <- subset(indiv, indiv[, 2] == "M" & 
-                      indiv[, 8] - 1 >= firstBreedMale & # only include males that were mature a year ago
-                      is.na(indiv[, 6]) | indiv[, 6] == year) # either alive or were still alive one year ago
-                      
-  if (nrow(fathers) == 0) {
-    warning("There were no mature males in the population one year ago.")
-  }
-  # if (type == "flat") {
-  #   if (fecundityDist == "poisson") {
-  #     clutch <- rpois(n = nrow(mothers), lambda = batchSize)
-  #   }
-  #   if (fecundityDist == "truncPoisson") {
-  #     clutch <- rTruncPoisson(n = nrow(mothers), T = batchSize)
-  #   }
-  #   if (fecundityDist == "binomial") {
-  #     clutch <- rbinom(nrow(mothers), 1, prob = batchSize)
-  #   }
-  #   mothers <- subset(mothers, clutch > 0)
-  #   clutch <- clutch[clutch > 0]
-  # }
-  # else if (type == "age") {
-  #   mothers <- mothers[runif(nrow(mothers)) < maturityCurve[mothers[, 
-  #                                                                   8] + 1], , drop = FALSE]
-  #   fathers <- fathers[runif(nrow(fathers)) < maturityCurve[fathers[, 
-  #                                                                   8] + 1], , drop = FALSE]
-  #   if (fecundityDist == "poisson") {
-  #     clutch <- rpois(n = nrow(mothers), lambda = batchSize)
-  #   }
-  #   if (fecundityDist == "truncPoisson") {
-  #     clutch <- rTruncPoisson(n = nrow(mothers), T = batchSize)
-  #   }
-  #   if (fecundityDist == "binomial") {
-  #     clutch <- rbinom(nrow(mothers), 1, prob = batchSize)
-  #   }
-  #   mothers <- subset(mothers, clutch > 0)
-  #   clutch <- clutch[clutch > 0]
-  # }
-  if (type == "ageSex") {
-    
-    mating_females <- mating_females[runif(nrow(mating_females)) < 
-                                       femaleCurve[mating_females[, 8] + 1], , 
-                       drop = FALSE]
-    
-    fathers <- fathers[runif(nrow(fathers)) < maleCurve[fathers[, 
-                                                                8] + 1], , 
-                       drop = FALSE]
-    # if (fecundityDist == "poisson") {
-    #   clutch <- rpois(n = nrow(mothers), lambda = batchSize)
-    # }
-    # if (fecundityDist == "truncPoisson") {
-    #   clutch <- rTruncPoisson(n = nrow(mothers), T = batchSize)
-    # }
-    # if (fecundityDist == "binomial") {
-    #   clutch <- rbinom(nrow(mothers), 1, prob = batchSize)
-    # }
-    if (fecundityDist == "uniform") {
-      clutch <- sample(batchSize, size = nrow(mothers), replace = TRUE)
+    if (nrow(mating_females) == 0)  {
+      warning("There are no mating females in the population")
     }
-    ## Here a line is added to set first litter at 1-2 pups, not 3-4. 
-    clutch[mothers$AgeLast == firstBreedFemale + 1] <- sample(
-      firstLitter,
-      size = sum(mothers$AgeLast == firstBreedFemale + 1),
-      replace = TRUE)
+    ## Subset potential fathers = all mature males that were alive ONE YEAR AGO!
+    fathers <- subset(indiv, indiv[, 2] == "M" & 
+                        indiv[, 8] - 1 >= firstBreedMale & # only include males that were mature a year ago
+                        is.na(indiv[, 6]) | indiv[, 6] == year) # either alive or were still alive one year ago
+    
+    if (nrow(fathers) == 0) {
+      warning("There were no mature males in the population one year ago.")
+    }
+  }
+  if (type == "ageSex") {
+    if (no_gestation) {
+      fathers <- fathers[runif(nrow(fathers)) < maleCurve[fathers[, 8] + 1], , 
+                         drop = FALSE]
+      mothers <- mothers[runif(nrow(mothers)) < femaleCurve[mothers[, 8] + 1], , 
+                         drop = FALSE]
+    }
+    else {
+      fathers <- fathers[runif(nrow(fathers)) < maleCurve[fathers[, 8] + 1], , 
+                         drop = FALSE]
+      mating_females <- mating_females[runif(nrow(mating_females)) < 
+                                         femaleCurve[mating_females[, 8] + 1], , 
+                                       drop = FALSE]
+    }
+    
+    if (fecundityDist == "uniform") {
+      if (length(batchSize) == 1) {
+        clutch <- rep(batchSize, nrow(mothers))
+      } else {
+        clutch <- sample(batchSize, size = nrow(mothers), replace = TRUE)
+      }
+    }
+    ## Here a line is added to set first litter at 1-2 pups, not 3-4. NOT USED
+    # clutch[mothers$AgeLast == firstBreedFemale + 1] <- sample(
+    #   firstLitter,
+    #   size = sum(mothers$AgeLast == firstBreedFemale + 1),
+    #   replace = TRUE)
     
     mothers <- subset(mothers, clutch > 0)
     
     ## Add/remove pregnancy indicators
-    indiv$Pregnant[indiv$Me %in% mothers$Me] <- FALSE # No longer pregnant
-    indiv$Pregnant[indiv$Me %in% mating_females$Me] <- TRUE # Mating females now pregnant
-    
+    if (!no_gestation) {
+      indiv$Pregnant[indiv$Me %in% mothers$Me] <- FALSE # No longer pregnant
+      indiv$Pregnant[indiv$Me %in% mating_females$Me] <- TRUE # Mating females now pregnant
+    }
     clutch <- clutch[clutch > 0]
   }
   clutch[clutch > maxClutch] <- maxClutch
   
   sprog.m <- makeFounders(pop = 0) # this creates empty pop, but without column 10
-  sprog.m$Recovery <- character(0) # add column 10 for recovery years remaining
+  if (!no_gestation) {
+    sprog.m$Pregnant <- character(0) # add column 10 for pregnancy
+  }
   
   for (s in unique(mothers[, 7])) {
     mothersInStock <- mothers[mothers[, 7] == s, , drop = FALSE]
@@ -444,7 +469,9 @@ mateOrBirth <- function (indiv,
     sprog.stock[, 7] <- as.integer(rep(s), nrow(sprog.stock))
     sprog.stock[, 8] <- c(rep(0, nrow(sprog.stock)))
     sprog.stock[, 9] <- c(rep(NA, nrow(sprog.stock)))
-    sprog.stock[, 10] <- c(rep(0, nrow(sprog.stock)))
+    if (!no_gestation) {
+      sprog.stock[, 10] <- c(rep(0, nrow(sprog.stock)))
+    }
     sprog.m <- rbind(sprog.m, sprog.stock)
   }
   names(sprog.m) <- names(indiv)
@@ -454,85 +481,6 @@ mateOrBirth <- function (indiv,
   return(indiv)
 }
 
-
-
-
-recover <- function(indiv) 
-{
-  ## Reduce 'Recovery' by one year for all living individuals
-  indiv[is.na(indiv[, 6]), 10] <- indiv[is.na(indiv[, 6]), 10] - 1L
-  ## Set all negative 'Recovery' to 0
-  indiv[indiv[, 10] < 0, 10] <- 0
-  ## Set Recovery for dead animals to 0
-  indiv[!is.na(indiv[, 6]), 10] <- 0
-  
-  return(indiv)
-}
-
-
-
-#' addBirthRecovery()
-#'
-#' Add a 10th column to a starting population indiv object for birth recovery 
-#' time left. Animals can only breed if this variable is 0. 
-#' 
-#' @param indiv The indiv object with the starting population
-#' @param recoveryTime 
-#' @param maturityAge 
-#' @param random
-#'
-#' @return A indiv object with the 10th column added
-#' @export
-#'
-#' @examples
-#' # Five lighter shades
-#' make_shades("goldenrod", 5)
-#' # Five darker shades
-#' make_shades("goldenrod", 5, lighter = FALSE)
-addBirthRecovery <- function(indiv, 
-                             recoveryTime, 
-                             maturityAge,
-                             random = TRUE,
-                             breedingYears = NA) {
-  if (random) {
-    potential_recovery <- 0:(recoveryTime - 1) # -1 to match the order
-    
-    indiv$Recovery <- 0
-    # Add random years since offspring for mature females
-    indiv$Recovery[indiv$Sex == "F" & indiv$AgeLast >= maturityAge] <- 
-      sample(potential_recovery, 
-             sum(indiv$Sex == "F" & indiv$AgeLast >= maturityAge), 
-             TRUE)
-  } else {
-    indiv$Recovery <- 0
-    # Add random years since offspring for mature females
-    indiv$Recovery[indiv$Sex == "F" & 
-                     indiv$AgeLast >= maturityAge &
-                     indiv$AgeLast %in% (breedingYears + 1)] <- 1
-  }
-  return(indiv)
-}
-
-
-
-#' mateWithRecovery()
-#'
-#' Add a mating cycle to a indiv object created by makeFounders(), where
-#' females need to recover some time after breeding. Also added the breeding
-#' option 'uniform'.
-#' 
-#' @param indiv The indiv object with most recent 
-#' @param pause The number of shades to make
-#' @param lighter Whether to make lighter (TRUE) or darker (FALSE) shades
-#'
-#' @return A vector of n colour hex codes
-#' @export
-#'
-#' @examples
-#' # Five lighter shades
-#' make_shades("goldenrod", 5)
-#' # Five darker shades
-#' make_shades("goldenrod", 5, lighter = FALSE)
 mateWithRecovery <- function (indiv,
                               recovery = 2, 
                               batchSize = 0.5, 
@@ -697,38 +645,59 @@ mateWithRecovery <- function (indiv,
   return(indiv)
 }
 
+recover <- function(indiv) 
+{
+  ## Reduce 'Recovery' by one year for all living individuals
+  indiv[is.na(indiv[, 6]), 10] <- indiv[is.na(indiv[, 6]), 10] - 1L
+  ## Set all negative 'Recovery' to 0
+  indiv[indiv[, 10] < 0, 10] <- 0
+  ## Set Recovery for dead animals to 0
+  indiv[!is.na(indiv[, 6]), 10] <- 0
+  
+  return(indiv)
+}
 
+retroCapture <- function (indiv, 
+                          n = 1, 
+                          year = "-1", 
+                          fatal = FALSE) {
+  ## check which individuals were alive at the sampling occasion
+  is_alive <- (is.na(indiv$DeathY) | indiv$DeathY >= year) & indiv$BirthY <= year
+  is_dead <- !is_alive
+  n_alive <- sum(is_alive)
+  n <- min(n, n_alive)
+  
+  if (n > 0) {
+    sample_loc <- sample.int(n_alive, size = n)
+    ## The line below is different from fishSim::capture(). 
+    ## Ensure that we only consider individuals that have not been
+    ## captured before. Basically, from the sampled individuals, only updated
+    ## the sample year of the ones that don't have a sample year yet
+    sample_loc_new <- sample_loc[is.na(indiv[is_alive, ][sample_loc, 9])]
+    indiv[is_alive, ][sample_loc_new, 9] <- year
+    if (fatal) {
+      indiv[is_alive, ][sample_loc_new, 6] <- year
+    }
+  }
+  return(indiv)
+}
 
-#' uniformCheckGrowthrate()
-#'
-#' A custom version of fishSim's check_growthrate() that allows for uniform
-#' breeding and pauses after breeding cycles (the latter could also be 
-#' achieved through a fixed biennial maturity curve).
-#' 
-#' @param indiv The indiv object with most recent 
-#' @param pause The number of shades to make
-#' @param lighter Whether to make lighter (TRUE) or darker (FALSE) shades
-#'
-#' @return A vector of n colour hex codes
-#' @export
-#'
-#' @examples
 uniformCheckGrowthrate <- function (
-  fecundityDist = "uniform", 
-  forceY1 = NA,      # year 1 mortality?
-  mateType, # mating type
-  mortType = "flat", # mortality constant or variable?
-  batchSize, # expected litter size
-  firstBreed = 0, # first year of breeding (at least min maturity curve)
-  maxClutch = Inf, # max litter size
-  osr = c(0.5, 0.5), # sex ratio
-  maturityCurve, # equivalent to femaleCurve, but used if mateType == "age"
-  femaleCurve, # female maturity curve
-  maxAge = Inf, # self explanatory
-  mortRate, # rate of mortality
-  ageMort, # input for the mort() call
-  stockMort, # input for the mort() call
-  ageStockMort) # input for the mort() call
+    fecundityDist = "uniform", 
+    forceY1 = NA,      # year 1 mortality?
+    mateType, # mating type
+    mortType = "flat", # mortality constant or variable?
+    batchSize, # expected litter size
+    firstBreed = 0, # first year of breeding (at least min maturity curve)
+    maxClutch = Inf, # max litter size
+    osr = c(0.5, 0.5), # sex ratio
+    maturityCurve, # equivalent to femaleCurve, but used if mateType == "age"
+    femaleCurve, # female maturity curve
+    maxAge = Inf, # self explanatory
+    mortRate, # rate of mortality
+    ageMort, # input for the mort() call
+    stockMort, # input for the mort() call
+    ageStockMort) # input for the mort() call
 {
   ## Check inputs
   if (!(mateType %in% c("flat", "age", "ageSex"))) {
@@ -969,28 +938,3 @@ uniformCheckGrowthrate <- function (
     return(outs)
   }
 }
-
-# female_curve <- c(rep(0, 19), 
-#                   rep(c(1, 0), 50)) 
-# 
-# uniformCheckGrowthrate(
-#   fecundityDist = "uniform", 
-#   forceY1 = NA,      # year 1 mortality?
-#   mateType = "ageSex", # mating type
-#   mortType = "flat", # mortality constant or variable?
-#   batchSize = c(3, 4, 5, 6), # expected litter size
-#   firstBreed = 0, # first year of breeding (at least min maturity curve)
-#   maxClutch = Inf, # max litter size
-#   osr = c(0.5, 0.5), # sex ratio
-#   maturityCurve = female_curve, # equivalent to femaleCurve, but used if mateType == "age"
-#   femaleCurve = female_curve, # female maturity curve
-#   maxAge = 60, # self explanatory
-#   mortRate = 0.11, # rate of mortality
-#   ageMort, # input for the mort() call
-#   stockMort, # input for the mort() call
-#   ageStockMort
-# )
-# 
-# ## Not sure if this works, as I sometimes get negative growrates at values very close to positive growht reates.
-# edit(PoNG)
-# 
