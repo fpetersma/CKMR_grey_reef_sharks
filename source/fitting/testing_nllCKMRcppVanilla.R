@@ -41,7 +41,7 @@ result_list <- pblapply(dfs_suff[1:1000], function(df) {
               phi = boot::logit(1 - 0.153),
               
               max_age = 19,
-              t0 = 130,
+              t0 = 140,
               # vbgf_l_inf = 175,
               # vbgf_k = 0.1,
               # vbgf_t0 = -3.5,
