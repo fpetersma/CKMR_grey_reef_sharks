@@ -70,9 +70,132 @@ captureOnlyFirst <- function (indiv,
   return(indiv)
 }
 
-findRelativesCustom <- function (indiv, sampled = TRUE, verbose = TRUE, 
-                                 nCores = detectCores() - 1, delimitIndiv = TRUE) 
+#' findRelativesCustom
+#' 
+#' a version of fishSim::findRelatives() that only looks as far back as great-
+#' grandparents.
+#'
+#' @param indiv 
+#' @param sampled 
+#' @param verbose 
+#' @param delimitIndiv 
+#'
+#' @return
+#' @export
+#'
+#' @examples
+findRelativesCustom <- function (indiv, 
+                                 sampled = TRUE, 
+                                 verbose = TRUE,
+                                 delimitIndiv = TRUE) {
+  library(doParallel)
+  
+  if (sampled) {
+    if (sum(!is.na(indiv[, 9])) == 0) 
+      stop("no sampled individuals")
+    if (verbose) 
+      print(data.frame(table(indiv[!is.na(indiv[, 9]), 
+                                   9], dnn = "Sample Year")))
+    sampled <- indiv[!is.na(indiv[, 9]), 1]
+  } else {
+    sampled <- indiv[, 1]
+  }
+  if (delimitIndiv) {
+    keepers <- indiv$Me %in% sampled | indiv$Me %in% indiv$Mum | 
+      indiv$Me %in% indiv$Dad
+    indiv <- indiv[keepers, ]
+  }
+  ancestors <- matrix(data = c(sampled, rep("blanks", 
+                                            length(sampled) * 14)), 
+                      nrow = length(sampled))
+  colnames(ancestors) <- c("self", "father", "mother", 
+                           "FF", "FM", "MF", "MM", "FFF", 
+                           "FFM", "FMF", "FMM", "MFF", "MFM", 
+                           "MMF", "MMM")
+  for (i in 1:nrow(ancestors)) {
+    ancestors[i, 2:3] <- fishSim::parents(ancestors[i, 1], indiv)
+    ancestors[i, 4:7] <- fishSim::grandparents(ancestors[i, 1], indiv)
+    ancestors[i, 8:15] <- fishSim::great.grandparents(ancestors[i, 1], indiv)
+  }
+  expand.grid.unique <- function(x, y, include.equals = FALSE) {
+    x <- unique(x)
+    y <- unique(y)
+    g <- function(i) {
+      z <- setdiff(y, x[seq_len(i - include.equals)])
+      if (length(z)) 
+        cbind(x[i], z, deparse.level = 0)
+    }
+    do.call(rbind, lapply(seq_along(x), g))
+  }
+  
+  pairs <- expand.grid.unique(ancestors[, 1], ancestors[, 1], 
+                              include.equals = TRUE) # include self comparison?
+  colnames(pairs) <- c("Var1", "Var2")
+  related <- c(rep(NA, nrow(pairs)))
+  totalRelatives <- c(rep(NA, nrow(pairs)))
+  OneTwo <- c(rep(NA, nrow(pairs)))
+  OneThree <- c(rep(NA, nrow(pairs)))
+  OneFour <- c(rep(NA, nrow(pairs)))
+  TwoTwo <- c(rep(NA, nrow(pairs)))
+  TwoThree <- c(rep(NA, nrow(pairs)))
+  TwoFour <- c(rep(NA, nrow(pairs)))
+  ThreeThree <- c(rep(NA, nrow(pairs)))
+  ThreeFour <- c(rep(NA, nrow(pairs)))
+  FourFour <- c(rep(NA, nrow(pairs)))
+  for (i in 1:length(related)) {
+    allAncestors <- ancestors[ancestors[, 1] == pairs[i, 1], 1:15] %in% 
+      ancestors[ancestors[, 1] == pairs[i, 2], 1:15]
+    indi1 <- pairs[i, 1]
+    indi2 <- pairs[i, 2]
+    indi1Par <- ancestors[ancestors[, 1] == pairs[i, 1], 
+                          2:3]
+    indi2Par <- ancestors[ancestors[, 1] == pairs[i, 2], 
+                          2:3]
+    indi1GP <- ancestors[ancestors[, 1] == pairs[i, 1], 4:7]
+    indi2GP <- ancestors[ancestors[, 1] == pairs[i, 2], 4:7]
+    indi1GGP <- ancestors[ancestors[, 1] == pairs[i, 1], 
+                          8:15]
+    indi2GGP <- ancestors[ancestors[, 1] == pairs[i, 2], 
+                          8:15]
+    related[i] <- any(allAncestors)
+    totalRelatives[i] <- sum(allAncestors)
+    OneTwo[i] <- sum(c(indi1 %in% indi2Par, indi2 %in% indi1Par))
+    OneThree[i] <- sum(c(indi1 %in% indi2GP, indi2 %in% indi1GP))
+    OneFour[i] <- sum(c(indi1 %in% indi2GGP, indi2 %in% indi1GGP))
+    
+    TwoTwo[i] <- sum(c(indi1Par %in% indi2Par))
+    TwoThree[i] <- sum(c(indi1Par %in% indi2GP, indi2Par %in% 
+                           indi1GP))
+    TwoFour[i] <- sum(c(indi1Par %in% indi2GGP, indi2Par %in% 
+                          indi1GGP))
+
+    ThreeThree[i] <- sum(c(indi1GP %in% indi2GP))
+    ThreeFour[i] <- sum(c(indi1GP %in% indi2GGP, indi2GP %in% 
+                            indi1GGP))
+
+    FourFour[i] <- sum(c(indi1GGP %in% indi2GGP))
+
+    if (i%%1000 == 0) {
+      cat("\r", i, " of ", length(related), 
+          " comparisons", sep = "")
+      flush.console()
+    }
+  }
+  pairs <- data.frame(pairs, related, totalRelatives, OneTwo, 
+                      OneThree, OneFour, 
+                      TwoTwo, TwoThree, TwoFour, 
+                      ThreeThree, ThreeFour, 
+                      FourFour)
+  return(pairs)
+}
+
+
+findRelativesParCustom <- function (indiv, sampled = TRUE, 
+                                 verbose = TRUE,
+                                 nCores = 1, 
+                                 delimitIndiv = TRUE) 
 {
+  require(doParallel)
   registerDoParallel(nCores)
   if (sampled) {
     if (sum(!is.na(indiv[, 9])) == 0) 
@@ -200,7 +323,7 @@ findRelativesCustom <- function (indiv, sampled = TRUE, verbose = TRUE,
     #                                                   1], 1:127] %in% ancestors[ancestors[, 1] == pairs[i, 
     #                                                                                                     2], 1:127]
     allAncestors <- ancestors[ancestors[, 1] == pairs[i, 1], 1:15] %in% 
-      ancestors[ancestors[, 1] == pairs[i,2], 1:15]
+      ancestors[ancestors[, 1] == pairs[i, 2], 1:15]
     
     indi1 <- pairs[i, 1]
     indi2 <- pairs[i, 2]
@@ -657,6 +780,36 @@ recover <- function(indiv)
   return(indiv)
 }
 
+retroCapture2 <- function (indiv, 
+                          n = 1, 
+                          year = "-1", 
+                          fatal = FALSE) {
+  ## check which individuals were alive at the sampling occasion
+  is_alive <- (is.na(indiv$DeathY) | indiv$DeathY >= year) & indiv$BirthY <= year
+  is_dead <- !is_alive
+  n_alive <- sum(is_alive)
+  n <- min(n, n_alive)
+  
+  if (n > 0) {
+    sample_loc <- sample.int(n_alive, size = n)
+    ## The line below is different from fishSim::capture(). 
+    ## Ensure that we add a year to the ones that haven't been sampled before,
+    ## and append a year to the ones sampled before. 
+    sample_loc_new <- sample_loc[is.na(indiv[is_alive, ][sample_loc, 9])]
+    sample_loc_previous <- sample_loc[!is.na(indiv[is_alive, ][sample_loc, 9])]
+    
+    indiv[is_alive, ][sample_loc_new, 9] <- year
+    indiv[is_alive, ][sample_loc_previous, 9] <- 
+      paste0(indiv[is_alive, ][sample_loc_previous, 9], "_", year)
+    indiv[,  paste0("Samp", year)] <- NA
+    indiv[is_alive, ][sample_loc, paste0("Samp", year)] <- year
+    if (fatal) {
+      indiv[is_alive, ][sample_loc_new, 6] <- year
+    }
+  }
+  return(indiv)
+}
+
 retroCapture <- function (indiv, 
                           n = 1, 
                           year = "-1", 
@@ -670,11 +823,13 @@ retroCapture <- function (indiv,
   if (n > 0) {
     sample_loc <- sample.int(n_alive, size = n)
     ## The line below is different from fishSim::capture(). 
-    ## Ensure that we only consider individuals that have not been
-    ## captured before. Basically, from the sampled individuals, only updated
-    ## the sample year of the ones that don't have a sample year yet
+    ## Ensure that we add a year to the ones that haven't been sampled before,
+    ## and append a year to the ones sampled before. 
     sample_loc_new <- sample_loc[is.na(indiv[is_alive, ][sample_loc, 9])]
+    sample_loc_previous <- sample_loc[!is.na(indiv[is_alive, ][sample_loc, 9])]
     indiv[is_alive, ][sample_loc_new, 9] <- year
+    indiv[is_alive, ][sample_loc_previous, 9] <- 
+      paste0(indiv[is_alive, ][sample_loc_previous, 9], "_", year)
     if (fatal) {
       indiv[is_alive, ][sample_loc_new, 6] <- year
     }
