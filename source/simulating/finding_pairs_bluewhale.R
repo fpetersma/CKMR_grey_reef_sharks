@@ -10,26 +10,25 @@
 library(fishSim)
 library(ids)
 library(pbapply)
-library(parallel)
+library(doParallel)
 
 source("source/fitting/CKMR_functions.R")
+source("source/simulating/custom_functions_fishSim.R")
 
-data_folder <- "data/vanilla_sample_years_139-140_sample_size_375/" 
+data_folder <- "data/vanilla_sample_years_136-140_sample_size_150/" 
 
 ## Load the correct 100_sims_mix file
-# load(file = paste0(data_folder, "100_sims_mix.RData"))
+# load(file = paste0(data_folder, "1000_sims_mix.RData"))
 
-## Find the pairs in parallel. With 40 cores it took roughly 35 minutes
+## Find the pairs in parallel. 
 n_cores <- 30
 cl <- makeCluster(n_cores)
-clusterExport(cl, c("findRelativesPar", "parents"))
+clusterExport(cl, c("findRelativesCustom"))
 pairs_list <- pblapply(simulated_data_sets, function(indiv) {
-  return(findRelativesPar(indiv = indiv, 
-                          sampled = TRUE, 
-                          nCores = 1))
-}, cl = cl)
-
-stopCluster(cl)
+  indiv_samp <- indiv[!is.na(indiv$SampY), ]
+  return(findRelativesCustom(indiv = indiv, 
+                             sampled = TRUE))
+}, cl = cl); stopCluster(cl);
 
 ## Save data
 # save(file = paste0(data_folder, "1000_sims_mix_pairs.RData"), list = "pairs_list")
@@ -42,9 +41,15 @@ POPs_list <- pblapply(pairs_list, function(pairs) {
 # save(list = c("POPs_list"), file = paste0(data_folder, "100_sims_mix_POPs.RData"))
 # load(paste0(data_folder, "100_sims_mix_POPs.RData"))
 
+## Self-captures
+selfie_list <- pblapply(simulated_data_sets, function(indiv) {
+  self_captures <- indiv[indiv$no_samples > 1, ]
+})
+
 ## Prep data ready for analysis
 combined_data <- lapply(1:length(simulated_data_sets), function(i) {
   out <- list(POPs = POPs_list[[i]], 
+              self = selfie_list[[i]],
               indiv = simulated_data_sets[[i]])
   return(out)
 })
@@ -54,11 +59,31 @@ cl <- makeCluster(n_cores)
 clusterExport(cl, c("vbgf"))
 dfs <- pblapply(combined_data, function(x) {
   POPs <- x$POPs
+  self <- x$self
   indiv <- x$indiv
   
   ## Extract sampled individuals from the population
   sampled_indiv <- indiv[!is.na(indiv$SampY),] # a total of 1258 sampled 
   # individuals = 1581306 comparisons
+  
+  ## Add the recaptures [This is new can can be removed if it does not work]
+  self <- self[rep(seq_len(nrow(self)), self$no_samples), ]
+  for (id in unique(self$Me)) {
+    ## Get all samplings of the same individual with id
+    selfs <- self[self$Me == id, ]
+    ## Extract all the sampling years of this individual
+    samp_years <- as.numeric(unlist(strsplit(selfs[1, "SampY"], split = "_")))
+    ## Assign one sampling year to every sampling occassion. 
+    for (i in 1:nrow(selfs)) {
+      selfs[i, "SampY"] <- samp_years[i]
+    }
+    
+    ## Updated the rows in 'self'
+    self[self$Me == id, ] <- selfs
+  }
+  sampled_indiv <- rbind(sampled_indiv[sampled_indiv$no_samples == 1, ], 
+                         self)
+  sampled_indiv$SampY <- as.numeric(sampled_indiv$SampY)
   
   ## Keep relevant information and rename columns to match theory
   sampled_indiv$SampAge <- sampled_indiv$SampY - sampled_indiv$BirthY
@@ -70,12 +95,18 @@ dfs <- pblapply(combined_data, function(x) {
   ## the VBGF, and add a normal error. Roughly based on other studies.
   ## Derive the length corresponding to the age, and add error from N(0, 2)
   sampled_indiv$length <- vbgf(sampled_indiv$capture_age)
-  sampled_indiv$length <- sampled_indiv$length + rnorm(nrow(sampled_indiv), 0, 2)
+  # sampled_indiv$length <- sampled_indiv$length + rnorm(nrow(sampled_indiv), 0, 2)
   
-  ## Create matrix of all combinations with information
+  ## Create matrix of all combinations with information 
+  
+  df_ids <- as.matrix(expand.grid(1:nrow(sampled_indiv), 1:nrow(sampled_indiv)))
+  df <- as.data.frame(matrix(sampled_indiv$id[df_ids], nrow = nrow(df_ids), 
+                             ncol = 2, byrow = FALSE))
+  ## OLD expand grid below, no longer works with self captures ------------>>>>>
   # df <- subset(expand.grid(sampled_indiv$id, sampled_indiv$id), ## all comparisons
-  #              Var1 != Var2)
-  df <- as.data.frame(t(combn(sampled_indiv$id, 2))) ## only unique comparisons
+  # Var1 != Var2)
+  # df <- as.data.frame(t(combn(sampled_indiv$id, 2))) ## only unique comparisons
+  ## <<<<<< --------------------------------------------------------------------
   colnames(df) <- c("indiv_1_id", "indiv_2_id")
   
   ## Add columns with individual capture info, to be filled in in the loop below
@@ -94,7 +125,7 @@ dfs <- pblapply(combined_data, function(x) {
     ## Add info when individual id is second in the comparison
     df[df$indiv_2_id == id, paste0("indiv_2_", info_cols)] <- info
   }
-  
+
   ## Round lengths to nearest integer, as this is how it is recorded.
   df$indiv_1_length <- round(df$indiv_1_length)
   df$indiv_2_length <- round(df$indiv_2_length)
@@ -115,8 +146,11 @@ dfs <- pblapply(combined_data, function(x) {
   ## Add whether a POP was found, or not. as direction is unknown, check for PO and OP
   df$pop_found <- df$comb_id %in% POPs$comb_id |
     df$comb_id %in% POPs$comb_id_rev
+  df$kinship <- ifelse(df$comb_id %in% POPs$comb_id | df$comb_id %in% POPs$comb_id_rev,
+                       yes = "PO/OP", no = "U")
+  df$kinship[df$indiv_1_id == df$indiv_2_id] <- "S"
   
-  ## Find unique cov using length or age (make sure this is correct!)
+  ## Find unique covariate combination using length or age (make sure this is correct!)
   df$covariate_combo_id <- apply(df, 1, function(row) {
     return(paste0(row["indiv_1_sex"], row["indiv_1_capture_year"], 
                   row["indiv_1_capture_age"],
@@ -124,7 +158,7 @@ dfs <- pblapply(combined_data, function(x) {
                   row["indiv_2_sex"], row["indiv_2_capture_year"], 
                   row["indiv_2_capture_age"],
                   # row["indiv_2_length"],
-                  row["pop_found"]))
+                  row["kinship"]))
   })
   
   df$covariate_combo_id <- as.numeric(as.factor(df$covariate_combo_id))
@@ -138,8 +172,7 @@ dfs <- pblapply(combined_data, function(x) {
   
   return(df)
   
-}, cl = cl)
-stopCluster(cl)
+}, cl = cl); stopCluster(cl);
 
 n_cores <- 30
 cl <- makeCluster(n_cores)
@@ -151,8 +184,7 @@ dfs_suff <- pblapply(dfs, function(x) {
     slice(1) %>% 
     ungroup()
   return(df_sufficient)
-}, cl = cl)
-stopCluster(cl)
+}, cl = cl); stopCluster(cl);
 
 # save(list = c("dfs"), file = "data/test_data_dfs.RData")
 # save(list = c("dfs_suff"), file = "data/test_data_dfs_suff.RData")
