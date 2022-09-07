@@ -50,6 +50,22 @@ vbgf <- function(a, t_0 = -3.5, k = 0.1, l_inf = 175) {
   return(l_inf * (1 - exp(-k * (a - t_0))))
 }
 
+#' invvbgf()
+#' A function that derives the length based on age and the vbgf parameters
+#'
+#' @param a Age (numeric)
+#' @param t_0 Theoretical age when length is zero (numeric)
+#' @param k Growth parameter (numeric)
+#' @param l_inf Asymptotic length (numeric)
+#'
+#' @return
+#' @export
+#'
+#' @examples
+invvbgf <- function(l, t_0 = -3.5, k = 0.1, l_inf = 175) {
+  return(t_0 - log(1 - l/l_inf) / k)
+}
+
 #' Title
 #'
 #' @param pair A string indicating the type of pair/kinship (character)
