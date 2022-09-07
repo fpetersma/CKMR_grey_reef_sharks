@@ -22,7 +22,7 @@ first_litter <- 2               # first litter
 batch_size <- 2                 # all possible values for random draw
 max_clutch <- Inf               # maximum litter sizes
 max_age <- 19                   # maximum age
-mort_rate <- 0.153              # flat mortality rate (0.131 gives stable population)
+mort_rate <- 0.1535              # flat mortality rate (0.1535 gives stable population, but worked with 0.153 which induced a slgiht growth)
 surv_rate <- 1 - mort_rate      # survival is 1 minus mortality
 force_Y1 <- NA                  # first-year mortality (not always used)
 female_curve <- c(rep(0, 10), 
@@ -30,7 +30,7 @@ female_curve <- c(rep(0, 10),
 male_curve <- c(rep(0, 10), 
                 rep(1, 90))     # male maturity curve for categories 0:maxAge
 mate_type <- "ageSex"           # type of maturity/mating structure
-mort_type <- "flat"             # type of mortality structure
+mort_type <- "age"             # type of mortality structure
 fecundity_dist <- "uniform"     # uniform distribution (custom)
 sex_ratio <- c(0.5, 0.5)        # the offspring male/female sex ratio
 single_paternity <- FALSE        # is there a single father to a litter?
@@ -46,6 +46,7 @@ retrospective_sampling <- TRUE
 ## Store simdata sets
 n_cores <- 30
 cl <- makeCluster(n_cores)
+rm(simulated_data_sets)
 clusterExport(cl, c(ls(), "makeFounders", "mort", "birthdays", "uuid"))
 simulated_data_sets <- pblapply(1:1000, function(i) {
   
@@ -87,7 +88,7 @@ simulated_data_sets <- pblapply(1:1000, function(i) {
       singlePaternity = single_paternity,  
       maleCurve = male_curve,   
       femaleCurve = female_curve,
-      no_gestation = TRUE,
+      no_gestation = TRUE
     )
     
     # ## 2. Sampling
@@ -105,8 +106,9 @@ simulated_data_sets <- pblapply(1:1000, function(i) {
       indiv = indiv, 
       year = y, 
       type = mort_type, 
-      mortRate = mort_rate,
-      maxAge = max_age - 1
+      # mortRate = mort_rate,
+      ageMort = rep(mort_rate, max_age + 1),
+      maxAge = max_age - 1 
     )
     
     ## 4. Age incrementation
@@ -117,16 +119,17 @@ simulated_data_sets <- pblapply(1:1000, function(i) {
   # cat(paste0("Simulation ", i, " completed!\n"))
   # simulated_data_sets[[i]] <- indiv
   return(indiv)
-}, cl = cl)
+}, cl = cl); stopCluster(cl);
 
 ## How many individuals are still alive in 'indiv'?
 hist(sapply(simulated_data_sets, function(x) {nrow(x[is.na(x$DeathY), ])}), xlab = "indivs")
+summary(sapply(simulated_data_sets, function(x) {nrow(x[is.na(x$DeathY), ])}), xlab = "indivs")
 
 ## Set sampling parameters
-n_sample_year <- 2
+n_sample_year <- 5
 sampling_years <- c((max(years) - n_sample_year + 1):max(years))     # years in which sampling occurs
 sample_size <- c(rep(0, sampling_years[1] - 1), 
-                 rep(375, n_sample_year))   # number of sampled individuals in each year
+                 rep(150, n_sample_year))   # number of sampled individuals in each year
 lethal_sampling <- FALSE        # is sampling lethal?
 retrospective_sampling <- TRUE
 
@@ -139,38 +142,40 @@ all(is.na(simulated_data_sets[[1]]$SampY)) # should be TRUE before continuing
 
 ## Add sampling
 if (retrospective_sampling) {
-  simulated_data_sets <- lapply(simulated_data_sets, function(indiv) {
+  simulated_data_sets <- pblapply(simulated_data_sets, function(indiv) {
     for (year in sampling_years) {
       n <- sample_size[year]
-      indiv <- retroCapture(indiv, n = n, year = year, fatal = lethal_sampling)
+      indiv <- retroCapture2(indiv, n = n, year = year, fatal = lethal_sampling)
     }
+    indiv$no_samples <- rowSums(!is.na(indiv[, 10:ncol(indiv)]))
     return(indiv)
   })
 }
+
 all(is.na(simulated_data_sets[[1]]$SampY))  # should be FALSE
 unique(simulated_data_sets[[1]]$SampY)      # check if this seems correct
 sum(!is.na(simulated_data_sets[[1]]$SampY)) # seem correct as well?
 
-save.image(file = "data/vanilla_sample_years_139-140_sample_size_375/1000_sims_mix.RData")
+save.image(file = "data/vanilla_sample_years_136-140_sample_size_150/1000_sims_mix.RData")
 
-
-## Create summary stats
-par(mfrow = c(3, 1))
-## Extracting simulated abundances
-N_true <- t(sapply(simulated_data_sets, function(x) {
-  mature_females <- sum(is.na(x$DeathY) & x$Sex == "F" & x$AgeLast >= 10)
-  mature_males <- sum(is.na(x$DeathY) & x$Sex == "M" & x$AgeLast >= 10)
-  return(c(N_m = mature_males, N_f = mature_females))
-}))
-
-r_true <- sapply(simulated_data_sets, function(x) {
-  alive <- sum(is.na(x$DeathY))
-  return((alive / 8500) ^ (1 / 40))
-})
-summary(r_true)
-
-hist(N_true[, 1], main = "", xlab = "Number of mature males"); abline(v = c(mean(N_true[, 1]), median(N_true[, 1])), col = "red", lty = c(1, 2))
-
-hist(N_true[, 2], main = "",  xlab = "Number of mature females"); abline(v = c(mean(N_true[, 2]), median(N_true[, 2])), col = "red", lty = c(1, 2))
-
-hist(r_true, main = "", xlab = "Yearly growth rate"); abline(v = c(mean(r_true), median(r_true)), col = "red", lty = c(1, 2))
+# 
+# ## Create summary stats
+# par(mfrow = c(3, 1))
+# ## Extracting simulated abundances
+# N_true <- t(sapply(simulated_data_sets, function(x) {
+#   mature_females <- sum(is.na(x$DeathY) & x$Sex == "F" & x$AgeLast >= 10)
+#   mature_males <- sum(is.na(x$DeathY) & x$Sex == "M" & x$AgeLast >= 10)
+#   return(c(N_m = mature_males, N_f = mature_females))
+# }))
+# 
+# r_true <- sapply(simulated_data_sets, function(x) {
+#   alive <- sum(is.na(x$DeathY))
+#   return((alive / 8500) ^ (1 / 40))
+# })
+# summary(r_true)
+# 
+# hist(N_true[, 1], main = "", xlab = "Number of mature males"); abline(v = c(mean(N_true[, 1]), median(N_true[, 1])), col = "red", lty = c(1, 2))
+# 
+# hist(N_true[, 2], main = "",  xlab = "Number of mature females"); abline(v = c(mean(N_true[, 2]), median(N_true[, 2])), col = "red", lty = c(1, 2))
+# 
+# hist(r_true, main = "", xlab = "Yearly growth rate"); abline(v = c(mean(r_true), median(r_true)), col = "red", lty = c(1, 2))
