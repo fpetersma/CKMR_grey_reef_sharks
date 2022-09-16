@@ -11,17 +11,19 @@
 library(Rcpp)
 library(parallel)
 library(pbapply)
+source("source/fitting/CKMR_functions.R")
 
 ## BE CAREFULL WHICH DATA TO LOAD
 ## ==============================
 
-load("data/vanilla_sample_years_136-140_sample_size_150/1000_sims_dfs_suff_age_unique_combos.RData")
+load("data/vanilla_sample_years_139-140_sample_size_375/1000_sims_dfs_suff_age_unique_combos.RData")
 
 ## MAKE SURE THE LATEST VERSION OF THE LIKELIHOOD IS COMPILED
 ## ==========================================================
 sourceCpp("source/fitting/nllCKMRcppVanilla.cpp")
+sourceCpp("source/fitting/nllCKMRcppVanilla_unknown_age.cpp")
 
-result_list <- pblapply(dfs_suff[1:1000], function(df) {
+result_list <- pblapply(dfs_suff[1:10], function(df) {
   par <- list(
     # phi = boot::logit(0.87), # same as plogis(0.9) -- boot::inv.logit() is qlogis()
     N_t0_m = log(500), 
@@ -37,20 +39,22 @@ result_list <- pblapply(dfs_suff[1:1000], function(df) {
               alpha_f = 10,
               
               # r = log(1.00),
-              # sigma_vbgf = log(0.000001),
-              phi = boot::logit(1 - 0.153),
+              sigma_vbgf = log(0.001),
+              phi = boot::logit(1 - 0.1535),
               
               max_age = 19,
               t0 = 140,
-              # vbgf_l_inf = 175,
-              # vbgf_k = 0.1,
-              # vbgf_t0 = -3.5,
+              vbgf_l_inf = 175,
+              vbgf_k = 0.1,
+              vbgf_t0 = -3.5,
               s1 = df_select$indiv_1_sex,
               s2 = df_select$indiv_2_sex,
               c1 = df_select$indiv_1_capture_year,
               c2 = df_select$indiv_2_capture_year,
               a1 = df_select$indiv_1_capture_age,
               a2 = df_select$indiv_2_capture_age,
+              l1 = round(vbgf(df_select$indiv_1_capture_age)),
+              l2 = round(vbgf(df_select$indiv_2_capture_age)),
               kinship = df_select$kinship,
               cov_combo_freq = df_select$covariate_combo_freq,
               n = nrow(df_select))
@@ -58,7 +62,7 @@ result_list <- pblapply(dfs_suff[1:1000], function(df) {
   res <- nlminb(start = par, 
                 objective = nllPOPCKMRcppAgeKnown, 
                 dat = dat, 
-                control = list(trace = 0))
+                control = list(trace = 1))
   
   return(res)
   
@@ -77,14 +81,14 @@ phi_est <- sapply(result_list, function(res){
   boot::inv.logit(res$par["phi"])
 })
 
-summary(cbind(N_est, r_est, phi_est))
+summary(cbind(N_est, r_est))
 
 par(mfrow = c(3, 1))
 
 hist(N_est[, 1], main = "", xlab = "Number of mature males"); abline(v = c(mean(N_est[, 1]), median(N_est[, 1])), col = "red", lty = c(1, 2))
 hist(N_est[, 2], main = "",  xlab = "Number of mature females"); abline(v = c(mean(N_est[, 2]), median(N_est[, 2])), col = "red", lty = c(1, 2))
-# hist(r_est, main = "", xlab = "Yearly growth rate"); abline(v = c(mean(r_est), median(r_est)), col = "red", lty = c(1, 2))
-hist(phi_est, main = "", xlab = "Yearly surival rate"); abline(v = c(mean(phi_est), median(phi_est)), col = "red", lty = c(1, 2))
+hist(r_est, main = "", xlab = "Yearly growth rate"); abline(v = c(mean(r_est), median(r_est)), col = "red", lty = c(1, 2))
+# hist(phi_est, main = "", xlab = "Yearly surival rate"); abline(v = c(mean(phi_est), median(phi_est)), col = "red", lty = c(1, 2))
 
 MCE_data <- t(sapply(seq(from = 1, to = 901, by = 100), function(x) {
   mean_male <- mean(N_est[x:(x+99), 1])
