@@ -33,7 +33,7 @@ nllR <- function(dat, par) {
   return(nll)
   
 }
-  
+
 #' vbgf()
 #' A function that derives the length based on age and the vbgf parameters
 #'
@@ -48,6 +48,22 @@ nllR <- function(dat, par) {
 #' @examples
 vbgf <- function(a, t_0 = -3.5, k = 0.1, l_inf = 175) {
   return(l_inf * (1 - exp(-k * (a - t_0))))
+}
+
+#' invvbgf()
+#' A function that derives the length based on age and the vbgf parameters
+#'
+#' @param a Age (numeric)
+#' @param t_0 Theoretical age when length is zero (numeric)
+#' @param k Growth parameter (numeric)
+#' @param l_inf Asymptotic length (numeric)
+#'
+#' @return
+#' @export
+#'
+#' @examples
+invvbgf <- function(l, t_0 = -3.5, k = 0.1, l_inf = 175) {
+  return(t_0 - log(1 - l/l_inf) / k)
 }
 
 #' Title
@@ -97,7 +113,7 @@ pairProb <- function(pair, s1, c1, l1, s2, c2, l2, alpha_m, alpha_f, max_age,
   ages_parent <- 0:max_age
   if (pair == "PO") {
     # if (s1 == "F") {
-      
+    
     output_parent_level <- rep(NA, length(ages_parent))
     ## Loop over ages for parent
     for (index_age_parent in seq_along(ages_parent)) {
