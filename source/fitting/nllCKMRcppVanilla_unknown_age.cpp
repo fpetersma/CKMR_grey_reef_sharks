@@ -13,11 +13,92 @@ using namespace Rcpp;
 //   http://gallery.rcpp.org/
 //
 
+
+// =============================================================================
+// Non-vectorised probability mass functions used in the likelihood
+// -----------------------------------------------------------------------------
+// Discrete for of the normal distribution 
+double pDiscreteNorm(int x, 
+                     double mu, 
+                     double sigma) {
+  double out = R::pnorm(x + 0.5, mu, sigma, true, false) - 
+    R::pnorm(x - 0.5, mu, sigma, true, false);
+  
+  return out;
+}
+
+// Probability mass function for length given age
+double fLengthGivenAge(int l, 
+                       int a, 
+                       double sigma_l, 
+                       int l_inf, 
+                       double k,
+                       double a_0) {
+  double expected_length = l_inf * (1 - std::exp(-k * (a - a_0)));
+  
+  double out = pDiscreteNorm(l, expected_length, sigma_l);
+  
+  return out;
+}
+
+// Probability mass function for sampled age
+double fSampledAge(int a, 
+                   double p_geom, 
+                   int max_age) {
+  double out = R::dgeom(a, p_geom, false) / 
+    R::pgeom(max_age + 1, p_geom, true, false);
+  
+  return out;
+}
+
+// Probability mass function for sampled length
+double fSampledLength(int l, 
+                      double sigma_l,
+                      int max_age,
+                      double p_geom,
+                      int l_inf, 
+                      double k,
+                      double a_0) {
+  
+  double prob_mass = 0.0;
+  
+  for (int a = 0; a <= max_age; a++) {
+    prob_mass += fLengthGivenAge(l, a, sigma_l, l_inf, k, a_0) *
+      fSampledAge(a, p_geom, max_age);
+  }
+  
+  return prob_mass;
+}
+
+// Probability mass function for age given length
+double fAgeGivenLength(int a, 
+                       int l, 
+                       double sigma_l, 
+                       double p_geom,
+                       int max_age,
+                       int l_inf, 
+                       double k, 
+                       double a_0) {
+  
+  double prob_length_given_age = fLengthGivenAge(l, a, sigma_l, l_inf, k, a_0);
+  
+  double prob_sampled_age = fSampledAge(a, p_geom, max_age);
+  
+  double prob_sampled_length = fSampledLength(l, sigma_l, max_age, p_geom, 
+                                              l_inf, k, a_0);
+  
+  double out = prob_length_given_age * prob_sampled_age / prob_sampled_length;
+  
+  return out;
+}
+
+// -----------------------------------------------------------------------------
+
 // =============================================================================
 // PAIR PROBABILITY RCPP
 // -----------------------------------------------------------------------------
 // [[Rcpp::export]]
-double nllPOPCKMRcppAgeKnown(List dat, List par) {
+double nllPOPCKMRcppAgeUnknown(List dat, List par) {
   // ===========================================================================
   // 1. EXTRACT DATA OBJECTS
   // ---------------------------------------------------------------------------
@@ -39,25 +120,25 @@ double nllPOPCKMRcppAgeKnown(List dat, List par) {
   const int n = dat["n"];                       // number of observations
   const double vbgf_l_inf = dat["vbgf_l_inf"];
   const double vbgf_k = dat["vbgf_k"];
-  const double vbgf_t0 = dat["vbgf_t0"];
+  const double vbgf_a0 = dat["vbgf_a0"];
   
   // Add parameters to be kept as constants here
-  // const double r = exp(double(dat["r"]));             // growth parameter
-  const double sigma_vbgf = exp(double(dat["sigma_vbgf"]));
-  const double phi = exp(double(dat["phi"])) /        // survival parameter
-    (1.0 + exp(double(dat["phi"])));
+  // const double r = std::exp(double(dat["r"]));             // growth parameter
+  const double sigma_l = std::exp(double(dat["sigma_l"]));
+  const double phi = std::exp(double(dat["phi"])) /        // survival parameter
+    (1.0 + std::exp(double(dat["phi"])));
   
   // ===========================================================================
   
   // ===========================================================================
   // 2. EXTRACT INDIVIDUAL PARAMETERS
   // // ---------------------------------------------------------------------------
-  // const double phi = exp(double(par["phi"])) /        // survival parameter
-  // (1.0 + exp(double(par["phi"])));
-  const double N_t0_m = exp(double(par["N_t0_m"]));   // male abundance
-  const double N_t0_f = exp(double(par["N_t0_f"]));   // female abundance
-  // const double sigma_vbgf = exp(double(par["sigma_vbgf"]));
-  const double r = exp(double(par["r"]));             // growth parameter
+  // const double phi = std::exp(double(par["phi"])) /        // survival parameter
+  // (1.0 + std::exp(double(par["phi"])));
+  const double N_t0_m = std::exp(double(par["N_t0_m"]));   // male abundance
+  const double N_t0_f = std::exp(double(par["N_t0_f"]));   // female abundance
+  // const double sigma_l = std::exp(double(par["sigma_l"]));
+  const double r = std::exp(double(par["r"]));             // growth parameter
   
   // std::cout << "r: " << r << std::endl;
   // ===========================================================================
@@ -73,14 +154,13 @@ double nllPOPCKMRcppAgeKnown(List dat, List par) {
     
     // Loop over the ages
     for (int a1 = 0; a1 <= max_age; a1++) {
+      // Extract birth year of individual 2
+      int y1 = c1[index] - a1;
       
-      // std::cout << "test" << std::endl;
-      
-      // double prob1 = 0.0;
+      double prob1 = 0.0;
       
       for (int a2 = 0; a2 <= max_age; a2++) {
-        // Extract birth year of individual 1 and individual 2
-        int y1 = c1[index] - a1;
+        // Extract birth year of individual 2
         int y2 = c2[index] - a2;
         
         // :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
@@ -91,24 +171,24 @@ double nllPOPCKMRcppAgeKnown(List dat, List par) {
         // Probability stays zero if offspring was born before maturity of parent
         if ((s1[index] == "F") & (y2 >= y1 + alpha_f) & 
             (a1 + y2 - c1[index] <= max_age)) {
-          prob12 = 1.0 / (N_t0_f * pow(r, y2 - t0));
-          // std::cout << "Female abundance in year " << y2 << " is: " << N_t0_f * pow(r, y2 - 1 - t0) << std::endl;
+          prob12 = 1.0 / (N_t0_f * std::pow(r, y2 - t0));
+          // std::cout << "Female abundance in year " << y2 << " is: " << N_t0_f * std::pow(r, y2 - 1 - t0) << std::endl;
           
           // Account for survival of parent i if j was born after c1 
           if (c1[index] < y2) {
             // std::cout << "parent i if j was born after c1 + 1! " << std::endl;
-            prob12 *=  pow(phi, y2 - c1[index]);
+            prob12 *=  std::pow(phi, y2 - c1[index]);
           }
         }
         if ((s1[index] == "M") & (y2 >= y1 + alpha_m) & 
             (a1 + y2 - c1[index] <= max_age)) {
           // Derive the ERRO in the year before the birth year of the offspring
-          prob12 = 1.0 / (N_t0_m * pow(r, y2 - t0));
+          prob12 = 1.0 / (N_t0_m * std::pow(r, y2 - t0));
           
           // Account for survival of parent i if j was born after c1 + 1
           if (c1[index] < y2) {
             // std::cout << "parent i if j was born after c1 + 1! " << std::endl;
-            prob12 *=  pow(phi, y2 - c1[index]);
+            prob12 *=  std::pow(phi, y2 - c1[index]);
           }
         }
 
@@ -121,51 +201,57 @@ double nllPOPCKMRcppAgeKnown(List dat, List par) {
         if ((s2[index] == "F") & (y1 >= y2 + alpha_f) &
             (a2 + y1 - c2[index] <= max_age)) {
           // Derive the ERRO in the year before the birth year of the offspring
-          prob21 = 1.0 / (N_t0_f * pow(r, y1 - t0));
-          // std::cout << "Female abundance in year " << y2 << " is: " << N_t0_f * pow(r, y2 - 1 - t0) << std::endl;
+          prob21 = 1.0 / (N_t0_f * std::pow(r, y1 - t0));
+          // std::cout << "Female abundance in year " << y2 << " is: " << N_t0_f * std::pow(r, y2 - 1 - t0) << std::endl;
           
           // Account for survival of parent j if i was born after c2
           if (c2[index] < y1) {
             // std::cout << "parent j if i was born after c2 + 1! " << std::endl;
-            prob21 *=  pow(phi, y1 - c2[index]);
+            prob21 *=  std::pow(phi, y1 - c2[index]);
           }
         }
         if ((s2[index] == "M") & (y1 >= y2 + alpha_m) &
             (a2 + y1 - c2[index] <= max_age)) {
           // Derive the ERRO in the year before the birth year of the offspring
-          prob21 = 1.0 / (N_t0_m * pow(r, y1 - t0));
+          prob21 = 1.0 / (N_t0_m * std::pow(r, y1 - t0));
           
           // Account for survival of parent i if j was born after c1 + 1
           if (c2[index] < y1) {
             // std::cout << "parent i if j was born after c1 + 1! " << std::endl;
-            prob21 *=  pow(phi, y1 - c2[index]);
+            prob21 *=  std::pow(phi, y1 - c2[index]);
           }
         }
         double prob2 = prob12 + prob21;
         
-        // Find expected length based on age and VBGF parameters
-        // double l2_exp = vbgf_l_inf * (1 - exp(-vbgf_k * (a2 - vbgf_t0)));
+        prob2 *= fAgeGivenLength(a2, l2[index], sigma_l, 1 - phi, max_age, 
+                                 vbgf_l_inf, vbgf_k, vbgf_a0);
+        
         // // Find expected length based on age and VBGF parameters
-        // double l1_exp = vbgf_l_inf * (1 - exp(-vbgf_k * (a1 - vbgf_t0)));
+        // double l2_exp = vbgf_l_inf * (1 - std::exp(-vbgf_k * (a2 - vbgf_a0)));
+        // // Find expected length based on age and VBGF parameters
+        // double l1_exp = vbgf_l_inf * (1 - std::exp(-vbgf_k * (a1 - vbgf_a0)));
+
+        // double a2_exp = vbgf_a0 - log(1 - l2[index] / vbgf_l_inf) / vbgf_k;
+        // double a1_exp = vbgf_a0 - log(1 - l1[index] / vbgf_l_inf) / vbgf_k;
         
-        double a2_exp = vbgf_t0 - log(1 - l2[index] / vbgf_l_inf) / vbgf_k;
-        double a1_exp = vbgf_t0 - log(1 - l1[index] / vbgf_l_inf) / vbgf_k;
+        // // Correct prob2 for f(a2)
+        // prob2 *= R::dnorm(a2, a2_exp, sigma_l, false);
+        // // Correct prob2 for f(a2)
+        // prob2 *= R::dnorm(a1, a1_exp, sigma_l, false);
         
-        // Correct prob2 for f(a2)
-        prob2 *= R::dnorm(a2, a2_exp, sigma_vbgf, false);
-        // Correct prob2 for f(a2)
-        prob2 *= R::dnorm(a1, a1_exp, sigma_vbgf, false);
-        
-        // Add prob to prob_1
-        prob += prob2;
+        // Add prob2 to prob_1
+        prob1 += prob2;
       }
+      
+      prob1 *= fAgeGivenLength(a1, l1[index], sigma_l, 1 - phi, max_age, 
+                               vbgf_l_inf, vbgf_k, vbgf_a0);
       // // Find expected length based on age and VBGF parameters
-      // double l1_exp = vbgf_l_inf * (1 - exp(-vbgf_k * (a1 - vbgf_t0)));
+      // double l1_exp = vbgf_l_inf * (1 - std::exp(-vbgf_k * (a1 - vbgf_a0)));
       // 
       // // Correct prob2 for f(a2)
-      // prob1 *= R::dnorm(l1_exp, l1[index], sigma_vbgf, false);
+      // prob1 *= R::dnorm(l1_exp, l1[index], sigma_l, false);
       // 
-      // prob += prob1;
+      prob += prob1;
     }
     
     if (kinship[index] != "PO/OP") {
@@ -175,11 +261,11 @@ double nllPOPCKMRcppAgeKnown(List dat, List par) {
     // std::cout << "prob: " << prob << std::endl;
     
     if (prob == 0) {
-      prob = pow(10, -60);
+      prob = std::pow(10, -60);
     }
     
     // Update the negative log-likelihood
-    nll -= log(prob) * cov_combo_freq[index];
+    nll -= std::log(prob) * cov_combo_freq[index];
   }
   // Return the negative log-likelihood
   return nll;
