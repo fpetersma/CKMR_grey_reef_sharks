@@ -21,9 +21,8 @@ load("data/vanilla_sample_years_139-140_sample_size_375/1000_sims_dfs_suff_age_u
 ## MAKE SURE THE LATEST VERSION OF THE LIKELIHOOD IS COMPILED
 ## ==========================================================
 sourceCpp("source/fitting/nllCKMRcppVanilla.cpp")
-sourceCpp("source/fitting/nllCKMRcppVanilla_unknown_age.cpp")
 
-result_list <- pblapply(dfs_suff[1:10], function(df) {
+result_list <- pblapply(dfs_suff, function(df) {
   par <- list(
     # phi = boot::logit(0.87), # same as plogis(0.9) -- boot::inv.logit() is qlogis()
     N_t0_m = log(500), 
@@ -31,7 +30,7 @@ result_list <- pblapply(dfs_suff[1:10], function(df) {
     # phi = boot::logit(1 - 0.153),
     N_t0_f = log(500))
   
-  # sigma_vbgf = log(2))
+  # sigma_l = log(2))
   
   df_select <- df[, ]
   
@@ -39,14 +38,14 @@ result_list <- pblapply(dfs_suff[1:10], function(df) {
               alpha_f = 10,
               
               # r = log(1.00),
-              sigma_vbgf = log(0.001),
+              sigma_l = log(0.001),
               phi = boot::logit(1 - 0.1535),
               
               max_age = 19,
               t0 = 140,
               vbgf_l_inf = 175,
               vbgf_k = 0.1,
-              vbgf_t0 = -3.5,
+              vbgf_a0 = -3.5,
               s1 = df_select$indiv_1_sex,
               s2 = df_select$indiv_2_sex,
               c1 = df_select$indiv_1_capture_year,
