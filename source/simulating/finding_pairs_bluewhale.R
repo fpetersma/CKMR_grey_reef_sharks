@@ -18,10 +18,10 @@ source("source/simulating/custom_functions_fishSim.R")
 data_folder <- "data/vanilla_sample_years_136-140_sample_size_150/" 
 
 ## Load the correct 100_sims_mix file
-# load(file = paste0(data_folder, "1000_sims_mix.RData"))
+load(file = paste0(data_folder, "1000_sims_mix.RData"))
 
 ## Find the pairs in parallel. 
-n_cores <- 30
+n_cores <- 40
 cl <- makeCluster(n_cores)
 clusterExport(cl, c("findRelativesCustom"))
 pairs_list <- pblapply(simulated_data_sets, function(indiv) {
@@ -54,7 +54,7 @@ combined_data <- lapply(1:length(simulated_data_sets), function(i) {
   return(out)
 })
 
-n_cores <- 30
+n_cores <- 40
 cl <- makeCluster(n_cores)
 clusterExport(cl, c("vbgf"))
 dfs <- pblapply(combined_data, function(x) {
@@ -85,6 +85,7 @@ dfs <- pblapply(combined_data, function(x) {
                          self)
   sampled_indiv$SampY <- as.numeric(sampled_indiv$SampY)
   
+  
   ## Keep relevant information and rename columns to match theory
   sampled_indiv$SampAge <- sampled_indiv$SampY - sampled_indiv$BirthY
   
@@ -98,14 +99,17 @@ dfs <- pblapply(combined_data, function(x) {
   # sampled_indiv$length <- sampled_indiv$length + rnorm(nrow(sampled_indiv), 0, 2)
   
   ## Create matrix of all combinations with information 
-  
-  df_ids <- as.matrix(expand.grid(1:nrow(sampled_indiv), 1:nrow(sampled_indiv)))
+  df_ids <- as.matrix(subset(expand.grid(1:nrow(sampled_indiv), 
+                                         1:nrow(sampled_indiv)), 
+                             Var1 != Var2))
   df <- as.data.frame(matrix(sampled_indiv$id[df_ids], nrow = nrow(df_ids), 
                              ncol = 2, byrow = FALSE))
   ## OLD expand grid below, no longer works with self captures ------------>>>>>
-  # df <- subset(expand.grid(sampled_indiv$id, sampled_indiv$id), ## all comparisons
+  # df_ids <- subset(expand.grid(sampled_indiv$id, sampled_indiv$id), ## all comparisons
   # Var1 != Var2)
-  # df <- as.data.frame(t(combn(sampled_indiv$id, 2))) ## only unique comparisons
+  df_ids <- t(combn(1:nrow(sampled_indiv), 2)) ## only unique comparisons
+  df <- as.data.frame(matrix(sampled_indiv$id[df_ids], nrow = nrow(df_ids), 
+                             ncol = 2, byrow = FALSE))
   ## <<<<<< --------------------------------------------------------------------
   colnames(df) <- c("indiv_1_id", "indiv_2_id")
   
@@ -117,7 +121,7 @@ dfs <- pblapply(combined_data, function(x) {
   ## Loop through the unique ids and add capture information to main df
   for (id in unique(sampled_indiv$id)) {
     ## Extract info for individual with id
-    info <- sampled_indiv[sampled_indiv$id == id, info_cols]
+    info <- sampled_indiv[sampled_indiv$id == id, info_cols][1, ] # if multiple rows (in case of recaptures) only keep the first row
     
     ## Add info when individual id is first in the comparison
     df[df$indiv_1_id == id, paste0("indiv_1_", info_cols)] <- info
@@ -174,7 +178,7 @@ dfs <- pblapply(combined_data, function(x) {
   
 }, cl = cl); stopCluster(cl);
 
-n_cores <- 30
+n_cores <- 40
 cl <- makeCluster(n_cores)
 clusterExport(cl, c("vbgf"))
 dfs_suff <- pblapply(dfs, function(x) {

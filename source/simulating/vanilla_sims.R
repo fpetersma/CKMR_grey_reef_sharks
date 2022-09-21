@@ -126,19 +126,20 @@ hist(sapply(simulated_data_sets, function(x) {nrow(x[is.na(x$DeathY), ])}), xlab
 summary(sapply(simulated_data_sets, function(x) {nrow(x[is.na(x$DeathY), ])}), xlab = "indivs")
 
 ## Set sampling parameters
-n_sample_year <- 5
+n_sample_year <- 2
 sampling_years <- c((max(years) - n_sample_year + 1):max(years))     # years in which sampling occurs
 sample_size <- c(rep(0, sampling_years[1] - 1), 
-                 rep(150, n_sample_year))   # number of sampled individuals in each year
+                 rep(375, n_sample_year))   # number of sampled individuals in each year
 lethal_sampling <- FALSE        # is sampling lethal?
 retrospective_sampling <- TRUE
 
 ## Remove previous sampling if required
 simulated_data_sets <- lapply(simulated_data_sets, function(indiv) {
   indiv$SampY <- NA
-  return(indiv)
+  return(indiv[, 1:9]) # only return first 9 columns (before sampling columns)
 })
 all(is.na(simulated_data_sets[[1]]$SampY)) # should be TRUE before continuing
+ncol(simulated_data_sets[[1]]) == 9 # should also be TRUE
 
 ## Add sampling
 if (retrospective_sampling) {
@@ -156,26 +157,33 @@ all(is.na(simulated_data_sets[[1]]$SampY))  # should be FALSE
 unique(simulated_data_sets[[1]]$SampY)      # check if this seems correct
 sum(!is.na(simulated_data_sets[[1]]$SampY)) # seem correct as well?
 
-save.image(file = "data/vanilla_sample_years_136-140_sample_size_150/1000_sims_mix.RData")
+save.image(file = "data/vanilla_sample_years_139-140_sample_size_375/1000_sims_mix.RData")
 
-# 
-# ## Create summary stats
-# par(mfrow = c(3, 1))
-# ## Extracting simulated abundances
-# N_true <- t(sapply(simulated_data_sets, function(x) {
-#   mature_females <- sum(is.na(x$DeathY) & x$Sex == "F" & x$AgeLast >= 10)
-#   mature_males <- sum(is.na(x$DeathY) & x$Sex == "M" & x$AgeLast >= 10)
-#   return(c(N_m = mature_males, N_f = mature_females))
-# }))
-# 
+
+## Create summary stats
+par(mfrow = c(3, 1))
+## Extracting simulated abundances
+N_true <- t(sapply(simulated_data_sets, function(x) {
+  mature_females <- sum(is.na(x$DeathY) & x$Sex == "F" & x$AgeLast >= 10)
+  mature_males <- sum(is.na(x$DeathY) & x$Sex == "M" & x$AgeLast >= 10)
+  return(c(N_m = mature_males, N_f = mature_females))
+}))
+
 # r_true <- sapply(simulated_data_sets, function(x) {
-#   alive <- sum(is.na(x$DeathY))
-#   return((alive / 8500) ^ (1 / 40))
+#   alive_120 <- sum(!is.na(x$DeathY) & x$DeathY >= 120 & x$BirthY <= 111)
+#   alive_140 <- sum(is.na(x$DeathY) & x$BirthY <= 131)
+#   return((alive_140 / alive_120) ^ (1 / 21))
 # })
-# summary(r_true)
-# 
-# hist(N_true[, 1], main = "", xlab = "Number of mature males"); abline(v = c(mean(N_true[, 1]), median(N_true[, 1])), col = "red", lty = c(1, 2))
-# 
-# hist(N_true[, 2], main = "",  xlab = "Number of mature females"); abline(v = c(mean(N_true[, 2]), median(N_true[, 2])), col = "red", lty = c(1, 2))
-# 
-# hist(r_true, main = "", xlab = "Yearly growth rate"); abline(v = c(mean(r_true), median(r_true)), col = "red", lty = c(1, 2))
+## Derive growht rate based on animals alive AT THE END OF YEAR
+r_true <- sapply(simulated_data_sets, function(x) {
+  alive_101 <- sum(!is.na(x$DeathY) & x$DeathY > 101 & x$BirthY <= 101)
+  alive_140 <- sum(is.na(x$DeathY) | x$DeathY > 140 & x$BirthY <= 140)
+  return((alive_140 / alive_101) ^ (1 / 40))
+})
+summary(data.frame(N_true, r_true))
+
+hist(N_true[, 1], main = "", xlab = "Number of mature males"); abline(v = c(mean(N_true[, 1]), median(N_true[, 1])), col = "red", lty = c(1, 2))
+
+hist(N_true[, 2], main = "",  xlab = "Number of mature females"); abline(v = c(mean(N_true[, 2]), median(N_true[, 2])), col = "red", lty = c(1, 2))
+
+hist(r_true, main = "", xlab = "Yearly growth rate"); abline(v = c(mean(r_true), median(r_true)), col = "red", lty = c(1, 2))
