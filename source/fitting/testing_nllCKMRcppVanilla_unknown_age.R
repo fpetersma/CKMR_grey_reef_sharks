@@ -11,32 +11,31 @@
 library(Rcpp)
 library(parallel)
 library(pbapply)
-source("source/fitting/CKMR_functions.R")
-
+library(CKMRcpp)
 ## BE CAREFULL WHICH DATA TO LOAD
 ## ==============================
 
 file_folder <- "data/vanilla_sample_years_139-140_sample_size_375/"
 
+load(paste0(file_folder, "1000_sims_dfs_suff_length_sd=2_unique_combos.RData"))
 load(paste0(file_folder, "1000_sims_dfs_suff_age_unique_combos.RData"))
 
 ## MAKE SURE THE LATEST VERSION OF THE LIKELIHOOD IS COMPILED
 ## ==========================================================
 sourceCpp("source/fitting/nllCKMRcppVanilla_unknown_age.cpp")
+# sourceCpp("source/fitting/temp.cpp")
 
-## Convert ages to length without noise
-dfs_suff <- pblapply(dfs_suff, function(df) {
-  df$indiv_1_length <- round(vbgf(df$indiv_1_capture_age))
-  df$indiv_2_length <- round(vbgf(df$indiv_2_capture_age))
-  return(df)
-})
+# ## Convert ages to length without noise
+# dfs_suff <- pblapply(dfs_suff, function(df) {
+#   df$indiv_1_length <- round(vbgf(df$indiv_1_capture_age))
+#   df$indiv_2_length <- round(vbgf(df$indiv_2_capture_age))
+#   return(df)
+# })
 
 ## The unknown age version is a lot slower, so run in parallel
-## Find the pairs in parallel. 
 n_cores <- 20 # 50 fits per core
 cl <- makeCluster(n_cores)
-# clusterExport(cl, c("nllPOPCKMRcppAgeUnknown"))
-result_list <- pblapply(dfs_suff, function(df) {
+result_list <- pblapply(dfs_suff[1:20], function(df) {
   par <- list(
     # phi = boot::logit(0.87), # same as plogis(0.9) -- boot::inv.logit() is qlogis()
     N_t0_m = log(500), 
@@ -71,15 +70,17 @@ result_list <- pblapply(dfs_suff, function(df) {
               cov_combo_freq = df_select$covariate_combo_freq,
               n = nrow(df_select))
   
+  # system.time(test_new <- nllPOPCKMRcppAgeUnknown(dat, par))
+  # system.time(test_old <- CKMRcpp::nllPOPCKMRcppAgeUnknown(dat, par))
   res <- nlminb(start = par, 
-                objective = CKMRcpp::nllPOPCKMRcppAgeUnknown, 
+                objective = nllPOPCKMRcppAgeUnknown, 
                 dat = dat, 
-                control = list(trace = 0))
+                control = list(trace = 1))
   
   return(res)
 }, cl = cl); stopCluster(cl); # end of pblapply() in parallel
 
-# save(list = c("result_list"), file = paste0(file_folder, "result_list_101-200_unknown_age.RData"))
+# save(list = c("result_list"), file = paste0(file_folder, "result_list_1-1000_unknown_age.RData"))
 
 ## Look at the estimates
 N_est <- t(sapply(result_list, function(res){
