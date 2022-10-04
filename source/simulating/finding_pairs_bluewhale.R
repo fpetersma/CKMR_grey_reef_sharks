@@ -11,14 +11,15 @@ library(fishSim)
 library(ids)
 library(pbapply)
 library(doParallel)
+library(CKMRcpp)
 
-source("source/fitting/CKMR_functions.R")
-source("source/simulating/custom_functions_fishSim.R")
+# source("source/fitting/CKMR_functions.R")
+# source("source/simulating/custom_functions_fishSim.R")
 
-data_folder <- "data/vanilla_sample_years_136-140_sample_size_150/" 
+data_folder <- "data/vanilla_sample_years_139-140_sample_size_375/" 
 
-## Load the correct 100_sims_mix file
-load(file = paste0(data_folder, "1000_sims_mix.RData"))
+## Load the correct 100_sims_vanilla file
+load(file = paste0(data_folder, "1000_sims_vanilla.RData"))
 
 ## Find the pairs in parallel. 
 n_cores <- 40
@@ -31,15 +32,15 @@ pairs_list <- pblapply(simulated_data_sets, function(indiv) {
 }, cl = cl); stopCluster(cl);
 
 ## Save data
-# save(file = paste0(data_folder, "1000_sims_mix_pairs.RData"), list = "pairs_list")
+# save(file = paste0(data_folder, "1000_sims_vanilla_pairs.RData"), list = "pairs_list")
 
 POPs_list <- pblapply(pairs_list, function(pairs) {
   return(pairs[pairs$OneTwo == 1, ]) ## Parent-Offspring pairs)
 })
 
 ## Save data
-# save(list = c("POPs_list"), file = paste0(data_folder, "100_sims_mix_POPs.RData"))
-# load(paste0(data_folder, "100_sims_mix_POPs.RData"))
+# save(list = c("POPs_list"), file = paste0(data_folder, "100_sims_vanilla_POPs.RData"))
+# load(paste0(data_folder, "100_sims_vanilla_POPs.RData"))
 
 ## Self-captures
 selfie_list <- pblapply(simulated_data_sets, function(indiv) {
@@ -53,6 +54,8 @@ combined_data <- lapply(1:length(simulated_data_sets), function(i) {
               indiv = simulated_data_sets[[i]])
   return(out)
 })
+
+# save(list = c("combined_data"), file = paste0(data_folder, "1000_sims_vanilla_combined_data.RData"))
 
 n_cores <- 40
 cl <- makeCluster(n_cores)
@@ -154,35 +157,73 @@ dfs <- pblapply(combined_data, function(x) {
                        yes = "PO/OP", no = "U")
   df$kinship[df$indiv_1_id == df$indiv_2_id] <- "S"
   
-  ## Find unique covariate combination using length or age (make sure this is correct!)
-  df$covariate_combo_id <- apply(df, 1, function(row) {
-    return(paste0(row["indiv_1_sex"], row["indiv_1_capture_year"], 
-                  row["indiv_1_capture_age"],
-                  # row["indiv_1_length"],
-                  row["indiv_2_sex"], row["indiv_2_capture_year"], 
-                  row["indiv_2_capture_age"],
-                  # row["indiv_2_length"],
-                  row["kinship"]))
-  })
-  
-  df$covariate_combo_id <- as.numeric(as.factor(df$covariate_combo_id))
-  
-  ## Good news: only 138,425 unique probabilities to derive, instead of 1,573,770
-  
-  ## Add frequency of every identical covariate combination
-  df <- transform(df, covariate_combo_freq = ave(seq(nrow(df)),
-                                                 covariate_combo_id,
-                                                 FUN = length))
+  # ## Find unique covariate combination using length or age (make sure this is correct!)
+  # df$covariate_combo_id <- apply(df, 1, function(row) {
+  #   return(paste0(row["indiv_1_sex"], row["indiv_1_capture_year"], 
+  #                 row["indiv_1_capture_age"],
+  #                 # row["indiv_1_length"],
+  #                 row["indiv_2_sex"], row["indiv_2_capture_year"], 
+  #                 row["indiv_2_capture_age"],
+  #                 # row["indiv_2_length"],
+  #                 row["kinship"]))
+  # })
+  # 
+  # df$covariate_combo_id <- as.numeric(as.factor(df$covariate_combo_id))
+  # 
+  # ## Good news: only 138,425 unique probabilities to derive, instead of 1,573,770
+  # 
+  # ## Add frequency of every identical covariate combination
+  # df <- transform(df, covariate_combo_freq = ave(seq(nrow(df)),
+  #                                                covariate_combo_id,
+  #                                                FUN = length))
   
   return(df)
   
 }, cl = cl); stopCluster(cl);
 
-n_cores <- 40
+## :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+## Code below can be run to remove covariate_combo_id and covariate_combo_freq
+## :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+dfs_test <- pblapply(dfs, function(x) {
+  x <- x[, -c(ncol(x) - 1, ncol(x))]
+  return(x)
+})
+
+## :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+## Run below to add noise the length with the preferred uncertainty
+## :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+dfs_test <- pblapply(dfs_test, function(x) {
+  x$indiv_1_length <- round(vbgf(x$indiv_1_capture_age) + rnorm(nrow(x), 0, 2))
+  x$indiv_2_length <- round(vbgf(x$indiv_2_capture_age) + rnorm(nrow(x), 0, 2))
+  return(x)
+})
+
+## :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+## Run below to add unique covariate combo ids and return sufficient dfs
+## :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+n_cores <- 16
 cl <- makeCluster(n_cores)
 clusterExport(cl, c("vbgf"))
-dfs_suff <- pblapply(dfs, function(x) {
+dfs_suff <- pblapply(dfs_test, function(x) {
   library(dplyr)
+  ## Find unique covariate combination using length or age (make sure this is correct!)
+  x$covariate_combo_id <- apply(x, 1, function(row) {
+    return(paste0(row["indiv_1_sex"], row["indiv_1_capture_year"], 
+                  # row["indiv_1_capture_age"],
+                  row["indiv_1_length"],
+                  row["indiv_2_sex"], row["indiv_2_capture_year"], 
+                  # row["indiv_2_capture_age"],
+                  row["indiv_2_length"],
+                  row["kinship"]))
+  })
+  
+  x$covariate_combo_id <- as.numeric(as.factor(x$covariate_combo_id))
+  
+  ## Add frequency of every identical covariate combination
+  x <- transform(x, covariate_combo_freq = ave(seq(nrow(x)),
+                                               covariate_combo_id,
+                                               FUN = length))
+  
   df_sufficient <- x %>% 
     group_by(covariate_combo_id) %>% 
     slice(1) %>% 
