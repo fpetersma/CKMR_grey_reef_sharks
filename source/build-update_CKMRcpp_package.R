@@ -36,19 +36,16 @@ devtools::build("source/CKMRcpp")
 ## 1. Check if the package exists and can be loaded
 library(CKMRcpp)
 ## Unload the package
-detach("package:ascrRcpp", unload=TRUE)
+detach("package:Rcpp", unload=TRUE)
 
 ## 2. Make the sure the updated/new cpp files are added to "CKMRcpp/src" 
 
 ## 3. Re-compile 
 compileAttributes("source/CKMRcpp")
 
-## 4. Remove the previous installation of the package
-remove.packages("CKMRcpp")
-
-## 5. Install the updated package
+## 4. Install the updated package
 devtools::install("source/CKMRcpp")
 
-## 6. BONUS: to create a tar.gz file which is easy to move around/share, run 
+## 5. BONUS: to create a tar.gz file which is easy to move around/share, run 
 ## the line below
 devtools::build("source/CKMRcpp")
