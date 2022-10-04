@@ -988,7 +988,7 @@ uniformCheckGrowthrate <- function (
     mortRate, # rate of mortality
     ageMort, # input for the mort() call
     stockMort, # input for the mort() call
-    ageStockMort) # input for the mort() call {
+    ageStockMort) { # input for the mort() call 
   ## Check inputs
   if (!(mateType %in% c("flat", "age", "ageSex"))) {
     stop("'mateType' must be one of 'flat', 'age', or 'ageSex'.")
@@ -1227,4 +1227,36 @@ uniformCheckGrowthrate <- function (
     for (i in 1:length(outs)) outs[i] <- eigen(mat.l[[i]])$values[1]
     return(outs)
   }
+}
+
+#' vbgf()
+#' A function that derives the length based on age and the vbgf parameters
+#'
+#' @param a Age (numeric)
+#' @param t_0 Theoretical age when length is zero (numeric)
+#' @param k Growth parameter (numeric)
+#' @param l_inf Asymptotic length (numeric)
+#'
+#' @return
+#' @export
+#'
+#' @examples
+vbgf <- function(a, t_0 = -3.5, k = 0.1, l_inf = 175) {
+  return(l_inf * (1 - exp(-k * (a - t_0))))
+}
+
+#' invvbgf()
+#' A function that derives the length based on age and the vbgf parameters
+#'
+#' @param a Age (numeric)
+#' @param t_0 Theoretical age when length is zero (numeric)
+#' @param k Growth parameter (numeric)
+#' @param l_inf Asymptotic length (numeric)
+#'
+#' @return
+#' @export
+#'
+#' @examples
+invvbgf <- function(l, t_0 = -3.5, k = 0.1, l_inf = 175) {
+  return(t_0 - log(1 - l/l_inf) / k)
 }
