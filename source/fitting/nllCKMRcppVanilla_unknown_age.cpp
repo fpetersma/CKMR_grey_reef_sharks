@@ -69,6 +69,23 @@ double fSampledLength(int l,
   
   return prob_mass;
 }
+double fSampledLengthFast(int l, 
+                          double sigma_l,
+                          int max_age,
+                          NumericVector probs_sampled_ages,
+                          int l_inf, 
+                          double k,
+                          double a_0) {
+  
+  double prob_mass = 0.0;
+  
+  for (int a = 0; a <= max_age; a++) {
+    prob_mass += fLengthGivenAge(l, a, sigma_l, l_inf, k, a_0) *
+      probs_sampled_ages[a];
+  }
+  
+  return prob_mass;
+}
 
 // Probability mass function for age given length
 double fAgeGivenLength(int a, 
@@ -91,6 +108,27 @@ double fAgeGivenLength(int a,
   
   return out;
 }
+double fAgeGivenLengthFast(int a, 
+                           int l, 
+                           double sigma_l, 
+                           NumericVector probs_sampled_ages,
+                           int max_age,
+                           int l_inf, 
+                           double k, 
+                           double a_0) {
+  
+  double prob_length_given_age = fLengthGivenAge(l, a, sigma_l, l_inf, k, a_0);
+  
+  double prob_sampled_length = fSampledLengthFast(l, sigma_l, max_age, 
+                                                  probs_sampled_ages, 
+                                                  l_inf, k, a_0);
+  
+  double out = prob_length_given_age * probs_sampled_ages[a] / 
+    prob_sampled_length;
+  
+  return out;
+}
+
 
 // -----------------------------------------------------------------------------
 
@@ -144,6 +182,16 @@ double nllPOPCKMRcppAgeUnknown(List dat, List par) {
   // ===========================================================================
   
   // ===========================================================================
+  // DO SOME THINGS TO OPTIMISE THE CODE
+  // ---------------------------------------------------------------------------
+  // Derive fSampledAge() for all possible ages
+  NumericVector probs_sampled_ages (max_age + 1);
+  for (int a = 0; a <= max_age; a++) {
+    probs_sampled_ages[a] = fSampledAge(a, 1 - phi, max_age);
+    // std::cout << "prob of " << a << ": " << probs_sampled_ages[a] << std::endl;
+  }
+
+  // ===========================================================================
   // 3. DERIVE THE NEGATIVE LOG LIKELIHOOD
   // ---------------------------------------------------------------------------
   double nll = 0;
@@ -157,102 +205,210 @@ double nllPOPCKMRcppAgeUnknown(List dat, List par) {
       // Extract birth year of individual 2
       int y1 = c1[index] - a1;
       
-      double prob1 = 0.0;
+      double prob12_1 = 0.0;
       
-      for (int a2 = 0; a2 <= max_age; a2++) {
+      // max_age_2 depends on c2, y1, and the alpha for the gender of 1
+      int max_age_2 = c2[index] - y1;
+      // corrected for alpha below
+      if (s1[index] == "F") {
+        max_age_2 -= alpha_f;
+      } else {
+        max_age_2 -= alpha_m;
+      }
+
+      for (int a2 = 0; a2 <= max_age_2; a2++) {
         // Extract birth year of individual 2
         int y2 = c2[index] - a2;
+        
+        // :::::::s::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+        // First the initial direction, i.e., 1 is the parent and 2 is the offspring
+        // :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+        double prob12_2 = 0.0; 
+        
+        // Probability stays zero if offspring was born before maturity of parent
+        if ((s1[index] == "F") & (a1 + y2 - c1[index] <= max_age)) {
+          prob12_2 = 1.0 / (N_t0_f * std::pow(r, y2 - t0));
+          // std::cout << "Female abundance in year " << y2 << " is: " << N_t0_f * std::pow(r, y2 - 1 - t0) << std::endl;
+
+          // Account for survival of parent i if j was born after c1 
+          if (c1[index] < y2) {
+            // std::cout << "parent i if j was born after c1 + 1! " << std::endl;
+            prob12_2 *=  std::pow(phi, y2 - c1[index]);
+          }
+        }
+        if ((s1[index] == "M") & (a1 + y2 - c1[index] <= max_age)) {
+          // Derive the ERRO in the year before the birth year of the offspring
+          prob12_2 = 1.0 / (N_t0_m * std::pow(r, y2 - t0));
+          
+          // Account for survival of parent i if j was born after c1 + 1
+          if (c1[index] < y2) {
+            // std::cout << "parent i if j was born after c1 + 1! " << std::endl;
+            prob12_2 *=  std::pow(phi, y2 - c1[index]);
+          }
+        }
+        // std::cout << "Check0: " << fAgeGivenLengthFast(a2, l2[index], sigma_l,
+                                               // probs_sampled_ages, max_age,
+                                               // vbgf_l_inf, vbgf_k, vbgf_a0) << std::endl;
+        // std::cout << "Check1: " << l2[index] << std::endl;
+        
+        // Fast version
+        prob12_1 += prob12_2 * fAgeGivenLengthFast(a2, l2[index], sigma_l,
+                                                   probs_sampled_ages, max_age,
+                                                   vbgf_l_inf, vbgf_k, vbgf_a0);
+        
+        // Slow version
+        // prob12_1 += prob12_2 * fAgeGivenLength(a2, l2[index], sigma_l,
+        //                                        1 - phi, max_age, vbgf_l_inf,
+        //                                        vbgf_k, vbgf_a0);
+        
+      }
+      // std::cout << "Check1: " << prob12_1 << std::endl;
+      // std::cout << "Check2: " << a1 << "\n" << std::endl;
+      // Fast version
+      prob += prob12_1 * fAgeGivenLengthFast(a1, l1[index], sigma_l,
+                                             probs_sampled_ages, max_age,
+                                             vbgf_l_inf, vbgf_k, vbgf_a0);
+      // Slow version
+      // prob += prob12_1 * fAgeGivenLength(a1, l1[index], sigma_l,
+      //                                    1 - phi, max_age, vbgf_l_inf,
+      //                                    vbgf_k, vbgf_a0);
+
+    }
+    
+    // Loop over the ages
+    for (int a2 = 0; a2 <= max_age; a2++) {
+      // Extract birth year of individual 2
+      int y2 = c2[index] - a2;
+      
+      double prob21_1 = 0.0;
+      
+      // max_age_1 depends on c1, y2, and the alpha for the gender of 2
+      int max_age_1 = c1[index] - y2;
+      // corrected for alpha below
+      if (s1[index] == "F") {
+        max_age_1 -= alpha_f;
+      } else {
+        max_age_1 -= alpha_m;
+      }
+      
+      for (int a1 = 0; a1 <= max_age_1; a1++) {
+        // std::cout << "test: " <<  max_age_1_f << std::endl;
+        
+        // Extract birth year of individual 1
+        int y1 = c1[index] - a1;
         
         // :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
         // First the initial direction, i.e., 1 is the parent and 2 is the offspring
         // :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-        double prob12 = 0.0; 
+        double prob21_2 = 0.0; 
         
         // Probability stays zero if offspring was born before maturity of parent
-        if ((s1[index] == "F") & (y2 >= y1 + alpha_f) & 
-            (a1 + y2 - c1[index] <= max_age)) {
-          prob12 = 1.0 / (N_t0_f * std::pow(r, y2 - t0));
+        if ((s2[index] == "F") & (a2 + y1 - c2[index] <= max_age)) {
+          prob21_2 = 1.0 / (N_t0_f * std::pow(r, y1 - t0));
           // std::cout << "Female abundance in year " << y2 << " is: " << N_t0_f * std::pow(r, y2 - 1 - t0) << std::endl;
           
           // Account for survival of parent i if j was born after c1 
-          if (c1[index] < y2) {
-            // std::cout << "parent i if j was born after c1 + 1! " << std::endl;
-            prob12 *=  std::pow(phi, y2 - c1[index]);
-          }
-        }
-        if ((s1[index] == "M") & (y2 >= y1 + alpha_m) & 
-            (a1 + y2 - c1[index] <= max_age)) {
-          // Derive the ERRO in the year before the birth year of the offspring
-          prob12 = 1.0 / (N_t0_m * std::pow(r, y2 - t0));
-          
-          // Account for survival of parent i if j was born after c1 + 1
-          if (c1[index] < y2) {
-            // std::cout << "parent i if j was born after c1 + 1! " << std::endl;
-            prob12 *=  std::pow(phi, y2 - c1[index]);
-          }
-        }
-
-        // :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-        // Now the other way around, i.e., 1 is the offspring and 2 is the parent
-        // :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-        double prob21 = 0.0;
-        
-        // Probability stays zero if offspring was born maturity of parent
-        if ((s2[index] == "F") & (y1 >= y2 + alpha_f) &
-            (a2 + y1 - c2[index] <= max_age)) {
-          // Derive the ERRO in the year before the birth year of the offspring
-          prob21 = 1.0 / (N_t0_f * std::pow(r, y1 - t0));
-          // std::cout << "Female abundance in year " << y2 << " is: " << N_t0_f * std::pow(r, y2 - 1 - t0) << std::endl;
-          
-          // Account for survival of parent j if i was born after c2
           if (c2[index] < y1) {
-            // std::cout << "parent j if i was born after c2 + 1! " << std::endl;
-            prob21 *=  std::pow(phi, y1 - c2[index]);
+            // std::cout << "parent i if j was born after c1 + 1! " << std::endl;
+            prob21_2 *=  std::pow(phi, y1 - c2[index]);
           }
         }
-        if ((s2[index] == "M") & (y1 >= y2 + alpha_m) &
-            (a2 + y1 - c2[index] <= max_age)) {
+        if ((s2[index] == "M") & (a2 + y1 - c2[index] <= max_age)) {
           // Derive the ERRO in the year before the birth year of the offspring
-          prob21 = 1.0 / (N_t0_m * std::pow(r, y1 - t0));
+          prob21_2 = 1.0 / (N_t0_m * std::pow(r, y1 - t0));
           
           // Account for survival of parent i if j was born after c1 + 1
           if (c2[index] < y1) {
             // std::cout << "parent i if j was born after c1 + 1! " << std::endl;
-            prob21 *=  std::pow(phi, y1 - c2[index]);
+            prob21_2 *=  std::pow(phi, y1 - c2[index]);
           }
         }
-        double prob2 = prob12 + prob21;
-        
-        prob2 *= fAgeGivenLength(a2, l2[index], sigma_l, 1 - phi, max_age, 
-                                 vbgf_l_inf, vbgf_k, vbgf_a0);
-        
-        // // Find expected length based on age and VBGF parameters
-        // double l2_exp = vbgf_l_inf * (1 - std::exp(-vbgf_k * (a2 - vbgf_a0)));
-        // // Find expected length based on age and VBGF parameters
-        // double l1_exp = vbgf_l_inf * (1 - std::exp(-vbgf_k * (a1 - vbgf_a0)));
 
-        // double a2_exp = vbgf_a0 - log(1 - l2[index] / vbgf_l_inf) / vbgf_k;
-        // double a1_exp = vbgf_a0 - log(1 - l1[index] / vbgf_l_inf) / vbgf_k;
-        
-        // // Correct prob2 for f(a2)
-        // prob2 *= R::dnorm(a2, a2_exp, sigma_l, false);
-        // // Correct prob2 for f(a2)
-        // prob2 *= R::dnorm(a1, a1_exp, sigma_l, false);
-        
-        // Add prob2 to prob_1
-        prob1 += prob2;
+        // Fast version
+        prob21_1 += prob21_2 * fAgeGivenLengthFast(a1, l1[index], sigma_l,
+                                                   probs_sampled_ages, max_age,
+                                                   vbgf_l_inf, vbgf_k, vbgf_a0);
+        // Slow version
+        // prob21_1 += prob21_2 * fAgeGivenLength(a1, l1[index], sigma_l,
+        //                                        1 - phi, max_age, vbgf_l_inf,
+        //                                        vbgf_k, vbgf_a0);
       }
-      
-      prob1 *= fAgeGivenLength(a1, l1[index], sigma_l, 1 - phi, max_age, 
-                               vbgf_l_inf, vbgf_k, vbgf_a0);
-      // // Find expected length based on age and VBGF parameters
-      // double l1_exp = vbgf_l_inf * (1 - std::exp(-vbgf_k * (a1 - vbgf_a0)));
-      // 
-      // // Correct prob2 for f(a2)
-      // prob1 *= R::dnorm(l1_exp, l1[index], sigma_l, false);
-      // 
-      prob += prob1;
+      // Fast version
+      prob += prob21_1 * fAgeGivenLengthFast(a2, l2[index], sigma_l,
+                                             probs_sampled_ages, max_age,
+                                             vbgf_l_inf, vbgf_k, vbgf_a0);
+      // Slow version
+      // prob += prob21_1 * fAgeGivenLength(a2, l2[index], sigma_l,
+      //                                    1 - phi, max_age, vbgf_l_inf,
+      //                                    vbgf_k, vbgf_a0);
+
     }
+    
+    
+// 
+//         // :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+//         // Now the other way around, i.e., 1 is the offspring and 2 is the parent
+//         // :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+//         double prob21 = 0.0;
+//         
+//         // Probability stays zero if offspring was born maturity of parent
+//         if ((s2[index] == "F") & (y1 >= y2 + alpha_f) &
+//             (a2 + y1 - c2[index] <= max_age)) {
+//           // Derive the ERRO in the year before the birth year of the offspring
+//           prob21 = 1.0 / (N_t0_f * std::pow(r, y1 - t0));
+//           // std::cout << "Female abundance in year " << y2 << " is: " << N_t0_f * std::pow(r, y2 - 1 - t0) << std::endl;
+//           
+//           // Account for survival of parent j if i was born after c2
+//           if (c2[index] < y1) {
+//             // std::cout << "parent j if i was born after c2 + 1! " << std::endl;
+//             prob21 *=  std::pow(phi, y1 - c2[index]);
+//           }
+//         }
+//         if ((s2[index] == "M") & (y1 >= y2 + alpha_m) &
+//             (a2 + y1 - c2[index] <= max_age)) {
+//           // Derive the ERRO in the year before the birth year of the offspring
+//           prob21 = 1.0 / (N_t0_m * std::pow(r, y1 - t0));
+//           
+//           // Account for survival of parent i if j was born after c1 + 1
+//           if (c2[index] < y1) {
+//             // std::cout << "parent i if j was born after c1 + 1! " << std::endl;
+//             prob21 *=  std::pow(phi, y1 - c2[index]);
+//           }
+//         }
+//         double prob2 = prob12 + prob21;
+//         
+//         prob2 *= fAgeGivenLength(a2, l2[index], sigma_l, 1 - phi, max_age, 
+//                                  vbgf_l_inf, vbgf_k, vbgf_a0);
+//         
+//         // // Find expected length based on age and VBGF parameters
+//         // double l2_exp = vbgf_l_inf * (1 - std::exp(-vbgf_k * (a2 - vbgf_a0)));
+//         // // Find expected length based on age and VBGF parameters
+//         // double l1_exp = vbgf_l_inf * (1 - std::exp(-vbgf_k * (a1 - vbgf_a0)));
+// 
+//         // double a2_exp = vbgf_a0 - log(1 - l2[index] / vbgf_l_inf) / vbgf_k;
+//         // double a1_exp = vbgf_a0 - log(1 - l1[index] / vbgf_l_inf) / vbgf_k;
+//         
+//         // // Correct prob2 for f(a2)
+//         // prob2 *= R::dnorm(a2, a2_exp, sigma_l, false);
+//         // // Correct prob2 for f(a2)
+//         // prob2 *= R::dnorm(a1, a1_exp, sigma_l, false);
+//         
+//         // Add prob2 to prob_1
+//         prob1 += prob2;
+//       }
+//       
+//       prob1 *= fAgeGivenLength(a1, l1[index], sigma_l, 1 - phi, max_age, 
+//                                vbgf_l_inf, vbgf_k, vbgf_a0);
+//       // // Find expected length based on age and VBGF parameters
+//       // double l1_exp = vbgf_l_inf * (1 - std::exp(-vbgf_k * (a1 - vbgf_a0)));
+//       // 
+//       // // Correct prob2 for f(a2)
+//       // prob1 *= R::dnorm(l1_exp, l1[index], sigma_l, false);
+//       // 
+//       prob += prob1;
+//     }
+    
+    // std::cout << "kinship: " << kinship[index] << std::endl;
     
     if (kinship[index] != "PO/OP") {
       prob = 1 - prob; 
