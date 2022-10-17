@@ -16,13 +16,13 @@ library(CKMRcpp)
 # source("source/fitting/CKMR_functions.R")
 # source("source/simulating/custom_functions_fishSim.R")
 
-data_folder <- "data/vanilla_sample_years_139-140_sample_size_375/" 
+data_folder <- "data/vanilla_variable_reproduction_sample_years_139-140_sample_size_375/" 
 
 ## Load the correct 100_sims_vanilla file
-load(file = paste0(data_folder, "1000_sims_vanilla.RData"))
+load(file = paste0(data_folder, "1000_sims_vanilla_repro=U(1,4)_no_gestation.RData"))
 
 ## Find the pairs in parallel. 
-n_cores <- 40
+n_cores <- 30
 cl <- makeCluster(n_cores)
 clusterExport(cl, c("findRelativesCustom"))
 pairs_list <- pblapply(simulated_data_sets, function(indiv) {
@@ -57,7 +57,7 @@ combined_data <- lapply(1:length(simulated_data_sets), function(i) {
 
 # save(list = c("combined_data"), file = paste0(data_folder, "1000_sims_vanilla_combined_data.RData"))
 
-n_cores <- 40
+n_cores <- 24
 cl <- makeCluster(n_cores)
 clusterExport(cl, c("vbgf"))
 dfs <- pblapply(combined_data, function(x) {
@@ -184,27 +184,29 @@ dfs <- pblapply(combined_data, function(x) {
 ## :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 ## Code below can be run to remove covariate_combo_id and covariate_combo_freq
 ## :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-dfs_test <- pblapply(dfs, function(x) {
-  x <- x[, -c(ncol(x) - 1, ncol(x))]
+library(dplyr)
+dfs <- pblapply(dfs, function(x) {
+  # x <- x[, -c(ncol(x) - 1, ncol(x))]
+  x <- dplyr::select(x, -c(covariate_combo_id, covariate_combo_freq))
   return(x)
 })
 
 ## :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 ## Run below to add noise the length with the preferred uncertainty
 ## :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-dfs_test <- pblapply(dfs_test, function(x) {
-  x$indiv_1_length <- round(vbgf(x$indiv_1_capture_age) + rnorm(nrow(x), 0, 2))
-  x$indiv_2_length <- round(vbgf(x$indiv_2_capture_age) + rnorm(nrow(x), 0, 2))
+dfs <- pblapply(dfs, function(x) {
+  x$indiv_1_length <- round(vbgf(x$indiv_1_capture_age) + rnorm(nrow(x), 0, 10))
+  x$indiv_2_length <- round(vbgf(x$indiv_2_capture_age) + rnorm(nrow(x), 0, 10))
   return(x)
 })
 
 ## :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 ## Run below to add unique covariate combo ids and return sufficient dfs
 ## :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-n_cores <- 16
+n_cores <- 30
 cl <- makeCluster(n_cores)
-clusterExport(cl, c("vbgf"))
-dfs_suff <- pblapply(dfs_test, function(x) {
+# clusterExport(cl, c("vbgf"))
+dfs_suff <- pblapply(dfs, function(x) {
   library(dplyr)
   ## Find unique covariate combination using length or age (make sure this is correct!)
   x$covariate_combo_id <- apply(x, 1, function(row) {
@@ -230,6 +232,7 @@ dfs_suff <- pblapply(dfs_test, function(x) {
     ungroup()
   return(df_sufficient)
 }, cl = cl); stopCluster(cl);
+
 
 # save(list = c("dfs"), file = "data/test_data_dfs.RData")
 # save(list = c("dfs_suff"), file = "data/test_data_dfs_suff.RData")
