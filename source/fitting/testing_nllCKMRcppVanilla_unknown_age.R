@@ -15,15 +15,14 @@ library(CKMRcpp)
 ## BE CAREFULL WHICH DATA TO LOAD
 ## ==============================
 
-file_folder <- "data/vanilla_sample_years_139-140_sample_size_375/"
+file_folder <- "data/vanilla_variable_reproduction_sample_years_139-140_sample_size_375/"
 
-load(paste0(file_folder, "1000_sims_dfs_suff_length_sd=2_unique_combos.RData"))
-load(paste0(file_folder, "1000_sims_dfs_suff_age_unique_combos.RData"))
+load(paste0(file_folder, "smaller_files/1000_sims_dfs_suff_length_sd=2_unique_combos.RData"))
 
 ## MAKE SURE THE LATEST VERSION OF THE LIKELIHOOD IS COMPILED
 ## ==========================================================
-sourceCpp("source/fitting/nllCKMRcppVanilla_unknown_age.cpp")
-# sourceCpp("source/fitting/temp.cpp")
+# sourceCpp("source/fitting/nllCKMRcppVanilla_unknown_age.cpp")
+# sourceCpp("source/fitting/nllCKMRcppVanilla_unknown_age_slower.cpp")
 
 # ## Convert ages to length without noise
 # dfs_suff <- pblapply(dfs_suff, function(df) {
@@ -33,9 +32,13 @@ sourceCpp("source/fitting/nllCKMRcppVanilla_unknown_age.cpp")
 # })
 
 ## The unknown age version is a lot slower, so run in parallel
-n_cores <- 20 # 50 fits per core
+n_cores <- 30 # 50 fits per core
 cl <- makeCluster(n_cores)
-result_list <- pblapply(dfs_suff[1:20], function(df) {
+result_list <- pblapply(dfs_suff[1:1000], function(df) {
+  ## Source cpp file if not using the CKMRcpp package
+  # Rcpp::sourceCpp("source/fitting/nllCKMRcppVanilla_unknown_age.cpp")
+  
+  ## Create parameter object for nlminb()
   par <- list(
     # phi = boot::logit(0.87), # same as plogis(0.9) -- boot::inv.logit() is qlogis()
     N_t0_m = log(500), 
@@ -44,13 +47,15 @@ result_list <- pblapply(dfs_suff[1:20], function(df) {
     # phi = boot::logit(1 - 0.153),
     N_t0_f = log(500))
   
+  ## Take a subset of the data if required
   df_select <- df[, ]
   
+  ## Create the data object for nlminb()
   dat <- list(alpha_m = 10,
               alpha_f = 10,
               
               # r = log(1.00),
-              sigma_l = log(0.001),
+              sigma_l = log(2),
               phi = boot::logit(1 - 0.1535),
               
               max_age = 19,
@@ -72,15 +77,20 @@ result_list <- pblapply(dfs_suff[1:20], function(df) {
   
   # system.time(test_new <- nllPOPCKMRcppAgeUnknown(dat, par))
   # system.time(test_old <- CKMRcpp::nllPOPCKMRcppAgeUnknown(dat, par))
-  res <- nlminb(start = par, 
-                objective = nllPOPCKMRcppAgeUnknown, 
-                dat = dat, 
-                control = list(trace = 1))
+  
+  ## Start the optimisation (make sure the trace and relative tolerance values
+  ##                         are correct)
+  # system.time({
+    res <- nlminb(start = par, 
+                  objective = CKMRcpp::nllPOPCKMRcppAgeUnknown, 
+                  dat = dat, 
+                  control = list(trace = 0, rel.tol = 1e-10))
+  # })
   
   return(res)
 }, cl = cl); stopCluster(cl); # end of pblapply() in parallel
 
-# save(list = c("result_list"), file = paste0(file_folder, "result_list_1-1000_unknown_age.RData"))
+# save(list = c("result_list"), file = paste0(file_folder, "result_list_1-1000_unknown_age_sd=2.RData"))
 
 ## Look at the estimates
 N_est <- t(sapply(result_list, function(res){
