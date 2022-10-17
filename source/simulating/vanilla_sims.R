@@ -121,6 +121,8 @@ simulated_data_sets <- pblapply(1:1000, function(i) {
   return(indiv)
 }, cl = cl); stopCluster(cl);
 
+# load("data/vanilla_sample_years_139-140_sample_size_375/1000_sims_mix.RData")
+
 ## How many individuals are still alive in 'indiv'?
 hist(sapply(simulated_data_sets, function(x) {nrow(x[is.na(x$DeathY), ])}), xlab = "indivs")
 summary(sapply(simulated_data_sets, function(x) {nrow(x[is.na(x$DeathY), ])}), xlab = "indivs")
@@ -159,8 +161,9 @@ sum(!is.na(simulated_data_sets[[1]]$SampY)) # seem correct as well?
 
 save.image(file = "data/vanilla_sample_years_139-140_sample_size_375/1000_sims_mix.RData")
 
-
-## Create summary stats
+## :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+## Create summary statistics
+## :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 par(mfrow = c(3, 1))
 ## Extracting simulated abundances
 N_true <- t(sapply(simulated_data_sets, function(x) {
