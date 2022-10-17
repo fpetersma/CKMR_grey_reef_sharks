@@ -36,7 +36,8 @@ devtools::build("source/CKMRcpp")
 ## 1. Check if the package exists and can be loaded
 library(CKMRcpp)
 ## Unload the package
-detach("package:Rcpp", unload=TRUE)
+detach("package:CKMRcpp", unload=TRUE)
+## Sometimes it is required 
 
 ## 2. Make the sure the updated/new cpp files are added to "CKMRcpp/src" 
 
