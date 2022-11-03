@@ -904,6 +904,87 @@ pDiscreteNorm <- function(x, mu, sigma) {
            pnorm(x - 0.5, mean = mu, sd = sigma))
 }
 
+plotCKMRabundance <- function(
+    fits,           # A list of fits
+    # par_name,     # The name of the abundance parameter
+    year_lim,       # Number of years backward and forward from reference year
+    y0 = 140,       # The reference year
+    med = F,     # TRUE for the median, else the mean
+    alpha = 0.05,    # Signifance level for confidence intervals
+    truth = NULL
+) {
+  
+  ## Extract estimates for selected parameter
+  est <- t(sapply(fits, function(x) x$par))
+  
+  ## Derive years and create matrices for abundance estimates
+  years <- year_lim[1]:year_lim[2]
+  abun_f <- matrix(NA, nrow = length(fits), ncol = length(years))
+  abun_m <- matrix(NA, nrow = length(fits), ncol = length(years))
+  
+  ## For every fit, derive the abundance for all years
+  for (i in 1:length(fits)) {
+    abun_f[i, ] <- exp(est[i, "N_t0_f"]) * exp(est[i, "r"]) ^ years
+    abun_m[i, ] <- exp(est[i, "N_t0_m"]) * exp(est[i, "r"]) ^ years
+  }
+  
+  stat_f <- matrix(NA, nrow = length(years), ncol = 3)
+  stat_m <- matrix(NA, nrow = length(years), ncol = 3)
+  ## Extract mean/median, and CI
+  if (med) {
+    for (j in 1:length(years)) {
+      stat_f[j, ] <- c(median = median(abun_f[, j]), 
+                       lower = quantile(abun_f[, j], alpha / 2),
+                       upper = quantile(abun_f[, j], 1 - alpha / 2))
+      
+      stat_m[j, ] <- c(median = median(abun_m[, j]), 
+                       lower = quantile(abun_m[, j], alpha / 2),
+                       upper = quantile(abun_m[, j], 1 - alpha / 2))
+    }
+  } else {
+    for (j in 1:length(years)) {
+      stat_f[j, ] <- c(mean = mean(abun_f[, j]), 
+                       lower = quantile(abun_f[, j], alpha / 2),
+                       upper = quantile(abun_f[, j], 1 - alpha / 2))
+      
+      stat_m[j, ] <- c(mean = mean(abun_m[, j]), 
+                       lower = quantile(abun_m[, j], alpha / 2),
+                       upper = quantile(abun_m[, j], 1 - alpha / 2))
+    }
+  }
+  
+  
+  par(mfrow = c(1, 2));
+  
+  p_f <- matplot(x = y0 + years, 
+                 y = stat_f, 
+                 type = "l",
+                 col = c("darkgreen"),
+                 lty = c(1, 3, 3),
+                 ylim = c(0, 4000),
+                 ylab = "Female adult abudance")
+  if (!is.null(truth)) {
+    lines(x = years + y0, 
+          y = truth$N_f * truth$r ^ years, 
+          col = "red", 
+          lty = 2)
+  }
+  p_m <- matplot(x = y0 + years, 
+                 y = stat_m, 
+                 type = "l",
+                 col = c("purple"),
+                 lty = c(1, 3, 3),
+                 ylim = c(0, 4000),
+                 ylab = "Male adult abudance")
+  if (!is.null(truth)) {
+    lines(x = years + y0, 
+          y = truth$N_m * truth$r ^ years, 
+          col = "red", 
+          lty = 2)
+  }
+  
+}
+
 recover <- function(indiv) 
 {
   ## Reduce 'Recovery' by one year for all living individuals
