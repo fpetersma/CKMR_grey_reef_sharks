@@ -1,12 +1,12 @@
 ## ========================================================================== ##
-## vanilla_with_gestation_and_variable_reproductios_sims.R
+## vanilla_with_gestation_and_variable_reproduction_sims.R
 ## 
 ## In this script I will simulate the vanilla population data using a mix of 
 ## information on life  history trait estimates from the GBR, Hawaii and Palmyra 
 ## study. This is a very basic population and details can be found in the 
 ## Overleaf document.
 ##
-## Two things have been added to "vanilla_sims.R":
+## Three things have been added to "vanilla_sims.R":
 ##  - Reproduction for sharks is rarely as predictable as for (big) mammals. In
 ##    our scenario, we are going to assume that litter size is random from the 
 ##    discretised U(1, 4), thus ERRO = 2.5. 
@@ -27,39 +27,36 @@ library(fishSim)
 library(parallel)
 library(pbapply)
 library(ids)
-library(CKMRcpp)
+# library(CKMRcpp)
+source("source/simulating/custom_R_functions.R")
 
 ## Initialise parameters =======================================================
 ## Set life history parameters
 first_breed_male <- 10          # applies only to males
-first_breed_female <- 10        # applies only to females
-first_litter <- 1:4               # first litter 
-batch_size <- 1:4                 # all possible values for random draw
+first_breed_female <- 12        # applies only to females
+first_litter <- 1:4             # first litter 
+batch_size <- 1:4               # all possible values for random draw
 max_clutch <- Inf               # maximum litter sizes
 max_age <- 19                   # maximum age
-mort_rate <- 0.1675             # flat mortality rate (0.1675 gives stable population)
+mort_rate <- 0.097              # flat mortality rate (0.1675 gives stable population)
 surv_rate <- 1 - mort_rate      # survival is 1 minus mortality
 force_Y1 <- NA                  # first-year mortality (not always used)
-female_curve <- c(rep(0, first_breed_female), 
-                  rep(1, 90))   # female maturity curve for categories 0:maxAge
-male_curve <- c(rep(0, first_breed_male), 
-                rep(1, 90))     # male maturity curve for categories 0:maxAge
+female_curve <- c(rep(0, first_breed_female),  # female maturity curve for categories 0:maxAge
+                  rep(1, 100 - first_breed_female))  
+male_curve <- c(rep(0, first_breed_male), # male maturity curve for categories 0:maxAge
+                rep(1, 100 - first_breed_male))     
 mate_type <- "ageSex"           # type of maturity/mating structure
 mort_type <- "age"             # type of mortality structure
 fecundity_dist <- "uniform"     # uniform distribution (custom)
 sex_ratio <- c(0.5, 0.5)        # the offspring male/female sex ratio
 single_paternity <- FALSE        # is there a single father to a litter?
+no_gestation <- FALSE
 
 ## Set simulation and sampling parameters
 years <- 101:140             # number of years to run simulation
-sampling_years <- c((max(years) - 1):max(years))     # years in which sampling occurs
-sample_size <- c(rep(0, sampling_years[1] - 1), 
-                 rep(375, 2))   # number of sampled individuals in each year
-lethal_sampling <- FALSE        # is sampling lethal?
-retrospective_sampling <- TRUE
 
 ## Store simdata sets
-n_cores <- 30
+n_cores <- 25
 cl <- makeCluster(n_cores)
 rm(simulated_data_sets)
 clusterExport(cl, c(ls(), "makeFounders", "mort", "birthdays", "uuid"))
@@ -78,18 +75,19 @@ simulated_data_sets <- pblapply(1:1000, function(i) {
     survCurv = surv_rate ^ (1:(max_age )) / sum(surv_rate ^ (1:(max_age)))
   )
   
-  # ## Add marker to pregnant females
-  # indiv <- addPregnancy(
-  #   indiv = indiv,
-  #   matingAges = c(12, 14, 16, 18))
-  # 
+  ## Add marker to pregnant females
+  indiv <- addPregnancy(
+    indiv = indiv,
+    matingAges = seq(from = first_breed_female, to = max_age, by = 2))
+
   
   ## Start the simulation ========================================================
   for (y in years) {
     # cat("Starting simulation of year:", y, "...")
     
     ## 1. Mating/birth
-    indiv <- CKMRcpp::mateOrBirth(
+    # indiv <- CKMRcpp::mateOrBirth(
+    indiv <- mateOrBirth(
       indiv = indiv,
       batchSize = batch_size,
       fecundityDist = fecundity_dist, # uniform is custom
@@ -103,7 +101,7 @@ simulated_data_sets <- pblapply(1:1000, function(i) {
       singlePaternity = single_paternity,  
       maleCurve = male_curve,   
       femaleCurve = female_curve,
-      no_gestation = TRUE
+      no_gestation = no_gestation
     )
     
     ## 2. Survival
@@ -144,10 +142,10 @@ retrospective_sampling <- TRUE
 ## Remove previous sampling if required
 simulated_data_sets <- lapply(simulated_data_sets, function(indiv) {
   indiv$SampY <- NA
-  return(indiv[, 1:9]) # only return first 9 columns (before sampling columns)
+  return(indiv[, 1:10]) # only return first 10 columns (before sampling columns)
 })
 all(is.na(simulated_data_sets[[1]]$SampY)) # should be TRUE before continuing
-ncol(simulated_data_sets[[1]]) == 9 # should also be TRUE
+ncol(simulated_data_sets[[1]]) == 10 # should also be TRUE
 
 ## Add sampling
 if (retrospective_sampling) {
@@ -156,7 +154,7 @@ if (retrospective_sampling) {
       n <- sample_size[year]
       indiv <- retroCapture2(indiv, n = n, year = year, fatal = lethal_sampling)
     }
-    indiv$no_samples <- rowSums(!is.na(indiv[, 10:ncol(indiv)]))
+    indiv$no_samples <- rowSums(!is.na(indiv[, 11:ncol(indiv)]))
     return(indiv)
   })
 }
@@ -165,14 +163,14 @@ all(is.na(simulated_data_sets[[1]]$SampY))  # should be FALSE
 unique(simulated_data_sets[[1]]$SampY)      # check if this seems correct
 sum(!is.na(simulated_data_sets[[1]]$SampY)) # seem correct as well?
 
-save.image(file = "data/vanilla_variable_reproduction_sample_years_136-140_sample_size_150/1000_sims_mix.RData")
+save(list = "simulated_data_sets", file = "data/vanilla_gestation_repro=U(1,4)_sample_years_136-140/1000_sims_mix.RData")
 
 ## Create summary stats
 par(mfrow = c(3, 1))
 ## Extracting simulated abundances
 N_true <- t(sapply(simulated_data_sets, function(x) {
-  mature_females <- sum(is.na(x$DeathY) & x$Sex == "F" & x$AgeLast >= 10)
-  mature_males <- sum(is.na(x$DeathY) & x$Sex == "M" & x$AgeLast >= 10)
+  mature_females <- sum(is.na(x$DeathY) & x$Sex == "F" & x$AgeLast >= 13)
+  mature_males <- sum(is.na(x$DeathY) & x$Sex == "M" & x$AgeLast >= 11)
   return(c(N_m = mature_males, N_f = mature_females))
 }))
 

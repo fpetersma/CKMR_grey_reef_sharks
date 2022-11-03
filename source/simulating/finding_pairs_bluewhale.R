@@ -16,13 +16,13 @@ library(CKMRcpp)
 # source("source/fitting/CKMR_functions.R")
 # source("source/simulating/custom_functions_fishSim.R")
 
-data_folder <- "data/vanilla_variable_reproduction_sample_years_139-140_sample_size_375/" 
+data_folder <- "data/vanilla_gestation_repro=U(1,4)_sample_years_136-140/" 
 
 ## Load the correct 100_sims_vanilla file
-load(file = paste0(data_folder, "1000_sims_vanilla_repro=U(1,4)_no_gestation.RData"))
+load(file = paste0(data_folder, "1000_sims_vanilla_gestation_repro=U(1,4).RData"))
 
 ## Find the pairs in parallel. 
-n_cores <- 30
+n_cores <- 25
 cl <- makeCluster(n_cores)
 clusterExport(cl, c("findRelativesCustom"))
 pairs_list <- pblapply(simulated_data_sets, function(indiv) {
@@ -57,7 +57,7 @@ combined_data <- lapply(1:length(simulated_data_sets), function(i) {
 
 # save(list = c("combined_data"), file = paste0(data_folder, "1000_sims_vanilla_combined_data.RData"))
 
-n_cores <- 24
+n_cores <- 25
 cl <- makeCluster(n_cores)
 clusterExport(cl, c("vbgf"))
 dfs <- pblapply(combined_data, function(x) {
@@ -195,15 +195,15 @@ dfs <- pblapply(dfs, function(x) {
 ## Run below to add noise the length with the preferred uncertainty
 ## :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 dfs <- pblapply(dfs, function(x) {
-  x$indiv_1_length <- round(vbgf(x$indiv_1_capture_age) + rnorm(nrow(x), 0, 10))
-  x$indiv_2_length <- round(vbgf(x$indiv_2_capture_age) + rnorm(nrow(x), 0, 10))
+  x$indiv_1_length <- round(CKMRcpp::vbgf(x$indiv_1_capture_age) + rnorm(nrow(x), 0, 2))
+  x$indiv_2_length <- round(CKMRcpp::vbgf(x$indiv_2_capture_age) + rnorm(nrow(x), 0, 2))
   return(x)
 })
 
 ## :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 ## Run below to add unique covariate combo ids and return sufficient dfs
 ## :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-n_cores <- 30
+n_cores <- 25
 cl <- makeCluster(n_cores)
 # clusterExport(cl, c("vbgf"))
 dfs_suff <- pblapply(dfs, function(x) {
@@ -241,8 +241,8 @@ save(list = c("dfs"), file = paste0(data_folder, "1000_sims_dfs.RData"))
 save(list = c("dfs_suff"), file = paste0(data_folder, "1000_sims_dfs_suff.RData"))
 
 # ## Looking up relationship between captured pairs
-# pairs <- findRelativesPar(indiv = indiv, 
-#                           sampled = TRUE, 
+# pairs <- findRelativesPar(indiv = indiv,
+#                           sampled = TRUE,
 #                           nCores = 20)
 # POPs <- pairs[pairs$OneTwo == 1, ] ## Parent-Offspring pairs
 # 
