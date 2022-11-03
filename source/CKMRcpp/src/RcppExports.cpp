@@ -10,6 +10,18 @@ Rcpp::Rostream<true>&  Rcpp::Rcout = Rcpp::Rcpp_cout_get();
 Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 #endif
 
+// nllPOPCKMRcppAgeUnknownGestation
+double nllPOPCKMRcppAgeUnknownGestation(List dat, List par);
+RcppExport SEXP _CKMRcpp_nllPOPCKMRcppAgeUnknownGestation(SEXP datSEXP, SEXP parSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< List >::type dat(datSEXP);
+    Rcpp::traits::input_parameter< List >::type par(parSEXP);
+    rcpp_result_gen = Rcpp::wrap(nllPOPCKMRcppAgeUnknownGestation(dat, par));
+    return rcpp_result_gen;
+END_RCPP
+}
 // nllPOPCKMRcppAgeUnknown
 double nllPOPCKMRcppAgeUnknown(List dat, List par);
 RcppExport SEXP _CKMRcpp_nllPOPCKMRcppAgeUnknown(SEXP datSEXP, SEXP parSEXP) {
@@ -24,6 +36,7 @@ END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
+    {"_CKMRcpp_nllPOPCKMRcppAgeUnknownGestation", (DL_FUNC) &_CKMRcpp_nllPOPCKMRcppAgeUnknownGestation, 2},
     {"_CKMRcpp_nllPOPCKMRcppAgeUnknown", (DL_FUNC) &_CKMRcpp_nllPOPCKMRcppAgeUnknown, 2},
     {NULL, NULL, 0}
 };
