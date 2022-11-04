@@ -148,7 +148,7 @@ double nllPOPCKMRcppAgeUnknownGestation(List dat, List par) {
   const double vbgf_a0 = dat["vbgf_a0"];
   
   // Add parameters to be kept as constants here
-  // const double r = std::exp(double(dat["r"]));             // growth parameter
+  const double r = std::exp(double(dat["r"]));             // growth parameter
   const double sigma_l = std::exp(double(dat["sigma_l"]));
   const double phi = std::exp(double(dat["phi"])) /        // survival parameter
     (1.0 + std::exp(double(dat["phi"])));
@@ -163,7 +163,7 @@ double nllPOPCKMRcppAgeUnknownGestation(List dat, List par) {
   const double N_t0_m = std::exp(double(par["N_t0_m"]));   // male abundance
   const double N_t0_f = std::exp(double(par["N_t0_f"]));   // female abundance
   // const double sigma_l = std::exp(double(par["sigma_l"]));
-  const double r = std::exp(double(par["r"]));             // growth parameter
+  // const double r = std::exp(double(par["r"]));             // growth parameter
   
   // std::cout << "r: " << r << std::endl;
   // ===========================================================================
@@ -357,10 +357,10 @@ double nllPOPCKMRcppAgeUnknownGestation(List dat, List par) {
           // Account for survival of parent i if j was born after c1
           if (c1[index] < y2) {
             prob12_2 *= std::pow(phi, y2 - c1[index]); // don't subtract here
-          } else {
+          } // else {
             // Account for survival of mom from mating to birth (1 year)
             // prob12_2 *= phi;
-            }
+            // }
         }
         if ((s1[index] == 0) & (a1 + y2 - c1[index] - 1 <= max_age)) {
           // Derive the ERRO in the year before the birth year of the offspring
@@ -532,10 +532,10 @@ double nllPOPCKMRcppAgeUnknownGestation(List dat, List par) {
           // Account for survival of parent i if j was born after c1
           if (c2[index] < y1) {
             prob21_2 *=  std::pow(phi, y1 - c2[index]);
-          } else {
+          } // else {
             // Account for survival of mom from mating to birth (1 year)
             // prob21_2 *= phi;
-          }
+          // }
         }
         if ((s2[index] == 0) & (a2 + y1 - c2[index] - 1 <= max_age)) {
           // Derive the ERRO in the year before the birth year of the offspring
