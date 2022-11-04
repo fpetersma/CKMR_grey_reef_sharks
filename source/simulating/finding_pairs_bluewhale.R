@@ -16,10 +16,10 @@ library(CKMRcpp)
 # source("source/fitting/CKMR_functions.R")
 # source("source/simulating/custom_functions_fishSim.R")
 
-data_folder <- "data/vanilla_gestation_repro=U(1,4)_sample_years_136-140/" 
+data_folder <- "data/vanilla_gestation_repro=U(1,4)_sample_years_139-140/" 
 
 ## Load the correct 100_sims_vanilla file
-load(file = paste0(data_folder, "1000_sims_vanilla_gestation_repro=U(1,4).RData"))
+# load(file = paste0(data_folder, "1000_sims_vanilla_gestation_repro=U(1,4).RData"))
 
 ## Find the pairs in parallel. 
 n_cores <- 25
@@ -55,7 +55,7 @@ combined_data <- lapply(1:length(simulated_data_sets), function(i) {
   return(out)
 })
 
-# save(list = c("combined_data"), file = paste0(data_folder, "1000_sims_vanilla_combined_data.RData"))
+save(list = c("combined_data"), file = paste0(data_folder, "1000_sims_vanilla_combined_data1.RData"))
 
 n_cores <- 25
 cl <- makeCluster(n_cores)
@@ -181,6 +181,8 @@ dfs <- pblapply(combined_data, function(x) {
   
 }, cl = cl); stopCluster(cl);
 
+save(list = c("dfs"), file = paste0(data_folder, "1000_sims_dfs.RData"))
+
 ## :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 ## Code below can be run to remove covariate_combo_id and covariate_combo_freq
 ## :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
@@ -237,7 +239,7 @@ dfs_suff <- pblapply(dfs, function(x) {
 # save(list = c("dfs"), file = "data/test_data_dfs.RData")
 # save(list = c("dfs_suff"), file = "data/test_data_dfs_suff.RData")
 
-save(list = c("dfs"), file = paste0(data_folder, "1000_sims_dfs.RData"))
+
 save(list = c("dfs_suff"), file = paste0(data_folder, "1000_sims_dfs_suff.RData"))
 
 # ## Looking up relationship between captured pairs
