@@ -908,6 +908,8 @@ plotCKMRabundance <- function(
     fits,           # A list of fits
     # par_name,     # The name of the abundance parameter
     year_lim,       # Number of years backward and forward from reference year
+    max_y_axis = 6000,
+    fixed_r = NULL, # 
     y0 = 140,       # The reference year
     med = F,     # TRUE for the median, else the mean
     alpha = 0.05,    # Signifance level for confidence intervals
@@ -923,13 +925,22 @@ plotCKMRabundance <- function(
   abun_m <- matrix(NA, nrow = length(fits), ncol = length(years))
   
   ## For every fit, derive the abundance for all years
-  for (i in 1:length(fits)) {
-    abun_f[i, ] <- exp(est[i, "N_t0_f"]) * exp(est[i, "r"]) ^ years
-    abun_m[i, ] <- exp(est[i, "N_t0_m"]) * exp(est[i, "r"]) ^ years
+  if (is.null(fixed_r)) {
+    for (i in 1:length(fits)) {
+      abun_f[i, ] <- exp(est[i, "N_t0_f"]) * exp(est[i, "r"]) ^ years
+      abun_m[i, ] <- exp(est[i, "N_t0_m"]) * exp(est[i, "r"]) ^ years
+    }
+  } else {
+    for (i in 1:length(fits)) {
+      abun_f[i, ] <- exp(est[i, "N_t0_f"]) * fixed_r ^ years
+      abun_m[i, ] <- exp(est[i, "N_t0_m"]) * fixed_r ^ years
+    }
   }
   
+  ## Create matrices to store the median/mean abundance, and lower/upper bounds
   stat_f <- matrix(NA, nrow = length(years), ncol = 3)
   stat_m <- matrix(NA, nrow = length(years), ncol = 3)
+  
   ## Extract mean/median, and CI
   if (med) {
     for (j in 1:length(years)) {
@@ -953,36 +964,40 @@ plotCKMRabundance <- function(
     }
   }
   
-  
+  ## Set parameters to allow for two plots in one figure
   par(mfrow = c(1, 2));
   
+  ## Create plot for the female adult population
   p_f <- matplot(x = y0 + years, 
                  y = stat_f, 
                  type = "l",
                  col = c("darkgreen"),
                  lty = c(1, 3, 3),
-                 ylim = c(0, 4000),
+                 ylim = c(0, max_y_axis),
                  ylab = "Female adult abudance")
+  ## If the true trend is provided, add it to the plot
   if (!is.null(truth)) {
     lines(x = years + y0, 
           y = truth$N_f * truth$r ^ years, 
           col = "red", 
           lty = 2)
   }
+  
+  ## Create plot for the female adult population
   p_m <- matplot(x = y0 + years, 
                  y = stat_m, 
                  type = "l",
                  col = c("purple"),
                  lty = c(1, 3, 3),
-                 ylim = c(0, 4000),
+                 ylim = c(0, max_y_axis),
                  ylab = "Male adult abudance")
+  ## If the true trend is provided, add it to the plot
   if (!is.null(truth)) {
     lines(x = years + y0, 
           y = truth$N_m * truth$r ^ years, 
           col = "red", 
           lty = 2)
   }
-  
 }
 
 recover <- function(indiv) 
