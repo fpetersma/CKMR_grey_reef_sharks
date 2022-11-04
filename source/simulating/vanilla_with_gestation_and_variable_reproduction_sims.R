@@ -130,9 +130,14 @@ simulated_data_sets <- pblapply(1:1000, function(i) {
 hist(sapply(simulated_data_sets, function(x) {nrow(x[is.na(x$DeathY), ])}), xlab = "indivs")
 summary(sapply(simulated_data_sets, function(x) {nrow(x[is.na(x$DeathY), ])}), xlab = "indivs")
 
+
+## :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+## Run retrospecitve sampling
+## :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+
 ## Set sampling parameters
 n_samples <- 750
-n_sample_year <- 5
+n_sample_year <- 2
 sampling_years <- c((max(years) - n_sample_year + 1):max(years))     # years in which sampling occurs
 sample_size <- c(rep(0, sampling_years[1] - 1), 
                  rep(n_samples / n_sample_year, n_sample_year))   # number of sampled individuals in each year
@@ -152,7 +157,7 @@ if (retrospective_sampling) {
   simulated_data_sets <- pblapply(simulated_data_sets, function(indiv) {
     for (year in sampling_years) {
       n <- sample_size[year]
-      indiv <- retroCapture2(indiv, n = n, year = year, fatal = lethal_sampling)
+      indiv <- CKMRcpp::retroCapture2(indiv, n = n, year = year, fatal = lethal_sampling)
     }
     indiv$no_samples <- rowSums(!is.na(indiv[, 11:ncol(indiv)]))
     return(indiv)
@@ -163,7 +168,7 @@ all(is.na(simulated_data_sets[[1]]$SampY))  # should be FALSE
 unique(simulated_data_sets[[1]]$SampY)      # check if this seems correct
 sum(!is.na(simulated_data_sets[[1]]$SampY)) # seem correct as well?
 
-save(list = "simulated_data_sets", file = "data/vanilla_gestation_repro=U(1,4)_sample_years_136-140/1000_sims_mix.RData")
+save(list = "simulated_data_sets", file = "data/vanilla_gestation_repro=U(1,4)_sample_years_139-140/1000_sims_vanilla_gestation_repro=U(1,4).RData")
 
 ## Create summary stats
 par(mfrow = c(3, 1))
