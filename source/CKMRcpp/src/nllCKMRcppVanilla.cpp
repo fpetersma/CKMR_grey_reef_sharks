@@ -149,11 +149,11 @@ double nllPOPCKMRcppAgeUnknownGestation(List dat, List par) {
   
   // Extract boolean for fixed parameters
   const int fixed_r = dat["fixed_r"]; 
-  const double r == -1.0; // Define r with impossible value here for compiling
+  double r = -1.0; // Define r with impossible value here for compiling
   
   // Add parameters to be kept as constants here
   if (fixed_r == 1) {
-    const double r = std::exp(double(dat["r"]));             // growth parameter
+    r = std::exp(double(dat["r"]));             // growth parameter
   }
   const double sigma_l = std::exp(double(dat["sigma_l"]));
   const double phi = std::exp(double(dat["phi"])) /        // survival parameter
@@ -170,7 +170,7 @@ double nllPOPCKMRcppAgeUnknownGestation(List dat, List par) {
   const double N_t0_f = std::exp(double(par["N_t0_f"]));   // female abundance
   // const double sigma_l = std::exp(double(par["sigma_l"]));
   if (fixed_r == 0) {
-    const double r = std::exp(double(par["r"]));             // growth parameter
+    r = std::exp(double(par["r"]));             // growth parameter
   }
   
   // Make sure r is not -1.0
