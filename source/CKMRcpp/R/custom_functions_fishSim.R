@@ -4,6 +4,20 @@
 ## accidentally replacing the file. Very stupid.                              ##  
 ## ========================================================================== ##
 
+#' Imagine two VBGFs with equal k, function i and curve j.
+#' If we specife all parameters for function i, then this function gives you
+#' the a_0 for j such that the difference between l_inf_i and l_inf_j is 
+#' identical to the difference between the lengths at a = 0. 
+#' 
+#' Uses CKMRcpp::vbgf()
+#' 
+#' 
+a_0_j <- function(l_inf_i, l_inf_j, k, a_0_i) {
+  d <- l_inf_i - l_inf_j
+  a_0 <- log(1 - (CKMRcpp::vbgf(0, a_0_i, k, l_inf_i) - d) / l_inf_j) / k
+  return(a_0)
+}
+
 addBirthRecovery <- function(indiv, 
                              recoveryTime, 
                              maturityAge,
