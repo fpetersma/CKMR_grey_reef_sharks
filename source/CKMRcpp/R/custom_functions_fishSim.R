@@ -84,6 +84,39 @@ captureOnlyFirst <- function(indiv,
   return(indiv)
 }
 
+#' createFounders() is an almost literal copy of fishSim::makeFounders, but
+#' instead calls the function uuid() explicitly through ids::uuid().
+createFounders <- function (pop = 1000, 
+                            osr = c(0.5, 0.5), 
+                            stocks = c(0.3, 0.3, 0.4), 
+                            maxAge = 20, 
+                            survCurv = 0.7^(1:maxAge)/sum(0.7^(1:maxAge))) {
+  if (sum(osr) != 1) 
+    warning("osr does not sum to 1")
+  if (sum(stocks) != 1) 
+    warning("stocks do not sum to 1")
+  if (sum(survCurv) != 1) 
+    warning("survCurv does not sum to 1")
+  if (length(survCurv) != maxAge) 
+    warning("survCurv and maxAge imply different maximum ages")
+  indiv <- data.frame(Me = character(pop), Sex = character(pop), 
+                      Dad = character(pop), Mum = character(pop), BirthY = integer(pop), 
+                      DeathY = integer(pop), Stock = integer(pop), AgeLast = integer(pop), 
+                      SampY = integer(pop))
+  indiv[, 1] <- ids::uuid(n = pop, drop_hyphens = TRUE)
+  indiv[, 2] <- sample(c("M", "F"), pop, TRUE, 
+                       prob = osr)
+  indiv[, 3] <- c(rep("founder", pop))
+  indiv[, 4] <- c(rep("founder", pop))
+  indiv[, 6] <- as.integer(c(rep(NA, pop)))
+  indiv[, 7] <- as.integer(sample(1:length(stocks), pop, TRUE, 
+                                  prob = stocks))
+  indiv[, 8] <- sample.int(maxAge, pop, TRUE, prob = survCurv)
+  indiv[, 5] <- 1L - indiv[, 8]
+  indiv[, 9] <- as.integer(c(rep(NA, pop)))
+  return(indiv)
+}
+
 extractSampledIndiv <- function(indiv) {
   ## Extract the self captures
   self <- indiv[indiv$no_samples > 1, ]
@@ -672,7 +705,7 @@ mateOrBirth <- function (indiv,
   }
   clutch[clutch > maxClutch] <- maxClutch
   
-  sprog.m <- makeFounders(pop = 0) # this creates empty pop, but without column 10
+  sprog.m <- CKMRcpp::createFounders(pop = 0) # this creates empty pop, but without column 10
   if (!no_gestation) {
     sprog.m$Pregnant <- character(0) # add column 10 for pregnancy
   }
@@ -685,7 +718,7 @@ mateOrBirth <- function (indiv,
       warning(paste("There were no mature males in stock ", 
                     s, ", so ", nrow(mothersInStock), " mature females did not produce offspring", 
                     sep = ""))
-      sprog.stock <- makeFounders(pop = 0)
+      sprog.stock <- CKMRcpp::createFounders(pop = 0)
     }
     else if (nrow(fathersInStock > 0)) {
       n.sprogs <- sum(clutchInStock)
@@ -729,7 +762,7 @@ mateOrBirth <- function (indiv,
     }
     sprog.stock <- sprog.stock[!is.na(sprog.stock[, 3]), 
                                , drop = FALSE]
-    sprog.stock[, 1] <- uuid(n = nrow(sprog.stock), drop_hyphens = TRUE)
+    sprog.stock[, 1] <- ids::uuid(n = nrow(sprog.stock), drop_hyphens = TRUE)
     sprog.stock[, 2] <- sample(c("M", "F"), nrow(sprog.stock), 
                                TRUE, prob = osr)
     sprog.stock[, 5] <- c(rep(year, nrow(sprog.stock)))
@@ -840,7 +873,7 @@ mateWithRecovery <- function (indiv,
   }
   clutch[clutch > maxClutch] <- maxClutch
   
-  sprog.m <- makeFounders(pop = 0) # this creates empty pop, but without column 10
+  sprog.m <- CKMRcpp::createFounders(pop = 0) # this creates empty pop, but without column 10
   sprog.m$Recovery <- character(0) # add column 10 for recovery years remaining
   
   for (s in unique(mothers[, 7])) {
@@ -851,7 +884,7 @@ mateWithRecovery <- function (indiv,
       warning(paste("There were no mature males in stock ", 
                     s, ", so ", nrow(mothersInStock), " mature females did not produce offspring", 
                     sep = ""))
-      sprog.stock <- makeFounders(pop = 0)
+      sprog.stock <- CKMRcpp::createFounders(pop = 0)
     }
     else if (nrow(fathersInStock > 0)) {
       n.sprogs <- sum(clutchInStock)
@@ -895,7 +928,7 @@ mateWithRecovery <- function (indiv,
     }
     sprog.stock <- sprog.stock[!is.na(sprog.stock[, 3]), 
                                , drop = FALSE]
-    sprog.stock[, 1] <- uuid(n = nrow(sprog.stock), drop_hyphens = TRUE)
+    sprog.stock[, 1] <- ids::uuid(n = nrow(sprog.stock), drop_hyphens = TRUE)
     sprog.stock[, 2] <- sample(c("M", "F"), nrow(sprog.stock), 
                                TRUE, prob = osr)
     sprog.stock[, 5] <- c(rep(year, nrow(sprog.stock)))
