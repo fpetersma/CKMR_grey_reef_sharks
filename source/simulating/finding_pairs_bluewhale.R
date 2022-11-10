@@ -16,7 +16,7 @@ library(CKMRcpp)
 # source("source/fitting/CKMR_functions.R")
 # source("source/simulating/custom_functions_fishSim.R")
 
-data_folder <- "data/vanilla_gestation_repro=U(1,4)_sample_years_139-140/" 
+data_folder <- "data/vanilla_gestation_repro=U(1,4)_sample_years_136-140/" 
 
 ## Load the correct 100_sims_vanilla file
 # load(file = paste0(data_folder, "1000_sims_vanilla_gestation_repro=U(1,4).RData"))
@@ -240,7 +240,7 @@ dfs_suff <- pblapply(dfs, function(x) {
 # save(list = c("dfs_suff"), file = "data/test_data_dfs_suff.RData")
 
 
-save(list = c("dfs_suff"), file = paste0(data_folder, "1000_sims_dfs_suff.RData"))
+save(list = c("dfs_suff"), file = paste0(data_folder, "1000_sims_dfs_suff_unique_combos.RData"))
 
 # ## Looking up relationship between captured pairs
 # pairs <- findRelativesPar(indiv = indiv,
