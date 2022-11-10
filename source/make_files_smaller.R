@@ -31,4 +31,4 @@ dfs_min <- pblapply(dfs_suff, function(x) {
 
 dfs_suff <- dfs_min
 
-save(list = "dfs_suff", file = "data/vanilla_gestation_repro=U(1,4)_sample_years_136-140/smaller_files/1000_sims_dfs_suff_length_sd=2_unique_combos.RData")
+save(list = "dfs_suff", file = "data/vanilla_gestation_repro=U(1,4)_sample_years_136-140/1000_sims_dfs_suff_length_sd=2_unique_combos.RData")
