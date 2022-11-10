@@ -15,7 +15,7 @@ library(pbapply)
 ## BE CAREFULL WHICH DATA TO LOAD
 ## ==============================
 
-file_folder <- "data/vanilla_gestation_repro=U(1,4)_sample_years_136-140/"
+file_folder <- "data/vanilla_gestation_repro=U(1,4)_sample_years_139-140/"
 
 load(paste0(file_folder, "smaller_files/1000_sims_dfs_suff_length_sd=2_unique_combos.RData"))
 
@@ -32,7 +32,7 @@ load(paste0(file_folder, "smaller_files/1000_sims_dfs_suff_length_sd=2_unique_co
 # })
 
 ## The unknown age version is a lot slower, so run in parallel
-n_cores <- 20 # 50 fits per core
+n_cores <- 30 # 50 fits per core
 cl <- makeCluster(n_cores)
 result_list <- pblapply(dfs_suff[1:1000], function(df) {
   ## Source cpp file if not using the CKMRcpp package
@@ -41,23 +41,25 @@ result_list <- pblapply(dfs_suff[1:1000], function(df) {
   ## Create parameter object for nlminb()
   par <- list(
     # phi = boot::logit(0.87), # same as plogis(0.9) -- boot::inv.logit() is qlogis()
-    N_t0_m = log(500), 
+    N_t0_m = log(500),
     # r = log(1.0002),
     # sigma_l = log(0.01),
     # phi = boot::logit(1 - 0.153),
     N_t0_f = log(500))
-  
+
   ## Take a subset of the data if required
   df_select <- df[, ]
-  
+
   ## Create the data object for nlminb()
-  dat <- list(alpha_m = 10,
-              alpha_f = 12,
-              
+  dat <- list(alpha_m = 10,                         # maturity age for males
+              alpha_f = 12,                         # maturity age for females
+
               ## MAKE SURE sigma_l AND phi ARE CORRECT!
               r = log(1.0002),
               sigma_l = log(2),
-              phi = boot::logit(1 - 0.097),
+              phi = boot::logit(1 - 0.097),         # phi is the surival rate
+              
+              fixed_r = 1,                          # is r fixed or estimated?
               
               max_age = 19,
               max_length = 250,
