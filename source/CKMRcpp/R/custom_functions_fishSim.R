@@ -44,9 +44,9 @@ addBirthRecovery <- function(indiv,
 
 addPregnancy <- function(indiv, matingAges) {
   
-  is_pregnant <- indiv$Sex == "F" & indiv$AgeLast %in% (matingAges + 1)
+  is_pregnant <- indiv$Sex == 1 & indiv$AgeLast %in% (matingAges + 1)
   
-  indiv$Pregnant <- is_pregnant
+  indiv$Pregnant <- as.integer(is_pregnant)
   
   return(indiv)
 }
@@ -99,21 +99,24 @@ createFounders <- function (pop = 1000,
     warning("survCurv does not sum to 1")
   if (length(survCurv) != maxAge) 
     warning("survCurv and maxAge imply different maximum ages")
-  indiv <- data.frame(Me = character(pop), Sex = character(pop), 
-                      Dad = character(pop), Mum = character(pop), BirthY = integer(pop), 
+  indiv <- data.frame(Me = integer(pop), Sex = integer(pop), 
+                      Dad = integer(pop), Mum = integer(pop), BirthY = integer(pop), 
                       DeathY = integer(pop), Stock = integer(pop), AgeLast = integer(pop), 
                       SampY = integer(pop))
-  indiv[, 1] <- ids::uuid(n = pop, drop_hyphens = TRUE)
-  indiv[, 2] <- sample(c("M", "F"), pop, TRUE, 
-                       prob = osr)
-  indiv[, 3] <- c(rep("founder", pop))
-  indiv[, 4] <- c(rep("founder", pop))
-  indiv[, 6] <- as.integer(c(rep(NA, pop)))
-  indiv[, 7] <- as.integer(sample(1:length(stocks), pop, TRUE, 
-                                  prob = stocks))
-  indiv[, 8] <- sample.int(maxAge, pop, TRUE, prob = survCurv)
-  indiv[, 5] <- 1L - indiv[, 8]
-  indiv[, 9] <- as.integer(c(rep(NA, pop)))
+  if (pop > 0) {
+    indiv[, 1] <- 1:nrow(indiv) # much less memory than ids::uuid()
+    indiv[, 2] <- sample(c(0, 1), pop, TRUE, # 0 is male, 1 is female
+                         prob = osr)
+    indiv[, 3] <- c(rep(-1, pop)) # -1 indicates founder
+    indiv[, 4] <- c(rep(-1, pop)) # -1 indicates founder
+    indiv[, 6] <- as.integer(c(rep(NA, pop)))
+    indiv[, 7] <- as.integer(sample(1:length(stocks), pop, TRUE, 
+                                    prob = stocks))
+    indiv[, 8] <- sample.int(maxAge, pop, TRUE, prob = survCurv)
+    indiv[, 5] <- 1L - indiv[, 8]
+    indiv[, 9] <- as.integer(c(rep(NA, pop)))
+  }
+  
   return(indiv)
 }
 
@@ -265,7 +268,7 @@ findRelativesCustom <- function(indiv,
     
     FourFour[i] <- sum(c(indi1GGP %in% indi2GGP))
     
-    if (i%%1000 == 0) {
+    if (i %% 1000 == 0) {
       cat("\r", i, " of ", length(related), 
           " comparisons", sep = "")
       flush.console()
@@ -319,49 +322,12 @@ findRelativesParCustom <- function(indiv,
     }
   print(paste("great-grandparents found at ", Sys.time(), 
               sep = ""))
-  # gggrandparents.o <- foreach(i = 1:nrow(ancestors), .combine = rbind) %dopar% 
-  #   {
-  #     great2.grandparents(ancestors[i, 1], indiv)
-  #   }
-  # print(paste("great-great-grandparents found at ", Sys.time(), 
-  #             sep = ""))
-  # ggggrandparents.o <- foreach(i = 1:nrow(ancestors), .combine = rbind) %dopar% 
-  #   {
-  #     great3.grandparents(ancestors[i, 1], indiv)
-  #   }
-  # print(paste("great-great-great-grandparents found at ", 
-  #             Sys.time(), sep = ""))
-  # gggggrandparents.o <- foreach(i = 1:nrow(ancestors), .combine = rbind) %dopar% 
-  #   {
-  #     great4.grandparents(ancestors[i, 1], indiv)
-  #   }
-  # print(paste("great-great-great-great-grandparents found at ", 
-  #             Sys.time(), sep = ""))
+  
   ancestors <- cbind(ancestors, parents.o, grandparents.o, ggrandparents.o) #, 
-  # gggrandparents.o, ggggrandparents.o, 
-  # gggggrandparents.o)
+  
   colnames(ancestors) <- c("self", "father", "mother", 
                            "FF", "FM", "MF", "MM", 
                            "FFF", "FFM", "FMF", "FMM", "MFF",  "MFM", "MMF", "MMM") #, 
-  # "FFFF", "FFFM", "FFMF", "FFMM", 
-  # "FMFF", "FMFM", "FMMF", "FMMM", "MFFF", "MFFM", "MFMF", 
-  # "MFMM", "MMFF", "MMFM", "MMMF", "MMMM", "FFFFF", "FFFFM", 
-  # "FFFMF", "FFFMM", "FFMFF", "FFMFM", "FFMMF", "FFMMM", 
-  # "FMFFF", "FMFFM", "FMFMF", "FMFMM", "FMMFF", "FMMFM", 
-  # "FMMMF", "FMMMM", "MFFFF", "MFFFM", "MFFMF", "MFFMM", 
-  # "MFMFF", "MFMFM", "MFMMF", "MFMMM", "MMFFF", "MMFFM", 
-  # "MMFMF", "MMFMM", "MMMFF", "MMMFM", "MMMMF", "MMMMM", 
-  # "FFFFFF", "FFFFFM", "FFFFMF", "FFFFMM", "FFFMFF", "FFFMFM", 
-  # "FFFMMF", "FFFMMM", "FFMFFF", "FFMFFM", "FFMFMF", "FFMFMM", 
-  # "FFMMFF", "FFMMFM", "FFMMMF", "FFMMMM", "FMFFFF", "FMFFFM", 
-  # "FMFFMF", "FMFFMM", "FMFMFF", "FMFMFM", "FMFMMF", "FMFMMM", 
-  # "FMMFFF", "FMMFFM", "FMMFMF", "FMMFMM", "FMMMFF", "FMMMFM", 
-  # "FMMMMF", "FMMMMM", "MFFFFF", "MFFFFM", "MFFFMF", "MFFFMM", 
-  # "MFFMFF", "MFFMFM", "MFFMMF", "MFFMMM", "MFMFFF", "MFMFFM", 
-  # "MFMFMF", "MFMFMM", "MFMMFF", "MFMMFM", "MFMMMF", "MFMMMM", 
-  # "MMFFFF", "MMFFFM", "MMFFMF", "MMFFMM", "MMFMFF", "MMFMFM", 
-  # "MMFMMF", "MMFMMM", "MMMFFF", "MMMFFM", "MMMFMF", "MMMFMM", 
-  # "MMMMFF", "MMMMFM", "MMMMMF", "MMMMMM")
   expand.grid.unique <- function(x, y, include.equals = FALSE) {
     x <- unique(x)
     y <- unique(y)
@@ -409,9 +375,6 @@ findRelativesParCustom <- function(indiv,
   SixSeven <- c(rep(NA, nrow(pairs)))
   SevenSeven <- c(rep(NA, nrow(pairs)))
   for (i in 1:length(related)) {
-    # allAncestors <- ancestors[ancestors[, 1] == pairs[i, 
-    #                                                   1], 1:127] %in% ancestors[ancestors[, 1] == pairs[i, 
-    #                                                                                                     2], 1:127]
     allAncestors <- ancestors[ancestors[, 1] == pairs[i, 1], 1:15] %in% 
       ancestors[ancestors[, 1] == pairs[i, 2], 1:15]
     
@@ -429,18 +392,7 @@ findRelativesParCustom <- function(indiv,
                           8:15]
     indi2GGP <- ancestors[ancestors[, 1] == pairs[i, 2], 
                           8:15]
-    # indi1GGGP <- ancestors[ancestors[, 1] == pairs[i, 1], 
-    #                        16:31]
-    # indi2GGGP <- ancestors[ancestors[, 1] == pairs[i, 2], 
-    #                        16:31]
-    # indi1GGGGP <- ancestors[ancestors[, 1] == pairs[i, 1], 
-    #                         32:63]
-    # indi2GGGGP <- ancestors[ancestors[, 1] == pairs[i, 2], 
-    #                         32:63]
-    # indi1GGGGGP <- ancestors[ancestors[, 1] == pairs[i, 
-    #                                                  1], 64:127]
-    # indi2GGGGGP <- ancestors[ancestors[, 1] == pairs[i, 
-    #                                                  2], 64:127]
+    
     related[i] <- any(allAncestors)
     totalRelatives[i] <- sum(allAncestors)
     OneTwo[i] <- sum(c(indi1 %in% indi2Par, indi2 %in% indi1Par))
@@ -448,48 +400,16 @@ findRelativesParCustom <- function(indiv,
                            indi1GP))
     OneFour[i] <- sum(c(indi1 %in% indi2GGP, indi2 %in% 
                           indi1GGP))
-    # OneFive[i] <- sum(c(indi1 %in% indi2GGGP, indi2 %in% 
-    #                       indi1GGGP))
-    # OneSix[i] <- sum(c(indi1 %in% indi2GGGGP, indi2 %in% 
-    #                      indi1GGGGP))
-    # OneSeven[i] <- sum(c(indi1 %in% indi2GGGGGP, indi2 %in% 
-    #                        indi1GGGGGP))
     TwoTwo[i] <- sum(c(indi1Par %in% indi2Par))
     TwoThree[i] <- sum(c(indi1Par %in% indi2GP, indi2Par %in% 
                            indi1GP))
     TwoFour[i] <- sum(c(indi1Par %in% indi2GGP, indi2Par %in% 
                           indi1GGP))
-    # TwoFive[i] <- sum(c(indi1Par %in% indi2GGGP, indi2Par %in% 
-    #                       indi1GGGP))
-    # TwoSix[i] <- sum(c(indi1Par %in% indi2GGGGP, indi2Par %in% 
-    #                      indi1GGGGP))
-    # TwoSeven[i] <- sum(c(indi1Par %in% indi2GGGGGP, indi2Par %in% 
-    #                        indi1GGGGGP))
     ThreeThree[i] <- sum(c(indi1GP %in% indi2GP))
     ThreeFour[i] <- sum(c(indi1GP %in% indi2GGP, indi2GP %in% 
                             indi1GGP))
-    # ThreeFive[i] <- sum(c(indi1GP %in% indi2GGGP, indi2GP %in% 
-    #                         indi1GGGP))
-    # ThreeSix[i] <- sum(c(indi1GP %in% indi2GGGGP, indi2GP %in% 
-    #                        indi1GGGGP))
-    # ThreeSeven[i] <- sum(c(indi1GP %in% indi2GGGGGP, indi2GP %in% 
-    #                          indi1GGGGGP))
     FourFour[i] <- sum(c(indi1GGP %in% indi2GGP))
-    # FourFive[i] <- sum(c(indi1GGP %in% indi2GGGP, indi2GGP %in% 
-    #                        indi1GGGP))
-    # FourSix[i] <- sum(c(indi1GGP %in% indi2GGGGP, indi2GGP %in% 
-    #                       indi1GGGGP))
-    # FourSeven[i] <- sum(c(indi1GGP %in% indi2GGGGGP, indi2GGP %in% 
-    #                         indi1GGGGGP))
-    # FiveFive[i] <- sum(c(indi1GGGP %in% indi2GGGP))
-    # FiveSix[i] <- sum(c(indi1GGGP %in% indi2GGGGP, indi2GGGP %in% 
-    #                       indi1GGGGP))
-    # FiveSeven[i] <- sum(c(indi1GGGP %in% indi2GGGGGP, indi2GGGP %in% 
-    #                         indi1GGGGGP))
-    # SixSix[i] <- sum(c(indi1GGGGP %in% indi2GGGGP))
-    # SixSeven[i] <- sum(c(indi1GGGGP %in% indi2GGGGGP, indi2GGGGP %in% 
-    #                        indi1GGGGGP))
-    # SevenSeven[i] <- sum(c(indi1GGGGGP %in% indi2GGGGGP))
+    
     if (i%%1000 == 0) {
       cat("\r", i, " of ", length(related), " comparisons", 
           sep = "")
@@ -626,14 +546,14 @@ mateOrBirth <- function (indiv,
   
   if (no_gestation) {
     ## Subset the birthing females
-    mothers <- subset(indiv, indiv[, 2] == "F" &   # are they female
+    mothers <- subset(indiv, indiv[, 2] == 1 &   # are they female
                         indiv[, 8] >= firstBreedFemale & # are they old enough to breed
                         is.na(indiv[, 6]))       # are they alive
     if (nrow(mothers) == 0) {
       warning("There are no carrying females in the population")
     }
     ## Subset potential fathers
-    fathers <- subset(indiv, indiv[, 2] == "M" & 
+    fathers <- subset(indiv, indiv[, 2] == 0 & 
                         indiv[, 8] >= firstBreedMale & # only include males that were mature a year ago
                         is.na(indiv[, 6])) # either alive 
     
@@ -642,7 +562,7 @@ mateOrBirth <- function (indiv,
     }
   } else {
     ## Subset the birthing females
-    mothers <- subset(indiv, indiv[, 2] == "F" &   # are they female
+    mothers <- subset(indiv, indiv[, 2] == 1 &   # are they female
                         indiv[, 8] > firstBreedFemale & # are they old enough to breed
                         is.na(indiv[, 6]) &        # are they alive
                         indiv[, 10] == 1)          # are they pregnant?
@@ -650,7 +570,7 @@ mateOrBirth <- function (indiv,
       warning("There are no carrying females in the population")
     }
     ## Subset the mating females
-    mating_females <- subset(indiv, indiv[, 2] == "F" &   # are they female
+    mating_females <- subset(indiv, indiv[, 2] == 1 &   # are they female
                                indiv[, 8] >= firstBreedFemale & # are they old enough to breed
                                is.na(indiv[, 6]) &        # are they alive
                                indiv[, 10] == 0)          # are they pregnant?
@@ -658,7 +578,7 @@ mateOrBirth <- function (indiv,
       warning("There are no mating females in the population")
     }
     ## Subset potential fathers = all mature males that were alive ONE YEAR AGO!
-    fathers <- subset(indiv, indiv[, 2] == "M" & 
+    fathers <- subset(indiv, indiv[, 2] == 0 & 
                         indiv[, 8] - 1 >= firstBreedMale & # only include males that were mature a year ago
                         is.na(indiv[, 6]) | indiv[, 6] == year) # either alive or were still alive one year ago
     
@@ -698,8 +618,8 @@ mateOrBirth <- function (indiv,
     
     ## Add/remove pregnancy indicators
     if (!no_gestation) {
-      indiv$Pregnant[indiv$Me %in% mothers$Me] <- FALSE # No longer pregnant
-      indiv$Pregnant[indiv$Me %in% mating_females$Me] <- TRUE # Mating females now pregnant
+      indiv$Pregnant[indiv$Me %in% mothers$Me] <- 0 # No longer pregnant
+      indiv$Pregnant[indiv$Me %in% mating_females$Me] <- 1 # Mating females now pregnant
     }
     clutch <- clutch[clutch > 0]
   }
@@ -707,7 +627,7 @@ mateOrBirth <- function (indiv,
   
   sprog.m <- CKMRcpp::createFounders(pop = 0) # this creates empty pop, but without column 10
   if (!no_gestation) {
-    sprog.m$Pregnant <- character(0) # add column 10 for pregnancy
+    sprog.m$Pregnant <- integer(0) # add column 10 for pregnancy
   }
   
   for (s in unique(mothers[, 7])) {
@@ -722,9 +642,9 @@ mateOrBirth <- function (indiv,
     }
     else if (nrow(fathersInStock > 0)) {
       n.sprogs <- sum(clutchInStock)
-      sprog.stock <- data.frame(Me = character(n.sprogs), 
-                                Sex = character(n.sprogs), Dad = character(n.sprogs), 
-                                Mum = character(n.sprogs), BirthY = integer(n.sprogs), 
+      sprog.stock <- data.frame(Me = integer(n.sprogs), 
+                                Sex = integer(n.sprogs), Dad = integer(n.sprogs), 
+                                Mum = integer(n.sprogs), BirthY = integer(n.sprogs), 
                                 DeathY = integer(n.sprogs), Stock = integer(n.sprogs), 
                                 AgeLast = integer(n.sprogs), SampY = integer(n.sprogs))
       ticker <- 1
@@ -762,8 +682,8 @@ mateOrBirth <- function (indiv,
     }
     sprog.stock <- sprog.stock[!is.na(sprog.stock[, 3]), 
                                , drop = FALSE]
-    sprog.stock[, 1] <- ids::uuid(n = nrow(sprog.stock), drop_hyphens = TRUE)
-    sprog.stock[, 2] <- sample(c("M", "F"), nrow(sprog.stock), 
+    sprog.stock[, 1] <- -1 ## -1 is a placeholder; assign id's later
+    sprog.stock[, 2] <- sample(c(0, 1), nrow(sprog.stock), # M=0, F=1
                                TRUE, prob = osr)
     sprog.stock[, 5] <- c(rep(year, nrow(sprog.stock)))
     sprog.stock[, 6] <- c(rep(NA, nrow(sprog.stock)))
@@ -773,11 +693,12 @@ mateOrBirth <- function (indiv,
     if (!no_gestation) {
       sprog.stock[, 10] <- c(rep(0, nrow(sprog.stock)))
     }
-    sprog.m <- rbind(sprog.m, sprog.stock)
+    sprog.m <- data.table::rbindlist(list(sprog.m, sprog.stock))
   }
   names(sprog.m) <- names(indiv)
-  indiv <- rbind(indiv, sprog.m)
-  
+  sprog.m[, 1] <-  max(indiv$Me) + (1:nrow(sprog.m))
+  indiv <- data.table::rbindlist(list(indiv, sprog.m))
+
   if (!quiet) cat("There were", nrow(mothers), "breeding mothers this cycle.\n")
   return(indiv)
 }
