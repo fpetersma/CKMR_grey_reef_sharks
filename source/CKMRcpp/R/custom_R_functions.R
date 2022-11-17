@@ -18,30 +18,6 @@ a_0_j <- function(l_inf_i, l_inf_j, k, a_0_i) {
   return(a_0)
 }
 
-addBirthRecovery <- function(indiv, 
-                             recoveryTime, 
-                             maturityAge,
-                             random = TRUE,
-                             breedingYears = NA) {
-  if (random) {
-    potential_recovery <- 0:(recoveryTime - 1) # -1 to match the order
-    
-    indiv$Recovery <- 0
-    # Add random years since offspring for mature females
-    indiv$Recovery[indiv$Sex == "F" & indiv$AgeLast >= maturityAge] <- 
-      sample(potential_recovery, 
-             sum(indiv$Sex == "F" & indiv$AgeLast >= maturityAge), 
-             TRUE)
-  } else {
-    indiv$Recovery <- 0
-    # Add random years since offspring for mature females
-    indiv$Recovery[indiv$Sex == "F" & 
-                     indiv$AgeLast >= maturityAge &
-                     indiv$AgeLast %in% (breedingYears + 1)] <- 1
-  }
-  return(indiv)
-}
-
 addPregnancy <- function(indiv, matingAges) {
   
   is_pregnant <- indiv$Sex == 1 & indiv$AgeLast %in% (matingAges + 1)
@@ -163,6 +139,47 @@ extractSampledIndiv <- function(indiv) {
   return(sampled_indiv)
 }
 
+#' extractTheLiving()
+#' 
+#' Returns the living at the start of the year (DEFAULT) or end of the year
+#' Note that the number of animals alive at the start of year t should match
+#' the living at the end of year t-1.
+extractTheLiving <- function(indiv,
+                             year,
+                             start_of_year = TRUE,
+                             min_age = 0,
+                             sex = NULL) {
+  if (is.null(sex)) {
+    indiv <- indiv
+  } else if (sex == "male") {
+    indiv <- indiv[indiv$Sex == 0, ]
+  } else if (sex == "female") {
+    indiv <- indiv[indiv$Sex == 1, ]
+  } else {
+    stop("sex should be either male, female, or NULL!")
+  }
+
+  if (start_of_year) {
+    # Born before 'year', and either still alive or dead in 'year' or later
+    alive <- indiv$BirthY < year &                     # Born before 'year'?
+      ((indiv$DeathY >= year & !is.na(indiv$DeathY)) | # Died in or after 'year'?
+         is.na(indiv$DeathY))                          # Still alive?
+    # Old enough at the start of the year
+    old_enough <-  alive & indiv$BirthY < (year - min_age + 1)
+  } else {
+    # Born in or before 'year', and either still alive or died after 'year' 
+    alive <- indiv$BirthY <= year &                    # Born in or before 'year'?
+      ((indiv$DeathY > year & !is.na(indiv$DeathY)) |  # Died after 'year'?
+         is.na(indiv$DeathY))                          # Still alive?
+    # Old enough at the endof the year
+    old_enough <-  alive & indiv$BirthY <= (year - min_age + 1)
+  }
+  
+  living <- subset(indiv, old_enough)
+  
+  return(living)
+}
+
 parents <- function (ID, indiv) {
   outs <- c(rep(0, length(ID) * 2))
   for (i in 1:length(ID)) {
@@ -247,14 +264,8 @@ findRelativesCustom <- function(indiv,
   related <- c(rep(NA, nrow(pairs)))
   totalRelatives <- c(rep(NA, nrow(pairs)))
   OneTwo <- c(rep(NA, nrow(pairs)))        # For POPs
-  # OneThree <- c(rep(NA, nrow(pairs)))    # For GGPs
-  # OneFour <- c(rep(NA, nrow(pairs)))
   TwoTwo <- c(rep(NA, nrow(pairs)))        # For HSPs and FSPs
-  # TwoThree <- c(rep(NA, nrow(pairs)))
-  # TwoFour <- c(rep(NA, nrow(pairs)))
-  # ThreeThree <- c(rep(NA, nrow(pairs)))
-  # ThreeFour <- c(rep(NA, nrow(pairs)))
-  # FourFour <- c(rep(NA, nrow(pairs)))
+
   for (i in 1:length(related)) {
     # allAncestors <- ancestors[ancestors[, 1] == pairs[i, 1], 1:7] %in% ## gone for speed
     #   ancestors[ancestors[, 1] == pairs[i, 2], 1:7]
@@ -266,27 +277,11 @@ findRelativesCustom <- function(indiv,
                           2:3]
     indi1GP <- ancestors[ancestors[, 1] == pairs[i, 1], 4:7]
     indi2GP <- ancestors[ancestors[, 1] == pairs[i, 2], 4:7]
-    # indi1GGP <- ancestors[ancestors[, 1] == pairs[i, 1], 
-                          # 8:15]
-    # indi2GGP <- ancestors[ancestors[, 1] == pairs[i, 2], 
-                          # 8:15]
     # related[i] <- is.integer(any(allAncestors))## gone for speed
     # totalRelatives[i] <- sum(allAncestors) ## gone for speed
     OneTwo[i] <- sum(c(indi1 %in% indi2Par, indi2 %in% indi1Par)) # For POP
-    # OneThree[i] <- sum(c(indi1 %in% indi2GP, indi2 %in% indi1GP)) # For GGP
-    # OneFour[i] <- sum(c(indi1 %in% indi2GGP, indi2 %in% indi1GGP))
-    
     TwoTwo[i] <- sum(c(indi1Par %in% indi2Par)) # For HSP and FSP
-    # TwoThree[i] <- sum(c(indi1Par %in% indi2GP, indi2Par %in%
-    #                        indi1GP))
-    # TwoFour[i] <- sum(c(indi1Par %in% indi2GGP, indi2Par %in% 
-                          # indi1GGP))
-    
-    # ThreeThree[i] <- sum(c(indi1GP %in% indi2GP))
-    # ThreeFour[i] <- sum(c(indi1GP %in% indi2GGP, indi2GP %in% 
-                            # indi1GGP))
-    
-    # FourFour[i] <- sum(c(indi1GGP %in% indi2GGP))
+
     
     ## Optimise this print function away; it just takes time.
     # if (i %% 1000 == 0) {
@@ -298,160 +293,8 @@ findRelativesCustom <- function(indiv,
   pairs <- data.frame(pairs, 
                       # related, totalRelatives, 
                       OneTwo, 
-                      #OneThree, #OneFour,
-                      TwoTwo#, TwoThree, #TwoFour,
-                      #ThreeThree#, ThreeFour, 
-                      #FourFour
+                      TwoTwo
                       )
-  return(pairs)
-}
-
-
-findRelativesParCustom <- function(indiv, 
-                                   sampled = TRUE, 
-                                   verbose = TRUE,
-                                   nCores = 1, 
-                                   delimitIndiv = TRUE) {
-  require(doParallel)
-  registerDoParallel(nCores)
-  if (sampled) {
-    if (sum(!is.na(indiv[, 9])) == 0) 
-      stop("no sampled individuals")
-    if (verbose) 
-      print(data.frame(table(indiv[!is.na(indiv[, 9]), 
-                                   9], dnn = "Sample Year")))
-    sampled <- indiv[!is.na(indiv[, 9]), 1]
-  } else {
-    sampled <- indiv[, 1]
-  }
-  if (delimitIndiv) {
-    keepers <- indiv$Me %in% sampled | indiv$Me %in% indiv$Mum | 
-      indiv$Me %in% indiv$Dad
-    indiv <- indiv[keepers, ]
-  }
-  ancestors <- matrix(data = sampled, nrow = length(sampled))
-  parents.o <- foreach(i = 1:nrow(ancestors), .combine = rbind) %dopar% 
-    {
-      fishSim::parents(ancestors[i, 1], indiv)
-    }
-  print(paste("parents found at ", Sys.time(), sep = ""))
-  grandparents.o <- foreach(i = 1:nrow(ancestors), .combine = rbind) %dopar% 
-    {
-      fishSim::grandparents(ancestors[i, 1], indiv)
-    }
-  print(paste("grandparents found at ", Sys.time()))
-  ggrandparents.o <- foreach(i = 1:nrow(ancestors), .combine = rbind) %dopar% 
-    {
-      fishSim::great.grandparents(ancestors[i, 1], indiv)
-    }
-  print(paste("great-grandparents found at ", Sys.time(), 
-              sep = ""))
-  
-  ancestors <- cbind(ancestors, parents.o, grandparents.o, ggrandparents.o) #, 
-  
-  colnames(ancestors) <- c("self", "father", "mother", 
-                           "FF", "FM", "MF", "MM", 
-                           "FFF", "FFM", "FMF", "FMM", "MFF",  "MFM", "MMF", "MMM") #, 
-  expand.grid.unique <- function(x, y, include.equals = FALSE) {
-    x <- unique(x)
-    y <- unique(y)
-    g <- function(i) {
-      z <- setdiff(y, x[seq_len(i - include.equals)])
-      if (length(z)) 
-        cbind(x[i], z, deparse.level = 0)
-    }
-    do.call(rbind, lapply(seq_along(x), g))
-  }
-  print("made it")
-  
-  pairs <- expand.grid.unique(ancestors[, 1], ancestors[, 1])
-  
-  
-  
-  colnames(pairs) <- c("Var1", "Var2")
-  related <- c(rep(NA, nrow(pairs)))
-  totalRelatives <- c(rep(NA, nrow(pairs)))
-  OneTwo <- c(rep(NA, nrow(pairs)))
-  OneThree <- c(rep(NA, nrow(pairs)))
-  OneFour <- c(rep(NA, nrow(pairs)))
-  OneFive <- c(rep(NA, nrow(pairs)))
-  OneSix <- c(rep(NA, nrow(pairs)))
-  OneSeven <- c(rep(NA, nrow(pairs)))
-  TwoTwo <- c(rep(NA, nrow(pairs)))
-  TwoThree <- c(rep(NA, nrow(pairs)))
-  TwoFour <- c(rep(NA, nrow(pairs)))
-  TwoFive <- c(rep(NA, nrow(pairs)))
-  TwoSix <- c(rep(NA, nrow(pairs)))
-  TwoSeven <- c(rep(NA, nrow(pairs)))
-  ThreeThree <- c(rep(NA, nrow(pairs)))
-  ThreeFour <- c(rep(NA, nrow(pairs)))
-  ThreeFive <- c(rep(NA, nrow(pairs)))
-  ThreeSix <- c(rep(NA, nrow(pairs)))
-  ThreeSeven <- c(rep(NA, nrow(pairs)))
-  FourFour <- c(rep(NA, nrow(pairs)))
-  FourFive <- c(rep(NA, nrow(pairs)))
-  FourSix <- c(rep(NA, nrow(pairs)))
-  FourSeven <- c(rep(NA, nrow(pairs)))
-  FiveFive <- c(rep(NA, nrow(pairs)))
-  FiveSix <- c(rep(NA, nrow(pairs)))
-  FiveSeven <- c(rep(NA, nrow(pairs)))
-  SixSix <- c(rep(NA, nrow(pairs)))
-  SixSeven <- c(rep(NA, nrow(pairs)))
-  SevenSeven <- c(rep(NA, nrow(pairs)))
-  for (i in 1:length(related)) {
-    allAncestors <- ancestors[ancestors[, 1] == pairs[i, 1], 1:15] %in% 
-      ancestors[ancestors[, 1] == pairs[i, 2], 1:15]
-    
-    indi1 <- pairs[i, 1]
-    indi2 <- pairs[i, 2]
-    indi1Par <- ancestors[ancestors[, 1] == pairs[i, 1], 
-                          2:3]
-    indi2Par <- ancestors[ancestors[, 1] == pairs[i, 2], 
-                          2:3]
-    indi1GP <- ancestors[ancestors[, 1] == pairs[i, 1], 
-                         4:7]
-    indi2GP <- ancestors[ancestors[, 1] == pairs[i, 2], 
-                         4:7]
-    indi1GGP <- ancestors[ancestors[, 1] == pairs[i, 1], 
-                          8:15]
-    indi2GGP <- ancestors[ancestors[, 1] == pairs[i, 2], 
-                          8:15]
-    
-    related[i] <- any(allAncestors)
-    totalRelatives[i] <- sum(allAncestors)
-    OneTwo[i] <- sum(c(indi1 %in% indi2Par, indi2 %in% indi1Par))
-    OneThree[i] <- sum(c(indi1 %in% indi2GP, indi2 %in% 
-                           indi1GP))
-    OneFour[i] <- sum(c(indi1 %in% indi2GGP, indi2 %in% 
-                          indi1GGP))
-    TwoTwo[i] <- sum(c(indi1Par %in% indi2Par))
-    TwoThree[i] <- sum(c(indi1Par %in% indi2GP, indi2Par %in% 
-                           indi1GP))
-    TwoFour[i] <- sum(c(indi1Par %in% indi2GGP, indi2Par %in% 
-                          indi1GGP))
-    ThreeThree[i] <- sum(c(indi1GP %in% indi2GP))
-    ThreeFour[i] <- sum(c(indi1GP %in% indi2GGP, indi2GP %in% 
-                            indi1GGP))
-    FourFour[i] <- sum(c(indi1GGP %in% indi2GGP))
-    
-    if (i%%1000 == 0) {
-      cat("\r", i, " of ", length(related), " comparisons", 
-          sep = "")
-      flush.console()
-    }
-  }
-  pairs <- data.frame(pairs, related, totalRelatives, OneTwo, 
-                      OneThree, OneFour, 
-                      #OneFive, OneSix, OneSeven, 
-                      TwoTwo, TwoThree, TwoFour, 
-                      #TwoFive, TwoSix, TwoSeven, 
-                      ThreeThree, ThreeFour, 
-                      # ThreeFive, ThreeSix, ThreeSeven, 
-                      FourFour #, 
-                      # FourFive, FourSix, FourSeven, FiveFive, FiveSix, FiveSeven, 
-                      # SixSix, SixSeven, SevenSeven
-  )
-  stopImplicitCluster()
   return(pairs)
 }
 
@@ -542,7 +385,6 @@ fSampledLength <- function(l,
   }
 }
 
-
 mateOrBirth <- function (indiv,
                          batchSize = 0.5, 
                          fecundityDist = "uniform", 
@@ -601,10 +443,10 @@ mateOrBirth <- function (indiv,
     if (nrow(mating_females) == 0)  {
       warning("There are no mating females in the population")
     }
-    ## Subset potential fathers = all mature males that were alive ONE YEAR AGO!
+    ## Subset potential fathers = all mature males that were alive and mature ONE YEAR AGO!
     fathers <- subset(indiv, indiv[, 2] == 0 & 
                         indiv[, 8] - 1 >= firstBreedMale & # only include males that were mature a year ago
-                        is.na(indiv[, 6]) | indiv[, 6] == year) # either alive or were still alive one year ago
+                        (is.na(indiv[, 6]) | indiv[, 6] == year)) # either alive or were still alive one year ago
     
     if (nrow(fathers) == 0) {
       warning("There were no mature males in the population one year ago.")
@@ -670,7 +512,8 @@ mateOrBirth <- function (indiv,
                                 Sex = integer(n.sprogs), Dad = integer(n.sprogs), 
                                 Mum = integer(n.sprogs), BirthY = integer(n.sprogs), 
                                 DeathY = integer(n.sprogs), Stock = integer(n.sprogs), 
-                                AgeLast = integer(n.sprogs), SampY = integer(n.sprogs))
+                                AgeLast = integer(n.sprogs), SampY = integer(n.sprogs),
+                                Pregnant = integer(n.sprogs))
       ticker <- 1
       for (m in 1:nrow(mothersInStock)) {
         if (nrow(fathersInStock) == 0) {
@@ -724,171 +567,7 @@ mateOrBirth <- function (indiv,
   indiv <- data.table::rbindlist(list(indiv, sprog.m))
 
   if (!quiet) cat("There were", nrow(mothers), "breeding mothers this cycle.\n")
-  return(indiv)
-}
-
-mateWithRecovery <- function (indiv,
-                              recovery = 2, 
-                              batchSize = 0.5, 
-                              fecundityDist = "uniform", 
-                              osr = c(0.5, 0.5), 
-                              year = "-1", 
-                              firstBreed = 12, # only for females
-                              firstLitter = NA,
-                              type = "flat", 
-                              maxClutch = Inf, 
-                              singlePaternity = TRUE, 
-                              exhaustFathers = FALSE, 
-                              maturityCurve, 
-                              maleCurve, 
-                              femaleCurve,
-                              quiet = TRUE) {
-  if (!(type %in% c("flat", "age", "ageSex"))) {
-    stop("'type' must be one of 'flat', 'age', or 'ageSex'.")
-  }
-  if (!(fecundityDist %in% c("poisson", "truncPoisson", 
-                             "binomial", "uniform"))) {
-    stop("'fecundityDist' must be one of 'poisson', 'truncPoisson', 'binomial', or 'uniform.")
-  }
-  mothers <- subset(indiv, indiv[, 2] == "F" &   # are they female
-                      indiv[, 8] >= firstBreed & # are they old enough to breed
-                      is.na(indiv[, 6]) &        # are they alive
-                      indiv[, 10] == 0)          # recovered from previous breeding cycle?
-  if (nrow(mothers) == 0) 
-    warning("There are no mature females in the population")
-  fathers <- subset(indiv, indiv[, 2] == "M" & 
-                      # indiv[, 8] >= firstBreed & # commented out so that males only uses their maturity curve
-                      is.na(indiv[, 6]))
-  if (nrow(fathers) == 0) 
-    warning("There are no mature males in the population")
-  # if (type == "flat") {
-  #   if (fecundityDist == "poisson") {
-  #     clutch <- rpois(n = nrow(mothers), lambda = batchSize)
-  #   }
-  #   if (fecundityDist == "truncPoisson") {
-  #     clutch <- rTruncPoisson(n = nrow(mothers), T = batchSize)
-  #   }
-  #   if (fecundityDist == "binomial") {
-  #     clutch <- rbinom(nrow(mothers), 1, prob = batchSize)
-  #   }
-  #   mothers <- subset(mothers, clutch > 0)
-  #   clutch <- clutch[clutch > 0]
-  # }
-  # else if (type == "age") {
-  #   mothers <- mothers[runif(nrow(mothers)) < maturityCurve[mothers[, 
-  #                                                                   8] + 1], , drop = FALSE]
-  #   fathers <- fathers[runif(nrow(fathers)) < maturityCurve[fathers[, 
-  #                                                                   8] + 1], , drop = FALSE]
-  #   if (fecundityDist == "poisson") {
-  #     clutch <- rpois(n = nrow(mothers), lambda = batchSize)
-  #   }
-  #   if (fecundityDist == "truncPoisson") {
-  #     clutch <- rTruncPoisson(n = nrow(mothers), T = batchSize)
-  #   }
-  #   if (fecundityDist == "binomial") {
-  #     clutch <- rbinom(nrow(mothers), 1, prob = batchSize)
-  #   }
-  #   mothers <- subset(mothers, clutch > 0)
-  #   clutch <- clutch[clutch > 0]
-  # }
-  else if (type == "ageSex") {
-    mothers <- mothers[runif(nrow(mothers)) < femaleCurve[mothers[, 8] + 1], , 
-                       drop = FALSE]
-    fathers <- fathers[runif(nrow(fathers)) < maleCurve[fathers[, 
-                                                                8] + 1], , drop = FALSE]
-    if (fecundityDist == "poisson") {
-      clutch <- rpois(n = nrow(mothers), lambda = batchSize)
-    }
-    if (fecundityDist == "truncPoisson") {
-      clutch <- rTruncPoisson(n = nrow(mothers), T = batchSize)
-    }
-    if (fecundityDist == "binomial") {
-      clutch <- rbinom(nrow(mothers), 1, prob = batchSize)
-    }
-    if (fecundityDist == "uniform") {
-      clutch <- sample(batchSize, size = nrow(mothers), replace = TRUE)
-    }
-    ## Here a line is added to set first litter at 1-2 pups, not 3-4. 
-    clutch[mothers$AgeLast == firstBreed] <- sample(firstLitter,
-                                                    size = sum(mothers$AgeLast == firstBreed),
-                                                    replace = TRUE)
-    mothers <- subset(mothers, clutch > 0)
-    indiv$Recovery[indiv$Me %in% mothers$Me] <- recovery # set recovery of mothers
-    clutch <- clutch[clutch > 0]
-  }
-  clutch[clutch > maxClutch] <- maxClutch
-  
-  sprog.m <- CKMRcpp::createFounders(pop = 0) # this creates empty pop, but without column 10
-  sprog.m$Recovery <- character(0) # add column 10 for recovery years remaining
-  
-  for (s in unique(mothers[, 7])) {
-    mothersInStock <- mothers[mothers[, 7] == s, , drop = FALSE]
-    clutchInStock <- clutch[mothers[, 7] == s]
-    fathersInStock <- fathers[fathers[, 7] == s, , drop = FALSE]
-    if (nrow(fathersInStock) == 0) {
-      warning(paste("There were no mature males in stock ", 
-                    s, ", so ", nrow(mothersInStock), " mature females did not produce offspring", 
-                    sep = ""))
-      sprog.stock <- CKMRcpp::createFounders(pop = 0)
-    }
-    else if (nrow(fathersInStock > 0)) {
-      n.sprogs <- sum(clutchInStock)
-      sprog.stock <- data.frame(Me = character(n.sprogs), 
-                                Sex = character(n.sprogs), Dad = character(n.sprogs), 
-                                Mum = character(n.sprogs), BirthY = integer(n.sprogs), 
-                                DeathY = integer(n.sprogs), Stock = integer(n.sprogs), 
-                                AgeLast = integer(n.sprogs), SampY = integer(n.sprogs))
-      ticker <- 1
-      for (m in 1:nrow(mothersInStock)) {
-        if (nrow(fathersInStock) == 0) {
-          warning(paste("All fathers in stock ", 
-                        s, " are exhausted.", sep = ""))
-        }
-        else {
-          sprog.stock[ticker:(ticker + clutchInStock[m] - 
-                                1), 4] <- mothersInStock[m, 1]
-          if (singlePaternity == TRUE) {
-            sprog.stock[ticker:(ticker + clutchInStock[m] - 
-                                  1), 3] <- fathersInStock[sample(1:nrow(fathersInStock), 
-                                                                  1), 1]
-          }
-          else if (singlePaternity == FALSE) {
-            if (nrow(fathersInStock) >= clutchInStock[m]) {
-              sprog.stock[ticker:(ticker + clutchInStock[m] - 
-                                    1), 3] <- fathersInStock[sample(1:nrow(fathersInStock), 
-                                                                    clutchInStock[m]), 1]
-            }
-            else {
-              sprog.stock[ticker:(ticker + nrow(fathersInStock) - 
-                                    1), 3] <- fathersInStock[, 1]
-            }
-          }
-          if (exhaustFathers == TRUE) {
-            fathersInStock <- fathersInStock[!fathersInStock[, 
-                                                             1] %in% sprog.stock[, 3], , drop = FALSE]
-          }
-          ticker <- ticker + clutchInStock[m]
-        }
-      }
-    }
-    sprog.stock <- sprog.stock[!is.na(sprog.stock[, 3]), 
-                               , drop = FALSE]
-    sprog.stock[, 1] <- ids::uuid(n = nrow(sprog.stock), drop_hyphens = TRUE)
-    sprog.stock[, 2] <- sample(c("M", "F"), nrow(sprog.stock), 
-                               TRUE, prob = osr)
-    sprog.stock[, 5] <- c(rep(year, nrow(sprog.stock)))
-    sprog.stock[, 6] <- c(rep(NA, nrow(sprog.stock)))
-    sprog.stock[, 7] <- as.integer(rep(s), nrow(sprog.stock))
-    sprog.stock[, 8] <- c(rep(0, nrow(sprog.stock)))
-    sprog.stock[, 9] <- c(rep(NA, nrow(sprog.stock)))
-    sprog.stock[, 10] <- c(rep(0, nrow(sprog.stock)))
-    sprog.m <- rbind(sprog.m, sprog.stock)
-  }
-  names(sprog.m) <- names(indiv)
-  indiv <- rbind(indiv, sprog.m)
-  
-  if (!quiet) cat("There were", nrow(mothers), "breeding mothers this cycle.\n")
-  return(indiv)
+  return(as.data.frame(indiv))
 }
 
 pDiscreteNorm <- function(x, mu, sigma) {
@@ -992,18 +671,6 @@ plotCKMRabundance <- function(
   }
 }
 
-recover <- function(indiv) 
-{
-  ## Reduce 'Recovery' by one year for all living individuals
-  indiv[is.na(indiv[, 6]), 10] <- indiv[is.na(indiv[, 6]), 10] - 1L
-  ## Set all negative 'Recovery' to 0
-  indiv[indiv[, 10] < 0, 10] <- 0
-  ## Set Recovery for dead animals to 0
-  indiv[!is.na(indiv[, 6]), 10] <- 0
-  
-  return(indiv)
-}
-
 retroCapture2 <- function (indiv, 
                            n = 1, 
                            year = "-1", 
@@ -1061,262 +728,6 @@ retroCapture <- function (indiv,
   return(indiv)
 }
 
-uniformCheckGrowthrate <- function (
-  fecundityDist = "uniform", 
-  forceY1 = NA,      # year 1 mortality?
-  mateType, # mating type
-  mortType = "flat", # mortality constant or variable?
-  batchSize, # expected litter size
-  firstBreed = 0, # first year of breeding (at least min maturity curve)
-  maxClutch = Inf, # max litter size
-  osr = c(0.5, 0.5), # sex ratio
-  maturityCurve, # equivalent to femaleCurve, but used if mateType == "age"
-  femaleCurve, # female maturity curve
-  maxAge = Inf, # self explanatory
-  mortRate, # rate of mortality
-  ageMort, # input for the mort() call
-  stockMort, # input for the mort() call
-  ageStockMort) { # input for the mort() call 
-  ## Check inputs
-  if (!(mateType %in% c("flat", "age", "ageSex"))) {
-    stop("'mateType' must be one of 'flat', 'age', or 'ageSex'.")
-  }
-  if (!(mortType %in% c("flat", "age", "stock", "ageStock"))) {
-    stop("'mortType' must be one of 'flat', 'age', 'stock', or 'ageStock'.")
-  }
-  if (missing(batchSize)) 
-    stop("'batchSize' must be specified.")
-  ## creating "batches" from a Poisson to run a simulation to get an expected
-  ## batchSize. For uniform that can be much easier, as it is just the expectation,
-  ## which is the mean. 
-  if (batchSize != Inf && fecundityDist == "uniform") { # this is new!
-    batchSize <- mean(batchSize)
-  } else if (batchSize != Inf) { # this is old
-    batches <- rpois(1e+06, lambda = batchSize)
-    batchSize <- mean(batches[batches <= maxClutch]) 
-  }
-  
-  
-  ## mateType == "flat", not relevant to GR
-  if (mateType == "flat") {
-    if (mortType == "flat") {
-      mat <- matrix(data = 0, nrow = length(0:firstBreed) + 
-                      1, ncol = length(0:firstBreed) + 1)
-      mat[1, ((2 + firstBreed):ncol(mat))] <- batchSize * 
-        osr[2]
-      for (i in 1:ncol(mat)) {
-        if ((i + 1) <= nrow(mat)) 
-          mat[i + 1, i] <- 1 - mortRate
-      }
-      mat[nrow(mat), ncol(mat)] <- 1 - mortRate
-    }
-    else if (mortType == "age") {
-      mat <- matrix(data = 0, nrow = length(ageMort) + 
-                      1, ncol = length(ageMort) + 1)
-      mat[1, ((2 + firstBreed):ncol(mat))] <- batchSize * 
-        osr[2]
-      for (i in 1:ncol(mat)) {
-        if ((i + 1) <= nrow(mat)) 
-          mat[i + 1, i] <- 1 - ageMort[i]
-      }
-      mat[nrow(mat), ncol(mat)] <- 1 - ageMort[length(ageMort)]
-    }
-    else if (mortType == "stock") {
-      mat <- matrix(data = 0, nrow = length(0:firstBreed) + 
-                      1, ncol = length(0:firstBreed) + 1)
-      mat.l <- lapply(seq_len(length(stockMort)), function(X) mat)
-      for (s in 1:length(stockMort)) {
-        mat.l[[s]][1, ((2 + firstBreed):ncol(mat.l[[s]]))] <- batchSize * 
-          osr[2]
-        for (i in 1:ncol(mat.l[[s]])) {
-          if ((i + 1) <= nrow(mat.l[[s]])) 
-            mat.l[[s]][i + 1, i] <- 1 - stockMort[s]
-        }
-        mat.l[[s]][nrow(mat.l[[s]]), ncol(mat.l[[s]])] <- 1 - 
-          stockMort[s]
-      }
-    }
-    else if (mortType == "ageStock") {
-      mat <- matrix(data = 0, nrow = length(ageStockMort[, 
-                                                         1]) + 1, ncol = length(ageStockMort[, 1]) + 
-                      1)
-      mat.l <- lapply(seq_len(ncol(ageStockMort)), function(X) mat)
-      for (s in 1:ncol(ageStockMort)) {
-        mat.l[[s]][1, ((2 + firstBreed):ncol(mat.l[[s]]))] <- batchSize * 
-          osr[2]
-        for (i in 1:ncol(mat.l[[s]])) {
-          if ((i + 1) <= nrow(mat.l[[s]])) 
-            mat.l[[s]][i + 1, i] <- 1 - ageStockMort[i, 
-                                                     s]
-        }
-        mat.l[[s]][nrow(mat.l[[s]]), ncol(mat.l[[s]])] <- 1 - 
-          ageStockMort[nrow(ageStockMort), s]
-      }
-    }
-  }
-  ## mateType == "age" also not relevant to GR
-  else if (mateType == "age") {
-    if (firstBreed > 0) 
-      maturityCurve[1:(firstBreed - 1)] <- 0
-    if (mortType == "flat") {
-      mat <- matrix(data = 0, nrow = length(maturityCurve), 
-                    ncol = length(maturityCurve))
-      mat[1, ] <- maturityCurve * batchSize * osr[2]
-      for (i in 1:ncol(mat)) {
-        if ((i + 1) <= nrow(mat)) 
-          mat[i + 1, i] <- 1 - mortRate
-      }
-      mat[nrow(mat), ncol(mat)] <- 1 - mortRate
-    }
-    else if (mortType == "age") {
-      mat <- matrix(data = 0, nrow = max(c(length(maturityCurve), 
-                                           length(ageMort))), ncol = max(c(length(maturityCurve), 
-                                                                           length(ageMort))))
-      mat[1, (1:length(maturityCurve))] <- maturityCurve * 
-        batchSize * osr[2]
-      mat[1, (length(maturityCurve):ncol(mat))] <- maturityCurve[length(maturityCurve)] * 
-        batchSize * osr[2]
-      for (i in 1:length(ageMort)) {
-        if ((i + 1) <= nrow(mat)) 
-          mat[i + 1, i] <- 1 - ageMort[i]
-      }
-      for (i in length(ageMort):ncol(mat)) {
-        if ((i + 1) <= nrow(mat)) 
-          mat[i + 1, i] <- 1 - ageMort[length(ageMort)]
-      }
-      mat[nrow(mat), ncol(mat)] <- 1 - ageMort[length(ageMort)]
-    }
-    else if (mortType == "stock") {
-      mat <- matrix(data = 0, nrow = length(maturityCurve), 
-                    ncol = length(maturityCurve))
-      mat.l <- lapply(seq_len(length(stockMort)), function(X) mat)
-      for (s in 1:length(stockMort)) {
-        mat.l[[s]][1, (1:length(maturityCurve))] <- maturityCurve * 
-          batchSize * osr[2]
-        mat.l[[s]][1, (length(maturityCurve):ncol(mat.l[[s]]))] <- maturityCurve[length(maturityCurve)] * 
-          batchSize * osr[2]
-        for (i in 1:ncol(mat.l[[s]])) {
-          if ((i + 1) <= nrow(mat.l[[s]])) 
-            mat.l[[s]][i + 1, i] <- 1 - stockMort[s]
-        }
-        mat.l[[s]][nrow(mat.l[[s]]), ncol(mat.l[[s]])] <- 1 - 
-          stockMort[s]
-      }
-    }
-    else if (mortType == "ageStock") {
-      mat <- matrix(data = 0, nrow = max(c(length(maturityCurve), 
-                                           nrow(ageStockMort))), ncol = max(c(length(maturityCurve), 
-                                                                              nrow(ageStockMort))))
-      mat.l <- lapply(seq_len(ncol(ageStockMort)), function(X) mat)
-      for (s in 1:ncol(ageStockMort)) {
-        mat.l[[s]][1, (1:length(maturityCurve))] <- maturityCurve * 
-          batchSize * osr[2]
-        mat.l[[s]][1, (length(maturityCurve):ncol(mat.l[[s]]))] <- maturityCurve[length(maturityCurve)] * 
-          batchSize * osr[2]
-        for (i in 1:ncol(mat.l[[s]])) {
-          if ((i + 1) <= nrow(mat.l[[s]])) 
-            mat.l[[s]][i + 1, i] <- 1 - ageStockMort[i, 
-                                                     s]
-        }
-        for (i in nrow(ageStockMort):ncol(mat.l[[s]])) {
-          if ((i + 1) <= nrow(mat.l[[s]])) 
-            mat.l[[s]][i + 1, i] <- 1 - ageStockMort[nrow(ageMort), 
-                                                     s]
-        }
-        mat.l[[s]][nrow(mat.l[[s]]), ncol(mat.l[[s]])] <- 1 - 
-          ageStockMort[nrow(ageStockMort), s]
-      }
-    }
-  }
-  ## This is the one we are interested in!
-  else if (mateType == "ageSex") {
-    if (mortType == "flat") {   # mortType is assumed flat for GR
-      mat <- matrix(data = 0, nrow = length(femaleCurve), 
-                    ncol = length(femaleCurve))
-      mat[1, ] <- femaleCurve * batchSize * osr[2]
-      for (i in 1:ncol(mat)) {
-        if ((i + 1) <= nrow(mat)) 
-          mat[i + 1, i] <- 1 - mortRate
-      }
-      mat[nrow(mat), ncol(mat)] <- 1 - mortRate
-    }
-    else if (mortType == "age") {
-      mat <- matrix(data = 0, nrow = max(c(length(femaleCurve), 
-                                           length(ageMort))), ncol = max(c(length(femaleCurve), 
-                                                                           length(ageMort))))
-      mat[1, (1:length(femaleCurve))] <- femaleCurve * 
-        batchSize * osr[2]
-      mat[1, (length(femaleCurve):ncol(mat))] <- femaleCurve[length(femaleCurve)] * 
-        batchSize * osr[2]
-      for (i in 1:length(ageMort)) {
-        if ((i + 1) <= nrow(mat)) 
-          mat[i + 1, i] <- 1 - ageMort[i]
-      }
-      for (i in length(ageMort):ncol(mat)) {
-        if ((i + 1) <= nrow(mat)) 
-          mat[i + 1, i] <- 1 - ageMort[length(ageMort)]
-      }
-      mat[nrow(mat), ncol(mat)] <- 1 - ageMort[length(ageMort)]
-    }
-    else if (mortType == "stock") {
-      mat <- matrix(data = 0, nrow = length(femaleCurve), 
-                    ncol = length(femaleCurve))
-      mat.l <- lapply(seq_len(length(stockMort)), function(X) mat)
-      for (s in 1:length(stockMort)) {
-        mat.l[[s]][1, (1:length(femaleCurve))] <- femaleCurve * 
-          batchSize * osr[2]
-        mat.l[[s]][1, (length(femaleCurve):ncol(mat.l[[s]]))] <- femaleCurve[length(femaleCurve)] * 
-          batchSize * osr[2]
-        for (i in 1:ncol(mat.l[[s]])) {
-          if ((i + 1) <= nrow(mat.l[[s]])) 
-            mat.l[[s]][i + 1, i] <- 1 - stockMort[s]
-        }
-        mat.l[[s]][nrow(mat.l[[s]]), ncol(mat.l[[s]])] <- 1 - 
-          stockMort[s]
-      }
-    }
-    else if (mortType == "ageStock") {
-      mat <- matrix(data = 0, nrow = max(c(length(femaleCurve), 
-                                           nrow(ageStockMort))), ncol = max(c(length(femaleCurve), 
-                                                                              nrow(ageStockMort))))
-      mat.l <- lapply(seq_len(ncol(ageStockMort)), function(X) mat)
-      for (s in 1:ncol(ageStockMort)) {
-        mat.l[[s]][1, (1:length(femaleCurve))] <- femaleCurve * 
-          batchSize * osr[2]
-        mat.l[[s]][1, (length(femaleCurve):ncol(mat.l[[s]]))] <- femaleCurve[length(femaleCurve)] * 
-          batchSize * osr[2]
-        for (i in 1:ncol(mat.l[[s]])) {
-          if ((i + 1) <= nrow(mat.l[[s]])) 
-            mat.l[[s]][i + 1, i] <- 1 - ageStockMort[i, 
-                                                     s]
-        }
-        for (i in nrow(ageStockMort):ncol(mat.l[[s]])) {
-          if ((i + 1) <= nrow(mat.l[[s]])) 
-            mat.l[[s]][i + 1, i] <- 1 - ageStockMort[nrow(ageMort), 
-                                                     s]
-        }
-        mat.l[[s]][nrow(mat.l[[s]]), ncol(mat.l[[s]])] <- 1 - 
-          ageStockMort[nrow(ageStockMort), s]
-      }
-    }
-  }
-  if (!is.na(forceY1)) {
-    if (mortType %in% c("flat", "age")) 
-      mat[2, 1] <- 1 - forceY1
-    if (mortType %in% c("stock", "ageStock")) 
-      for (i in 1:length(mat.l)) mat.l[[i]][2, 1] <- 1 - 
-          forceY1
-  }
-  if (mortType %in% c("flat", "age")) {
-    return(eigen(mat)$values[1])
-  }
-  if (mortType %in% c("stock", "ageStock")) {
-    outs <- c(rep(NA, length(mat.l)))
-    for (i in 1:length(outs)) outs[i] <- eigen(mat.l[[i]])$values[1]
-    return(outs)
-  }
-}
-
 #' vbgf()
 #' A function that derives the length based on age and the vbgf parameters
 #'
@@ -1329,8 +740,8 @@ uniformCheckGrowthrate <- function (
 #' @export
 #'
 #' @examples
-vbgf <- function(a, t_0 = -3.5, k = 0.1, l_inf = 175) {
-  return(l_inf * (1 - exp(-k * (a - t_0))))
+vbgf <- function(a, a_0 = -3.5, k = 0.1, l_inf = 175) {
+  return(l_inf * (1 - exp(-k * (a - a_0))))
 }
 
 #' invvbgf()
@@ -1345,6 +756,6 @@ vbgf <- function(a, t_0 = -3.5, k = 0.1, l_inf = 175) {
 #' @export
 #'
 #' @examples
-invvbgf <- function(l, t_0 = -3.5, k = 0.1, l_inf = 175) {
-  return(t_0 - log(1 - l/l_inf) / k)
+invvbgf <- function(l, a_0 = -3.5, k = 0.1, l_inf = 175) {
+  return(a_0 - log(1 - l/l_inf) / k)
 }
