@@ -15,13 +15,13 @@ library(doParallel)
 # source("source/fitting/CKMR_functions.R")
 # source("source/simulating/custom_functions_fishSim.R")
 
-data_folder <- "data/palmyra_population/" 
+data_folder <- "data/1_population_10_sampling_schemes/" 
 
 ## Load the correct 100_sims_vanilla file
 load(file = paste0(data_folder, "1000_sims_sampled.RData"))
 
 ## Find the pairs in parallel. 
-n_cores <- 20
+n_cores <- 10
 cl <- makeCluster(n_cores)
 # clusterExport(cl, c("findRelativesCustom"))
 pairs_list <- pblapply(simulated_data_sets, function(indiv) {
@@ -65,7 +65,7 @@ combined_data <- lapply(1:length(simulated_data_sets), function(i) {
 
 save(list = c("combined_data"), file = paste0(data_folder, "1000_sims_combined_data.RData"))
 
-n_cores <- 25
+n_cores <- 10
 cl <- makeCluster(n_cores)
 # clusterExport(cl, c("vbgf"))
 dfs <- pblapply(combined_data, function(x) {
@@ -109,8 +109,11 @@ dfs <- pblapply(combined_data, function(x) {
   ## In practice age is latent, but length is not. Convert age to length through 
   ## the VBGF, and add a normal error. Roughly based on other studies.
   ## Derive the length corresponding to the age, and add error from N(0, 2)
-  sampled_indiv$length <- as.integer(CKMRcpp::vbgf(sampled_indiv$capture_age))
-  # sampled_indiv$length <- sampled_indiv$length + rnorm(nrow(sampled_indiv), 0, 2)
+  sampled_indiv$length <- as.integer(CKMRcpp::vbgf(a = sampled_indiv$capture_age,
+                                                   a_0 = -8.27, 
+                                                   k = 0.0554, 
+                                                   l_inf = 163.1))
+  # sampled_indiv$length <- as.integer(CKMRcpp::vbgf(sampled_indiv$capture_age))
   
   ## Create matrix of all combinations with information 
   df_ids <- as.matrix(subset(expand.grid(1:nrow(sampled_indiv), 
@@ -133,6 +136,7 @@ dfs <- pblapply(combined_data, function(x) {
   df[, paste0("indiv_2_" , info_cols)] <- NA
   
   ## Loop through the unique ids and add capture information to main df
+  ## [This is the slow part]
   for (id in unique(sampled_indiv$id)) {
     ## Extract info for individual with id
     info <- sampled_indiv[sampled_indiv$id == id, info_cols][1, ] # if multiple rows (in case of recaptures) only keep the first row
@@ -192,7 +196,7 @@ dfs <- pblapply(combined_data, function(x) {
   
 }, cl = cl); stopCluster(cl);
 
-save(list = c("dfs"), file = paste0(data_folder, "1000_sims_dfs.RData"))
+save(list = c("dfs"), file = paste0(data_folder, "1000_sims_dfs_1.RData"))
 
 ## :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 ## Code below can be run to remove covariate_combo_id and covariate_combo_freq
@@ -208,15 +212,25 @@ dfs <- pblapply(dfs, function(x) {
 ## Run below to add noise the length with the preferred uncertainty
 ## :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 dfs <- pblapply(dfs, function(x) {
-  x$indiv_1_length <- round(CKMRcpp::vbgf(x$indiv_1_capture_age) + rnorm(nrow(x), 0, 2))
-  x$indiv_2_length <- round(CKMRcpp::vbgf(x$indiv_2_capture_age) + rnorm(nrow(x), 0, 2))
+  x$indiv_1_length <- 
+    as.integer(
+      round(CKMRcpp::vbgf(a = x$indiv_1_capture_age,
+                          a_0 = -8.27, 
+                          k = 0.0554, 
+                          l_inf = 163) + rnorm(nrow(x), 0, 2.89)))
+  x$indiv_2_length <- 
+    as.integer(
+      round(CKMRcpp::vbgf(a = x$indiv_2_capture_age,
+                          a_0 = -8.27, 
+                          k = 0.0554, 
+                          l_inf = 163) + rnorm(nrow(x), 0, 2.89)))
   return(x)
 })
 
 ## :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 ## Run below to add unique covariate combo ids and return sufficient dfs
 ## :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-n_cores <- 25
+n_cores <- 10
 cl <- makeCluster(n_cores)
 # clusterExport(cl, c("vbgf"))
 dfs_suff <- pblapply(dfs, function(x) {
@@ -242,16 +256,16 @@ dfs_suff <- pblapply(dfs, function(x) {
   df_sufficient <- x %>% 
     group_by(covariate_combo_id) %>% 
     slice(1) %>% 
-    ungroup()
-  return(df_sufficient)
+    ungroup() %>% 
+    select(-c(comb_id, indiv_1_id, indiv_2_id, covariate_combo_id, pop_found))
+  return(as.data.frame(df_sufficient))
 }, cl = cl); stopCluster(cl);
 
 
 # save(list = c("dfs"), file = "data/test_data_dfs.RData")
 # save(list = c("dfs_suff"), file = "data/test_data_dfs_suff.RData")
 
-
-save(list = c("dfs_suff"), file = paste0(data_folder, "1000_sims_dfs_suff_unique_combos.RData"))
+save(list = c("dfs_suff"), file = paste0(data_folder, "1000_sims_dfs_suff_unique_combos_1.RData"))
 
 # ## Looking up relationship between captured pairs
 # pairs <- findRelativesPar(indiv = indiv,
