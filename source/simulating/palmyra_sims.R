@@ -121,10 +121,15 @@ simulated_data_sets <- pblapply(1:1000, function(i) {
     indiv <- fishSim::birthdays(indiv)
     
     ## 4. Every 5 years, bury the dead, and remove them from indiv
+    ## NOTE: always remove those who died from at least two years ago.
+    ## It is important to keep the fathers who died in, as they might have died
+    ## between giving mating and birth, but still need to be assigned the 
+    ## fatherhood.
     if (y %% 5 == 0) {
-      graveyard <- data.table::rbindlist(list(graveyard, 
-                                              indiv[!is.na(indiv$DeathY), ]))
-      indiv <- indiv[is.na(indiv$DeathY), ]
+      graveyard <- as.data.frame(
+        data.table::rbindlist(list(graveyard, indiv[!is.na(indiv$DeathY) &
+                                                      indiv$DeathY <= y - 2, ])))
+      indiv <- indiv[is.na(indiv$DeathY) | indiv$DeathY > y - 2, ]
     }
 
     # cat(" Cycle completed!\n")
@@ -132,14 +137,14 @@ simulated_data_sets <- pblapply(1:1000, function(i) {
   
   # })
   
-  ## Dig up the dead and add them to indiv
-  indiv <- data.table::rbindlist(list(indiv, graveyard))
+  ## Dig up the dead and put them on a pile with the living
+  indiv <- as.data.frame(data.table::rbindlist(list(indiv, graveyard)))
   
   # nrow(indiv[is.na(indiv$DeathY), ])
   
   # cat(paste0("Simulation ", i, " completed!\n"))
   # simulated_data_sets[[i]] <- indiv
-  return(as.data.frame(indiv))
+  return(indiv)
 }, cl = cl); stopCluster(cl);
 
 ## How many individuals are still alive in 'indiv'?
@@ -182,3 +187,40 @@ if (retrospective_sampling) {
 all(is.na(simulated_data_sets[[1]]$SampY))  # should be FALSE
 unique(simulated_data_sets[[1]]$SampY)      # check if this seems correct
 sum(!is.na(simulated_data_sets[[1]]$SampY)) # seem correct as well?
+
+## ::::::::::::::::::::::::::::::::
+## Summary statistics
+## ::::::::::::::::::::::::::::::::
+
+## Extracting simulated abundances
+# N_true <- t(sapply(simulated_data_sets, function(x) {
+#   mature_females <- sum(is.na(x$DeathY) & x$Sex == 1 & x$AgeLast >= 19)
+#   mature_males <- sum(is.na(x$DeathY) & x$Sex == 0 & x$AgeLast >= 17)
+#   return(c(N_m = mature_males, N_f = mature_females))
+# }))
+
+N_true <- t(sapply(simulated_data_sets, function(x) {
+  mature_females <- nrow(
+    CKMRcpp::extractTheLiving(x, 2014, F, min_age = first_breed_female + 1,
+                              sex = "female"))
+  mature_males <- nrow(
+    CKMRcpp::extractTheLiving(x, 2014, F, min_age = first_breed_male,
+                              sex = "male"))
+  return(c(N_m = mature_males, N_f = mature_females))
+}))
+
+## Derive growht rate based on animals alive AT THE END OF YEAR
+# r_true <- sapply(simulated_data_sets, function(x) {
+#   alive_1915 <- sum(!is.na(x$DeathY) & x$DeathY > 1915 & x$BirthY <= 1915)
+#   alive_2014 <- sum(is.na(x$DeathY) | x$DeathY > 2014 & x$BirthY <= 2014)
+#   return((alive_2014 / alive_1915) ^ (1 / 99))
+# })
+
+r_true <- sapply(simulated_data_sets, function(x) {
+  alive_1915 <- nrow(CKMRcpp::extractTheLiving(x, 1915, F)) # alive at end of year
+  alive_2014 <- nrow(CKMRcpp::extractTheLiving(x, 2014, F)) # alive at end of year
+  return((alive_2014 / alive_1915) ^ (1 / (2014 - 1915)))
+})
+
+
+summary(data.frame(N_true, r_true))
