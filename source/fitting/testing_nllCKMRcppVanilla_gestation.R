@@ -88,7 +88,7 @@ result_list <- pblapply(dfs_suff[1:1000], function(df) {
   res <- nlminb(start = par, 
                 objective = CKMRcpp::nllPOPCKMRcppAgeUnknownGestation, 
                 dat = dat, 
-                control = list(trace = 0, rel.tol = 1e-10))
+                control = list(trace = 0, rel.tol = 1e-8))
   # })
   
   return(res)
