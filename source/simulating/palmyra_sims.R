@@ -188,6 +188,8 @@ all(is.na(simulated_data_sets[[1]]$SampY))  # should be FALSE
 unique(simulated_data_sets[[1]]$SampY)      # check if this seems correct
 sum(!is.na(simulated_data_sets[[1]]$SampY)) # seem correct as well?
 
+# save(simulated_data_sets, file = "100_simulated_data_sets.RData")
+
 ## ::::::::::::::::::::::::::::::::
 ## Summary statistics
 ## ::::::::::::::::::::::::::::::::

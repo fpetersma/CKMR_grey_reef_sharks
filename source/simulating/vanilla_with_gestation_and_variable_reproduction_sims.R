@@ -174,8 +174,8 @@ save(list = "simulated_data_sets", file = "data/vanilla_gestation_repro=U(1,4)_s
 par(mfrow = c(3, 1))
 ## Extracting simulated abundances
 N_true <- t(sapply(simulated_data_sets, function(x) {
-  mature_females <- sum(is.na(x$DeathY) & x$Sex == "F" & x$AgeLast >= 13)
-  mature_males <- sum(is.na(x$DeathY) & x$Sex == "M" & x$AgeLast >= 11)
+  mature_females <- sum(is.na(x$DeathY) & x$Sex == "F" & x$AgeLast >= 12)
+  mature_males <- sum(is.na(x$DeathY) & x$Sex == "M" & x$AgeLast >= 10)
   return(c(N_m = mature_males, N_f = mature_females))
 }))
 
