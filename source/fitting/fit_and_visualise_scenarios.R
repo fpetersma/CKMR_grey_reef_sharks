@@ -11,8 +11,8 @@
 
 library(pbapply)
 library(parallel)
-data_folder <- "data/palmyra_population/"
-
+data_folder <- "data/1_population_10_sampling_schemes/"
+load(paste0(data_folder, "10_schemes_dfs_suff_unique_combos.RData"))
 ## :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 ## Set parameter values
 ## :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
@@ -69,7 +69,7 @@ scenario_fits_25 <- lapply(c(25), function(i) {
     par <- list(
       # phi = boot::logit(0.87), # same as plogis(0.9) -- boot::inv.logit() is qlogis()
       N_t0_m = log(500),
-      r = log(1.0002),
+      # r = log(1.0002),
       # sigma_l = log(0.01),
       # phi = boot::logit(1 - 0.153),
       N_t0_f = log(500))
@@ -81,11 +81,11 @@ scenario_fits_25 <- lapply(c(25), function(i) {
     dat <- list(alpha_m = 17,                         # maturity age for males
                 alpha_f = 19,                         # maturity age for females
                 
-                # r = log(1.0010),
+                r = log(1.0010),
                 sigma_l = log(sigma_l),
                 phi = boot::logit(1 - 0.1113),         # phi is the surival rate
                 
-                fixed_r = 0,                          # is r fixed or estimated?
+                fixed_r = 1,                          # is r fixed or estimated?
                 
                 max_age = 63,
                 max_length = 200,
