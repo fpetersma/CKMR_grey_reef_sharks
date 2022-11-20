@@ -15,7 +15,7 @@ library(doParallel)
 # source("source/fitting/CKMR_functions.R")
 # source("source/simulating/custom_functions_fishSim.R")
 
-data_folder <- "data/1_population_10_sampling_schemes/" 
+data_folder <- "data/1_population_multiple_sampling_schemes/" 
 
 ## Load the correct 100_sims_vanilla file
 load(file = paste0(data_folder, "1000_sims_sampled.RData"))
@@ -63,7 +63,7 @@ combined_data <- lapply(1:length(simulated_data_sets), function(i) {
   return(out)
 })
 
-save(list = c("combined_data"), file = paste0(data_folder, "1000_sims_combined_data.RData"))
+save(list = c("combined_data"), file = paste0(data_folder, "100_sims_combined_data.RData"))
 
 n_cores <- 10
 cl <- makeCluster(n_cores)
