@@ -121,7 +121,7 @@ par(mfrow = c(3, 1))
 hist(N_est[, 1], main = "", xlab = "Number of mature males"); abline(v = c(mean(N_est[, 1]), median(N_est[, 1])), col = "red", lty = c(1, 2))
 hist(N_est[, 2], main = "",  xlab = "Number of mature females"); abline(v = c(mean(N_est[, 2]), median(N_est[, 2])), col = "red", lty = c(1, 2))
 hist(r_est, main = "", xlab = "Yearly growth rate"); abline(v = c(mean(r_est), median(r_est)), col = "red", lty = c(1, 2))
-# hist(phi_est, main = "", xlab = "Yearly surival rate"); abline(v = c(mean(phi_est), median(phi_est)), col = "red", lty = c(1, 2))
+# hist(phi_est, main = "", xlab = "Yearly survival rate"); abline(v = c(mean(phi_est), median(phi_est)), col = "red", lty = c(1, 2))
 
 MCE_data <- t(sapply(seq(from = 1, to = 901, by = 100), function(x) {
   mean_male <- mean(N_est[x:(x+99), 1])

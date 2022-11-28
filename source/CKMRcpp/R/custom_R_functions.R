@@ -65,6 +65,7 @@ captureOnlyFirst <- function(indiv,
 createFounders <- function (pop = 1000, 
                             osr = c(0.5, 0.5), 
                             stocks = c(0.3, 0.3, 0.4), 
+                            y0 = 0,
                             maxAge = 20, 
                             survCurv = 0.7^(1:maxAge)/sum(0.7^(1:maxAge))) {
   if (sum(osr) != 1) 
@@ -89,7 +90,7 @@ createFounders <- function (pop = 1000,
     indiv[, 7] <- as.integer(sample(1:length(stocks), pop, TRUE, 
                                     prob = stocks))
     indiv[, 8] <- sample.int(maxAge, pop, TRUE, prob = survCurv)
-    indiv[, 5] <- 1L - indiv[, 8]
+    indiv[, 5] <- 1L - indiv[, 8] + y0 # add start year y0 to match the simulation
     indiv[, 9] <- as.integer(c(rep(NA, pop)))
   }
   
@@ -109,7 +110,7 @@ extractSampledIndiv <- function(indiv) {
   ## Seperate the sample years and allocate one to every occasion that 
   ## individual was sampled. 
   for (id in unique(self$Me)) {
-    ## Get all samplings of the same individual with id
+    ## Get all sample occassions of the same individual with id
     selfs <- self[self$Me == id, ]
     
     ## Extract all the sampling years of this individual
@@ -148,7 +149,8 @@ extractTheLiving <- function(indiv,
                              year,
                              start_of_year = TRUE,
                              min_age = 0,
-                             sex = NULL) {
+                             sex = NULL,
+                             only_index = FALSE) {
   if (is.null(sex)) {
     indiv <- indiv
   } else if (sex == "male") {
@@ -165,7 +167,7 @@ extractTheLiving <- function(indiv,
       ((indiv$DeathY >= year & !is.na(indiv$DeathY)) | # Died in or after 'year'?
          is.na(indiv$DeathY))                          # Still alive?
     # Old enough at the start of the year
-    old_enough <-  alive & indiv$BirthY < (year - min_age + 1)
+    old_enough <- alive & (indiv$BirthY < (year - min_age + 1))
   } else {
     # Born in or before 'year', and either still alive or died after 'year' 
     alive <- indiv$BirthY <= year &                    # Born in or before 'year'?
@@ -174,8 +176,15 @@ extractTheLiving <- function(indiv,
     # Old enough at the endof the year
     old_enough <-  alive & indiv$BirthY <= (year - min_age + 1)
   }
+
   
-  living <- subset(indiv, old_enough)
+  ## If requested, only return the index
+  if (only_index) {
+    living <- old_enough
+  ## Else, return the living from indiv with all information included
+  } else {
+    living <- subset(indiv, old_enough)
+  }
   
   return(living)
 }
@@ -444,9 +453,15 @@ mateOrBirth <- function (indiv,
       warning("There are no mating females in the population")
     }
     ## Subset potential fathers = all mature males that were alive and mature ONE YEAR AGO!
-    fathers <- subset(indiv, indiv[, 2] == 0 & 
-                        indiv[, 8] - 1 >= firstBreedMale & # only include males that were mature a year ago
-                        (is.na(indiv[, 6]) | indiv[, 6] == year)) # either alive or were still alive one year ago
+    
+    ## I WONDER IF WHAT I DO IS RIGHT HERE... I DONT THINK I SHOULD LOOK AT AGE LAST, BUT INSTEAD 
+    ## COMPARE TO BIRTHYEAR
+    fathers <- CKMRcpp::extractTheLiving(indiv, year = year - 1, start_of_year = T, 
+                                         min_age = firstBreedMale, sex = "male")
+    # fathers <- subset(indiv, indiv[, 2] == 0 & 
+    #                     year - indiv[, 5] - 1 >= firstBreedMale &  ## Using birthyear is important, instead of AgeLast, which stops counting after death
+    #                     # indiv[, 8] - 1 >= firstBreedMale & # only include males that were mature a year ago
+    #                     (is.na(indiv[, 6]) | indiv[, 6] == year)) # either still alive or alive one year ago
     
     if (nrow(fathers) == 0) {
       warning("There were no mature males in the population one year ago.")
@@ -579,11 +594,11 @@ plotCKMRabundance <- function(
     fits,           # A list of fits
     # par_name,     # The name of the abundance parameter
     year_lim,       # Number of years backward and forward from reference year
-    max_y_axis = 6000,
+    max_y_axis = 3000,
     fixed_r = NULL, # 
     y0 = 140,       # The reference year
     med = F,     # TRUE for the median, else the mean
-    alpha = 0.05,    # Signifance level for confidence intervals
+    alpha = 0.1,    # Signifance level for confidence intervals
     truth = NULL
 ) {
   
@@ -647,11 +662,15 @@ plotCKMRabundance <- function(
                  ylim = c(0, max_y_axis),
                  ylab = "Female adult abudance")
   ## If the true trend is provided, add it to the plot
+  # if (!is.null(truth)) {
+  #   lines(x = years + y0, 
+  #         y = truth$N_f * truth$r ^ years, 
+  #         col = "red", 
+  #         lty = 2)
+  # }
   if (!is.null(truth)) {
     lines(x = years + y0, 
-          y = truth$N_f * truth$r ^ years, 
-          col = "red", 
-          lty = 2)
+          y = truth[(nrow(truth)-length(years)+1):nrow(truth), 2])
   }
   
   ## Create plot for the female adult population
@@ -663,11 +682,15 @@ plotCKMRabundance <- function(
                  ylim = c(0, max_y_axis),
                  ylab = "Male adult abudance")
   ## If the true trend is provided, add it to the plot
+  # if (!is.null(truth)) {
+  #   lines(x = years + y0, 
+  #         y = truth$N_m * truth$r ^ years, 
+  #         col = "red", 
+  #         lty = 2)
+  # }
   if (!is.null(truth)) {
     lines(x = years + y0, 
-          y = truth$N_m * truth$r ^ years, 
-          col = "red", 
-          lty = 2)
+          y = truth[(nrow(truth)-length(years)+1):nrow(truth), 1])
   }
 }
 
@@ -676,7 +699,9 @@ retroCapture2 <- function (indiv,
                            year = "-1", 
                            fatal = FALSE) {
   ## check which individuals were alive at the sampling occasion
-  is_alive <- (is.na(indiv$DeathY) | indiv$DeathY >= year) & indiv$BirthY <= year
+  the_living <- CKMRcpp::extractTheLiving(indiv, year, TRUE, 0, NULL)
+  is_alive <- indiv$Me %in% the_living$Me
+  
   is_dead <- !is_alive
   n_alive <- sum(is_alive)
   n <- min(n, n_alive)

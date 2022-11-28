@@ -11,25 +11,25 @@
 
 library(pbapply)
 library(parallel)
-data_folder <- "data/1_population_10_sampling_schemes/"
-load(paste0(data_folder, "10_schemes_dfs_suff_unique_combos.RData"))
+data_folder <- "data/1_population_multiple_sampling_schemes/"
+load(paste0(data_folder, "100_schemes_dfs_suff_unique_combos_sim=555.RData"))
 ## :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 ## Set parameter values
 ## :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
-true_error <- 2.89
+true_error <- 2.89          # what is the true measurement error
 
-a_0 <- -8.27 
-k <- 0.0554
-l_inf <- 163
+a_0 <- -8.27                # theoretical age at length zero              
+k <- 0.0554                 # growth rate
+l_inf <- 163                # asymptotic length
   
-errors <- c(1e-8, # 1e-8 instead of 0 to avoid overflow
-            true_error*1/3, 
-            true_error*2/3, 
-            true_error, 
-            true_error*4/3, 
-            true_error*5/3, 
-            true_error*6/3) 
+errors <- c(1e-8,                         # 1e-8 instead of 0 to avoid overflow
+            true_error*1/3,               # 1/3 of true error
+            true_error*2/3,               # 2/3 of true error
+            true_error,                   # true error
+            true_error*4/3,               # 4/3 of true error
+            true_error*5/3,               # 5/3 of true error
+            true_error*6/3)               # twice the true error
 ## vbgfs comes from l.100 onwards in 'explore_vbgf_bias_uncertainty.R'
 step_l_inf <- 0.05 * l_inf  # 8.15 is 5% of 163
 a0_options <- seq(from = l_inf - step_l_inf * 3, 
@@ -49,30 +49,32 @@ pars <- do.call(rbind, lapply(seq_along(errors), function(i) {
 }))
 
 ## Number of fitted models for every scenario
-n <- 10
+n <- 100
 
 ## :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 ## Fit all models
 ## :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
-# scenario_fits <- lapply(1:nrow(pars), function(i) {
-scenario_fits_25 <- lapply(c(25), function(i) {
+scenario_fits <- lapply(1:nrow(pars), function(i) {
+# scenario_fits_25 <- lapply(c(1), function(i) {
+  cat("Fitting the CKMR model in scenario:" , i, "\n")
+  
   a0 <- pars[i, "a_0"]
   l_inf <- pars[i, "l_inf"]
   sigma_l <- pars[i, "sigma_l"]
   
-  n_cores <- 10 # 50 fits per core
+  n_cores <- 100 # 50 fits per core
   cl <- makeCluster(n_cores)
   clusterExport(cl = cl, list("a0", "l_inf", "sigma_l"), envir = environment())
   results <- pblapply(dfs_suff[1:n], function(df) {
     ## Create parameter object for nlminb()
     par <- list(
       # phi = boot::logit(0.87), # same as plogis(0.9) -- boot::inv.logit() is qlogis()
-      N_t0_m = log(500),
-      # r = log(1.0002),
+      N_t0_m = log(500),                              # number of reproductive males
+      r = log(1.000),                                # the population growth rate
       # sigma_l = log(0.01),
       # phi = boot::logit(1 - 0.153),
-      N_t0_f = log(500))
+      N_t0_f = log(500))                              # number of reproductive females
     
     ## Take a subset of the data if required
     df_select <- df[, ]
@@ -81,26 +83,26 @@ scenario_fits_25 <- lapply(c(25), function(i) {
     dat <- list(alpha_m = 17,                         # maturity age for males
                 alpha_f = 19,                         # maturity age for females
                 
-                r = log(1.0010),
-                sigma_l = log(sigma_l),
-                phi = boot::logit(1 - 0.1113),         # phi is the surival rate
+                # r = log(1.0000),                      # the population growth rate
+                sigma_l = log(sigma_l),               # the measurement error on length
+                phi = boot::logit(1 - 0.1113),        # phi is the survival rate
                 
-                fixed_r = 1,                          # is r fixed or estimated?
+                fixed_r = 0,                          # is r fixed or estimated?
                 
-                max_age = 63,
-                max_length = 200,
-                t0 = 2014,
-                vbgf_l_inf = l_inf,
-                vbgf_k = 0.0554,
-                vbgf_a0 = a0,
-                s1 = df_select$indiv_1_sex,
-                s2 = df_select$indiv_2_sex,
-                c1 = df_select$indiv_1_capture_year,
-                c2 = df_select$indiv_2_capture_year,
-                a1 = df_select$indiv_1_capture_age,
-                a2 = df_select$indiv_2_capture_age,
-                l1 = df_select$indiv_1_length,
-                l2 = df_select$indiv_2_length,
+                max_age = 63,                         # the maximum age to be considered
+                max_length = 200,                     # at least the maximum length in the data
+                t0 = 2014,                            # a reference year for the abundance estimation
+                vbgf_l_inf = l_inf,                   # asymptotic length for VBGF
+                vbgf_k = 0.0554,                      # growth coefficient for VBGF
+                vbgf_a0 = a0,                         # theoretical age at length 0 for vbgf
+                s_i = df_select$indiv_1_sex,
+                s_j = df_select$indiv_2_sex,
+                c_i = df_select$indiv_1_capture_year,
+                c_j = df_select$indiv_2_capture_year,
+                a_i = df_select$indiv_1_capture_age,
+                a_j = df_select$indiv_2_capture_age,
+                l_i = df_select$indiv_1_length,
+                l_j = df_select$indiv_2_length,
                 kinship = df_select$kinship,
                 cov_combo_freq = df_select$covariate_combo_freq,
                 n = nrow(df_select))
@@ -111,7 +113,7 @@ scenario_fits_25 <- lapply(c(25), function(i) {
     res <- nlminb(start = par, 
                   objective = CKMRcpp::nllPOPCKMRcppAgeUnknownGestation, 
                   dat = dat, 
-                  control = list(trace = 1, rel.tol = 1e-8))
+                  control = list(trace = 1, rel.tol = 1e-7))
     # })
     
     return(res)
@@ -119,31 +121,32 @@ scenario_fits_25 <- lapply(c(25), function(i) {
   return(results)
 })
 
+
 ## Save the environment
-save.image("data/simulation_scenarios_results_r=1.0002.RData")
+save.image("data/simulation_100_schemes_scenario_1-49_fit_results_n=100.RData")
 
 ## :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 ## Visualise the results.
 ## 
 ## What should I visualise? The abundance, the 
 ## :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-scenario_fits[[1]][[1]]$
-
-## Set plot dimensions
-mfrow()
-
-test <- scenario_fits[[8]]
-est <- t(sapply(test, function(x) x$par))
-its <- sapply(scenario_fits, function(x) {
-  mean(sapply(x, function(y) y$iterations))
-})
-conv <- sapply(scenario_fits, function(x) {
-  mean(sapply(x, function(y) y$convergence))
-})
-
-scenarios <- as.data.frame(pars)
-scenarios$mean_iterations <- its
-scenarios$mean_convergence <- conv
+# scenario_fits[[1]][[1]]$
+# 
+# ## Set plot dimensions
+# mfrow()
+# 
+# test <- scenario_fits[[8]]
+# est <- t(sapply(test, function(x) x$par))
+# its <- sapply(scenario_fits, function(x) {
+#   mean(sapply(x, function(y) y$iterations))
+# })
+# conv <- sapply(scenario_fits, function(x) {
+#   mean(sapply(x, function(y) y$convergence))
+# })
+# 
+# scenarios <- as.data.frame(pars)
+# scenarios$mean_iterations <- its
+# scenarios$mean_convergence <- conv
 
 ## UPDATE: when sigma_l = 0, it fails. This makes sense, as it results in a
 ## probability density of positive infinity (due to division by 0). 
@@ -159,3 +162,45 @@ r_est <- sapply(result_list, function(res){
 })
 
 summary(cbind(N_est, r_est))
+CKMRcpp::plotCKMRabundance(result_list, c(-30, 0), y0=2014, med=T)
+lines(1984:2014, combined_data[[1]]$N_hist[70:100, 1])
+lines(1984:2014, combined_data[[1]]$N_hist[70:100, 2])
+
+
+save(list = "result_list", 
+     file = paste0(data_folder, "simulation_scenarios_results_100_schemes_i=",
+                   sim_i, ".RData"))
+
+MCE_data <- t(sapply(seq(from = 1, to = 901, by = 100), function(x) {
+  mean_male <- mean(N_est[x:(x+99), 1])
+  mean_female <- mean(N_est[x:(x+99), 2])
+  mean_r <- mean(r_est[x:(x+99)])
+  
+  return(c(mean_male = mean_male, mean_female = mean_female, mean_r = mean_r))
+}))
+
+MCE_100 <- apply(MCE_data, 2, sd)
+MCE_1000 <- MCE_100 / sqrt(10)
+MCE_100
+MCE_1000
+## :::::::::::::::::::::::::::::::::::::::::::::::::::
+## Plot multiple scenarios
+## :::::::::::::::::::::::::::::::::::::::::::::::::::
+load(paste0(data_folder, "simulation_100_schemes_scenario_1-49_fit_results_sim=555.RData"))
+load(paste0(data_folder, "100_schemes_combined_data_with_N_hist_sim=555.RData"))
+
+for (i in 1:49) {
+  readline(prompt="Press [enter] to continue")
+
+  p1 <- CKMRcpp::plotCKMRabundance(scenario_fits[[i]],
+                                   c(-20,0),
+                                   3000,
+                                   fixed_r = NULL ,
+                                   med = T,
+                                   truth = combined_data[[1]]$N_hist,
+                                   y0 = 2014)
+
+
+}
+
+

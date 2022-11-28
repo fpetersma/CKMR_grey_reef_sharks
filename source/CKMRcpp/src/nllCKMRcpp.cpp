@@ -31,6 +31,7 @@ double fLengthGivenAge(int l,
 }
 
 // Probability mass function for sampled age
+// LOK INTO THIS, AS IT SEM LIKE I CAN WOKR WITH POP AGE (THE SAME HERE< BUT STILL)
 double fSampledAge(int a, 
                    double p_geom, 
                    int max_age) {
@@ -126,13 +127,13 @@ double nllPOPCKMRcppAgeUnknownGestation(List dat, List par) {
   // ===========================================================================
   // 1. EXTRACT DATA OBJECTS
   // ---------------------------------------------------------------------------
-  const IntegerVector s1 = dat["s1"];         // sex of individual 1 (1=F, 0=M)
-  const IntegerVector s2 = dat["s2"];         // sex of individual 2
-  const IntegerVector l1 = dat["l1"];           // length of individual 1
-  const IntegerVector l2 = dat["l2"];           // length of individual 2
-  const IntegerVector c1 = dat["c1"];           // capture year of individual 1
-  const IntegerVector c2 = dat["c2"];           // capture year of individual 2
-  const IntegerVector kinship =               // So far, can be either U=0, PO/OP=1, 
+  const IntegerVector s_i = dat["s_i"];           // sex of individual i (F=1, M=0)
+  const IntegerVector s_j = dat["s_j"];           // sex of individual j
+  const IntegerVector l_i = dat["l_i"];           // length of individual i
+  const IntegerVector l_j = dat["l_j"];           // length of individual j
+  const IntegerVector c_i = dat["c_i"];           // capture year of individual i
+  const IntegerVector c_j = dat["c_j"];           // capture year of individual j
+  const IntegerVector kinship =                 // So far, can be either U=0, PO/OP=1, 
     dat["kinship"];                             // or U=2.
   const IntegerVector cov_combo_freq = 
     dat["cov_combo_freq"];
@@ -143,9 +144,9 @@ double nllPOPCKMRcppAgeUnknownGestation(List dat, List par) {
   const int max_length = dat["max_length"];     // maximum possible length
   const int t0 = dat["t0"];                     // reference  year for abundance
   const int n = dat["n"];                       // number of observations
-  const double vbgf_l_inf = dat["vbgf_l_inf"];
-  const double vbgf_k = dat["vbgf_k"];
-  const double vbgf_a0 = dat["vbgf_a0"];
+  const double vbgf_l_inf = dat["vbgf_l_inf"];  // asymptotic length
+  const double vbgf_k = dat["vbgf_k"];          // individual growth rate
+  const double vbgf_a0 = dat["vbgf_a0"];        // theoretical age at length zero
   
   // Extract boolean for fixed parameters
   const int fixed_r = dat["fixed_r"]; 
@@ -155,7 +156,7 @@ double nllPOPCKMRcppAgeUnknownGestation(List dat, List par) {
   if (fixed_r == 1) {
     r = std::exp(double(dat["r"]));             // growth parameter
   }
-  const double sigma_l = std::exp(double(dat["sigma_l"]));
+  const double sigma_l = std::exp(double(dat["sigma_l"])); // length measurement error
   const double phi = std::exp(double(dat["phi"])) /        // survival parameter
     (1.0 + std::exp(double(dat["phi"])));
   
@@ -202,6 +203,13 @@ double nllPOPCKMRcppAgeUnknownGestation(List dat, List par) {
                              vbgf_a0);
     }
   }
+  
+  // Potentially try to precalculate abundance. However, deriving powers is 
+  // REALLY quick, and I wonder if it is worth it.
+  // // Derive abundances for all years
+  // const int min_year = 1900;
+  // const int max_year = 2014;
+  // NumericVector N_m_v 
 
   // // Below, to avoid getting negative indices, add 40 to the indices
   // // Derive values N_t0_f back in time for 0:19 years of population growth r
@@ -233,93 +241,105 @@ double nllPOPCKMRcppAgeUnknownGestation(List dat, List par) {
     double prob = 0.0;
     
     // :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-    // Indiv 1 is the potential parent and indiv 2 the offspring
+    // Indiv i is the potential parent and indiv j the offspring
+    //
+    // Pr(MO) is the ERRO in y_j - 1, corrected for surviving the gestation.
+    //
+    // Pr(PO) is the ERRO in y_j -1, conditional on the survival of the 
+    // mother. So it's actually Pr(PO | gestation survival of mum) = 
+    // Pr(PO) / Pr(gestation survival of mum).
+    // OR ACTUALLY: the reason it needs the correction is that the potential
+    // parents are the ones who were alive at y_j - 1 AND who partner 
+    // survived the gestation.
+    //
+    // Both are corrected for survival from c_i to y_j - 1 if parent i was
+    // caught before birth year of j - 1, ie c_i < y_j - 1. 
     // :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-    
-    // :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-    // Start of faster but more complicated version
-    // :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-    
-    // // For the max age for individual 1, derive the probabilities for all age for indiv 2
-    // int lowest_y1 = c1[index] - max_age;
-    // 
-    // // max_age_2 depends on c2, y1, and the alpha for the gender of 1
-    // int max_age_2 = c2[index] - lowest_y1;
-    // // corrected for alpha below
-    // if (s1[index] == 1) {
-    //   max_age_2 -= alpha_f;
+                                                                                
+    // ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::://
+    // Start of faster but more complicated version                             //
+    // ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::://
+                                                                                //
+    // // For the max age for individual i, derive the probabilities for all age   //
+    // // for individual j                                                         //
+    // int lowest_y_j = c_i[index] - max_age;                                      //
+    //                                                                             //
+    // // max_age_j depends on c_j, y_i, and the alpha for the gender of i         //
+    // int max_age_j = c_j[index] - lowest_y_i;                                    //
+    // // corrected for alpha below                                                //
+    // if (s_i[index] == 1) {                                                      //
+    //   max_age_j -= alpha_f;
     // } else {
-    //   max_age_2 -= alpha_m;
+    //   max_age_j -= alpha_m;
     // }
     // 
     // // Create vector to store probabilities
-    // NumericVector probs_a2_given_a1 (max_age_2 + 1);
+    // NumericVector probs_a_j_given_a_i (max_age_j + 1);
     // 
-    // // Derive the probabilities for every a2, and store in vector
-    // for (int a2 = 0; a2 <= max_age_2; a2++) {
-    //   // Extract birth year of individual 2
-    //   int y2 = c2[index] - a2;
-    //   
-    //   double prob_a2 = 0.0;
-    //   
+    // // Derive the probabilities for every a_j, and store in vector
+    // for (int a_j = 0; a_j <= max_age_j; a_j++) {
+    //   // Extract birth year of individual j
+    //   int y_j = c_j[index] - a_j;
+    // 
+    //   double prob_a_j = 0.0;
+    // 
     //   // If sex is female
-    //   if (s1[index] == 1) {
-    //     prob_a2 = 1.0 / (N_t0_f * std::pow(r, y2 - t0));
-    //     // prob12_2 = 1.0 / (N_t0_f_vector[y2 - t0] + 40);
-    //     
-    //     // Account for survival of parent i if j was born after c1
-    //     if (c1[index] < y2) {
-    //       prob_a2 *= std::pow(phi, y2 - c1[index]);
-    //       // prob12_2 *= phi_vector[y2 - c1[index]];
+    //   if (s_i[index] == 1) {
+    //     // ERRO is 1 over the total number of mature females in y_j - 1
+    //     prob_a_j = 1.0 / (N_t0_f * std::pow(r, y_j - t0 - 1));
+    // 
+    //     // Account for survival of mother i if j was born after c_i
+    //     if (c_i[index] < y_j) {
+    //       prob_a_j *= std::pow(phi, y_j - c_i[index]);
     //     }
     //   }
     //   // If sex is male
-    //   if (s1[index] == 0) {
-    //     // Derive the ERRO in the year before the birth year of the offspring
-    //     prob_a2 = 1.0 / (N_t0_m * std::pow(r, y2 - t0));
-    //     // prob12_2 = 1.0 / (N_t0_m_vector[y2 - t0] + 40);
-    //     
-    //     // Account for survival of parent i if j was born after c1 + 1
-    //     if (c1[index] < y2) {
-    //       prob_a2 *= std::pow(phi, y2 - c1[index]);
-    //       // prob12_2 *= phi_vector[y2 - c1[index]];
+    //   if (s_i[index] == 0) {
+    //     // ERRO is 1 over the total number of mature males in y_j - 1 whose
+    //     // female partner survived the gestation
+    //     prob_a_j = 1.0 / (N_t0_m * std::pow(r, y_j - t0 - 1) * phi);
+    // 
+    //     // Account for survival of father i if j was born after c_i + 1
+    //     if (c_i[index] < y_j + 1) {
+    //       prob_a_j *= std::pow(phi, y_j - c_i[index] - 1);
     //     }
     //   }
     //   // 'Look up table'-version
-    //   probs_a2_given_a1[a2] = prob_a2 * age_length_prob_matrix(a2, l2[index]);
+    //   probs_a_j_given_a_i[a_j] = prob_a_j * age_length_prob_matrix(a_j, l2[index]);
     //   // // Conventional version
-    //   // probs_a2_given_a1[a2] = prob_a2 * fAgeGivenLengthFast(a2, l2[index], sigma_l,
+    //   // probs_a_j_given_a_i[a_j] = prob_a_j * fAgeGivenLengthFast(a_j, l2[index], sigma_l,
     //   //                                            probs_sampled_ages, max_age,
     //   //                                            vbgf_l_inf, vbgf_k, vbgf_a0);
     // }
     // 
-    // // std::cout << "probs_a2_given_a1: " << probs_a2_given_a1 << std::endl;
+    // // std::cout << "probs_a_j_given_a_i: " << probs_a_j_given_a_i << std::endl;
     // 
-    // int size_vector1 = probs_a2_given_a1.size();
+    // int size_vector1 = probs_a_j_given_a_i.size();
     // 
     // NumericVector temp_1 (size_vector1);
-    // for (int a2 = 0; a2 < size_vector1; a2++) {
-    //   int a1 = a2 + max_age - max_age_2;
-    //   int y1 = c1[index] - a1;
-    //   
+    // // Loop over all potential ages for offspring
+    // for (int a_j = 0; a_j < size_vector1; a_j++) {
+    //   int a_i = a_j + max_age - max_age_j;
+    //   int y_i = c_i[index] - a_i;
+    // 
     //   // Set to zero if parent was not mature in birth year offspring
     //   // Sum using a loop to be able to ignore probabilities where birth year
     //   // of parent is before the earliest birth year according to age of offspring.
     //   double special_sum = 0.0;
-    //   for (int i = 0; i <= a2; i++) {
-    //     // Only add probability if the combination of a2 and a1 does not imply
+    //   for (int i = 0; i <= a_j; i++) {
+    //     // Only add probability if the combination of a_j and a_i does not imply
     //     // that the parent was older than max_age in the birth year of offspring
-    //     if (y1 >= c2[index] - i - max_age) {
-    //       special_sum += probs_a2_given_a1[i];
+    //     if (y_i >= c_j[index] - i - max_age) {
+    //       special_sum += probs_a_j_given_a_i[i];
     //     }
     //   }
-    //   temp_1[a2] = special_sum;
-    //   
-    //   // correct for f(a1) = f(a2 + max_age - max_age_2)
+    //   temp_1[a_j] = special_sum;
+    // 
+    //   // correct for f(a_i) = f(a_j + max_age - max_age_j)
     //   // 'Look up table'-version
-    //   temp_1[a2] *= age_length_prob_matrix(a1, l1[index]);
+    //   temp_1[a_j] *= age_length_prob_matrix(a_i, l1[index]);
     //   // // Conventional version
-    //   // temp_1[a2] *= fAgeGivenLengthFast(a1,
+    //   // temp_1[a_j] *= fAgeGivenLengthFast(a_i,
     //   //                                   l1[index], sigma_l,
     //   //                                   probs_sampled_ages, max_age,
     //   //                                   vbgf_l_inf, vbgf_k, vbgf_a0);
@@ -330,64 +350,67 @@ double nllPOPCKMRcppAgeUnknownGestation(List dat, List par) {
     // 
     // // Add to the main probability before comparing the other direction
     // prob += sum(temp_1);
-    
+
     // :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
     // Start of slower but less complicated version
     // :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-    
+
     // Loop over the ages
-    for (int a1 = 0; a1 <= max_age; a1++) {
+    for (int a_i = 0; a_i <= max_age; a_i++) {
       // Extract birth year of individual 2
-      int y1 = c1[index] - a1;
+      int y_i = c_i[index] - a_i;
 
-      double prob12_1 = 0.0;
+      double prob_ij_1 = 0.0;
 
-      // max_age_2 depends on c2, y1, and the alpha for the gender of 1
-      int max_age_2 = c2[index] - y1 - 1; // - 1 for gestation
+      // max_age_j depends on c_j, y_i, and the alpha for the gender of i
+      int max_age_j = c_j[index] - y_i - 1; // - 1 for gestation
       // corrected for alpha below
-      if (s1[index] == 1) {
-        max_age_2 -= alpha_f;
+      if (s_i[index] == 1) {
+        max_age_j -= alpha_f;
       } else {
-        max_age_2 -= alpha_m;
+        max_age_j -= alpha_m;
       }
 
-      for (int a2 = 0; a2 <= max_age_2; a2++) {
-        // Extract birth year of individual 2
-        int y2 = c2[index] - a2;
+      for (int a_j = 0; a_j <= max_age_j; a_j++) {
+        // Extract birth year of individual j
+        int y_j = c_j[index] - a_j;
 
-        // :::::::s::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-        // First the initial direction, i.e., 1 is the parent and 2 is the offspring
         // :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-        double prob12_2 = 0.0;
+        // First the initial direction, i.e., i is the parent and j is the
+        // offspring.
+        // :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+        double prob_ij_2 = 0.0;
 
         // Probability stays zero if offspring was born before maturity of parent
-        if ((s1[index] == 1) & (a1 + y2 - c1[index] <= max_age)) {
+        if ((s_i[index] == 1) &                   // is the potential parent female?
+            (a_i + y_j - c_i[index] <= max_age))  // was the parent mature?
+        {
           // Derive the ERRO in the year before the birth year of the offspring
-          prob12_2 = 1.0 / (N_t0_f * std::pow(r, y2 - t0 - 1)); // subtract 1 for one year gestation
-
-          // Account for survival of mother i if j was born after c1
-          if (c1[index] < y2) {
-            prob12_2 *= std::pow(phi, y2 - c1[index]); // don't subtract here
-          } // else {
-            // Account for survival of mom from mating to birth (1 year)
-            // prob12_2 *= phi;
-            // }
-        }
-        if ((s1[index] == 0) & (a1 + y2 - c1[index] - 1 <= max_age)) {
-          // Derive the ERRO in the year before the birth year of the offspring
-          prob12_2 = 1.0 / (N_t0_m * std::pow(r, y2 - t0 - 1));
-
-          // Account for survival of father i if j was born after c1 + 1
-          if (c1[index] + 1 < y2) {
-            prob12_2 *= std::pow(phi, y2 - c1[index] - 1);
+          prob_ij_2 = 1.0 / (N_t0_f * std::pow(r, y_j - t0 - 1) * phi); // subtract 1 for one year gestation
+          
+          // Account for survival of mother i if j was born after c_i
+          if (c_i[index] < y_j) {
+            prob_ij_2 *= std::pow(phi, y_j - c_i[index]); // don't subtract here
           }
-          // Account for the survival of the mother, as that is required for the 
+        }
+
+        if ((s_i[index] == 0) &                       // is the potential parent male?
+            (a_i + y_j - c_i[index] - 1 <= max_age))  // Was the parent mature?
+          {
+          // Derive the ERRO in the year before the birth year of the offspring
+          prob_ij_2 = 1.0 / (N_t0_m * std::pow(r, y_j - t0 - 1));
+
+          // Account for survival of father i if j was born after c_i + 1
+          if (c_i[index] + 1 < y_j) {
+            prob_ij_2 *= std::pow(phi, y_j - c_i[index] - 1);
+          }
+          // Account for the survival of the mother, as that is required for the
           // father to be visible through the offspring [17-11-2022]
-          prob12_2 *= phi ^ 1;              // mother has to survive for 1 year
+          // prob_ij_2 /= phi;              // mother has to survive for 1 year
         }
         // std::cout << "prob12_2 for a1=" << a1 << " and a2=" << a2 << " is: " << prob12_2 << std::endl;
         // Look up table-version
-        prob12_1 += prob12_2 * age_length_prob_matrix(a2, l2[index]);
+        prob_ij_1 += prob_ij_2 * age_length_prob_matrix(a_j, l_j[index]);
         // // Fast version
         // prob12_1 += prob12_2 * fAgeGivenLengthFast(a2, l2[index], sigma_l,
         //                                            probs_sampled_ages, max_age,
@@ -399,7 +422,7 @@ double nllPOPCKMRcppAgeUnknownGestation(List dat, List par) {
       }
       // std::cout << "prob12_1 for a1=" << a1 << " is: " << prob12_1 << std::endl;
       // Look up table-version
-      prob += prob12_1 * age_length_prob_matrix(a1, l1[index]);
+      prob += prob_ij_1 * age_length_prob_matrix(a_i, l_i[index]);
       // // Fast version
       // prob += prob12_1 * fAgeGivenLengthFast(a1, l1[index], sigma_l,
       //                                        probs_sampled_ages, max_age,
@@ -408,12 +431,12 @@ double nllPOPCKMRcppAgeUnknownGestation(List dat, List par) {
       //                                                                    probs_sampled_ages, max_age,
       //                                                                    vbgf_l_inf, vbgf_k, vbgf_a0) << std::endl;
     }
-    
+
     
     
     
     // :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-    // Indiv 2 is the potential parent and indiv 1 the offspring
+    // Indiv j is the potential parent and indiv i the offspring
     // :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
     
     // :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
@@ -514,57 +537,54 @@ double nllPOPCKMRcppAgeUnknownGestation(List dat, List par) {
     // :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
     
     // Loop over the ages, the other way around now
-    for (int a2 = 0; a2 <= max_age; a2++) {
+    for (int a_j = 0; a_j <= max_age; a_j++) {
       // Extract birth year of individual 2
-      int y2 = c2[index] - a2;
+      int y_j = c_j[index] - a_j;
 
-      double prob21_1 = 0.0;
+      double prob_ji_1 = 0.0;
 
-      // max_age_1 depends on c1, y2, and the alpha for the gender of 2
-      int max_age_1 = c1[index] - y2 - 1; // -1 for gestation
+      // max_age_1 depends on c_i, y_j, and the alpha for the gender of j
+      int max_age_i = c_i[index] - y_j - 1; // -1 for gestation
       // corrected for alpha below
-      if (s1[index] == 1) {
-        max_age_1 -= alpha_f;
+      if (s_j[index] == 1) {
+        max_age_i -= alpha_f;
       } else {
-        max_age_1 -= alpha_m;
+        max_age_i -= alpha_m;
       }
 
-      for (int a1 = 0; a1 <= max_age_1; a1++) {
+      for (int a_i = 0; a_i <= max_age_i; a_i++) {
 
-        // Extract birth year of individual 1
-        int y1 = c1[index] - a1;
+        // Extract birth year of individual i
+        int y_i = c_i[index] - a_i;
 
         // :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-        // Now the other direction, i.e., 2 is the parent and 1 is the offspring
+        // Now the other direction, i.e., j is the parent and i is the offspring
         // :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-        double prob21_2 = 0.0;
+        double prob_ji_2 = 0.0;
 
         // Probability stays zero if offspring was born before maturity of parent
-        if ((s2[index] == 1) & (a2 + y1 - c2[index] <= max_age)) {
-          prob21_2 = 1.0 / (N_t0_f * std::pow(r, y1 - t0 - 1)); // subtract 1 for one year gestation
+        if ((s_j[index] == 1) & (a_j + y_i - c_j[index] <= max_age)) {
+          prob_ji_2 = 1.0 / (N_t0_f * std::pow(r, y_i - t0 - 1) * phi); // subtract 1 for one year gestation
 
-          // Account for survival of mother j if i was born after c1
-          if (c2[index] < y1) {
-            prob21_2 *=  std::pow(phi, y1 - c2[index]);
-          } // else {
-            // Account for survival of mom from mating to birth (1 year)
-            // prob21_2 *= phi;
-          // }
+          // Account for survival of mother j if i was born after c_j
+          if (c_j[index] < y_i) {
+            prob_ji_2 *=  std::pow(phi, y_i - c_j[index]);
+          } 
         }
-        if ((s2[index] == 0) & (a2 + y1 - c2[index] - 1 <= max_age)) {
+        if ((s_j[index] == 0) & (a_j + y_i - c_j[index] - 1 <= max_age)) {
           // Derive the ERRO in the year before the birth year of the offspring
-          prob21_2 = 1.0 / (N_t0_m * std::pow(r, y1 - t0 - 1));
+          prob_ji_2 = 1.0 / (N_t0_m * std::pow(r, y_i - t0 - 1));
 
-          // Account for survival of father j if i was born after c1 + 1
-          if (c2[index] + 1 < y1) {
-            prob21_2 *=  std::pow(phi, y1 - c2[index] - 1);
+          // Account for survival of father j if i was born after c_j + 1
+          if (c_j[index] + 1 < y_i) {
+            prob_ji_2 *=  std::pow(phi, y_i - c_j[index] - 1);
           }
           // Account for the survival of the mother, as that is required for the 
           // father to be visible through the offspring [17-11-2022]
-          prob21_2 *= phi ^ 1;              // mother has to survive for 1 year 
+          // prob_ji_2 /= phi;       // mother has to survive for 1 year
         }
         // Look up table version
-        prob21_1 += prob21_2 * age_length_prob_matrix(a1, l1[index]);
+        prob_ji_1 += prob_ji_2 * age_length_prob_matrix(a_i, l_i[index]);
         // // Fast version
         // prob21_1 += prob21_2 * fAgeGivenLengthFast(a1, l1[index], sigma_l,
         //                                            probs_sampled_ages, max_age,
@@ -574,7 +594,7 @@ double nllPOPCKMRcppAgeUnknownGestation(List dat, List par) {
         //                                                                                vbgf_l_inf, vbgf_k, vbgf_a0) << std::endl;
       }
       // Look up table version
-      prob += prob21_1 * age_length_prob_matrix(a2, l2[index]);
+      prob += prob_ji_1 * age_length_prob_matrix(a_j, l_j[index]);
       // // Fast version
       // prob += prob21_1 * fAgeGivenLengthFast(a2, l2[index], sigma_l,
       //                                        probs_sampled_ages, max_age,
@@ -592,6 +612,7 @@ double nllPOPCKMRcppAgeUnknownGestation(List dat, List par) {
     
     // std::cout << "prob: " << prob << std::endl;
     
+    // If the probability is 0, set it to a very small number to avoid underflow
     if (prob == 0) {
       prob = std::pow(10, -60);
     }

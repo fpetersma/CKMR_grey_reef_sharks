@@ -29,7 +29,7 @@ first_litter <- 3:6            # first litter
 batch_size <- 3:6               # all possible values for random draw
 max_clutch <- Inf               # maximum litter sizes
 max_age <- 63                   # maximum age
-mort_rate <- 0.1113              # flat mortality rate (0.1115 is REALLY close, slightly negative)
+mort_rate <- 0.1113              # flat mortality rate
 surv_rate <- 1 - mort_rate      # survival is 1 minus mortality
 force_Y1 <- NA                # first-year mortality (not always used)
 female_curve <- c(rep(0, first_breed_female),  # female maturity curve 
@@ -47,11 +47,12 @@ no_gestation <- FALSE
 years <- 1915:2014             # number of years to run simulation
 
 ## Store simulated sets
-n_cores <- 20
+n_cores <- 1
 cl <- makeCluster(n_cores)
-rm(simulated_data_sets)
+# rm(simulated_data_sets)
 clusterExport(cl, c(ls()))
-simulated_data_sets <- pblapply(1:1000, function(i) {
+# simulated_data_sets <- pblapply(1:1000, function(i) {
+simulated_data_sets <- pblapply(c(7), function(i) {
   
   ## Set a seed for reproducibility
   set.seed(170593 + 121 * i)
@@ -63,7 +64,8 @@ simulated_data_sets <- pblapply(1:1000, function(i) {
     pop = 8500,                   # starting pop. size 8500 from literature
     osr = sex_ratio,
     stocks = c(1), # a single stock
-    maxAge = max_age,             #
+    maxAge = max_age,         
+    y0 = min(years) - 1,
     survCurv = surv_rate ^ (1:(max_age )) / sum(surv_rate ^ (1:(max_age)))
   )
   
@@ -71,6 +73,12 @@ simulated_data_sets <- pblapply(1:1000, function(i) {
   indiv <- CKMRcpp::addPregnancy(
     indiv = indiv,
     matingAges = seq(from = first_breed_female, to = max_age, by = 2))
+  
+  # ## Add the individuals that died in min_year - 1, so that we can look back
+  # addDeadBodies <- function(indiv, year, surv_prob) {
+  #   dead_indivs
+  # }
+  # indiv <- addDeadBodies()
   
   ## Create a graveyard to bury the dead
   graveyard <- data.frame(
@@ -87,7 +95,7 @@ simulated_data_sets <- pblapply(1:1000, function(i) {
   )
   
   ## Start the simulation ========================================================
-  for (y in years) {
+  for (year in years) {
     # cat("Starting simulation of year:", y, "...")
     
     ## 1. Mating/birth
@@ -96,7 +104,7 @@ simulated_data_sets <- pblapply(1:1000, function(i) {
       batchSize = batch_size,
       fecundityDist = fecundity_dist, # uniform is custom
       osr = sex_ratio,
-      year = y,
+      year = year,
       firstBreedFemale = first_breed_female,
       firstBreedMale = first_breed_male,
       firstLitter = first_litter, # firstLitter is custom
@@ -107,11 +115,10 @@ simulated_data_sets <- pblapply(1:1000, function(i) {
       femaleCurve = female_curve,
       no_gestation = no_gestation
     )
-    
     ## 2. Survival
     indiv <- fishSim::mort(
       indiv = indiv, 
-      year = y, 
+      year = year, 
       type = mort_type, 
       ageMort = rep(mort_rate, max_age + 1L),
       maxAge = max_age - 1L 
@@ -125,11 +132,11 @@ simulated_data_sets <- pblapply(1:1000, function(i) {
     ## It is important to keep the fathers who died in, as they might have died
     ## between giving mating and birth, but still need to be assigned the 
     ## fatherhood.
-    if (y %% 5 == 0) {
+    if (year %% 5 == 0) {
       graveyard <- as.data.frame(
         data.table::rbindlist(list(graveyard, indiv[!is.na(indiv$DeathY) &
-                                                      indiv$DeathY <= y - 2, ])))
-      indiv <- indiv[is.na(indiv$DeathY) | indiv$DeathY > y - 2, ]
+                                                      indiv$DeathY <= year - 2, ])))
+      indiv <- indiv[is.na(indiv$DeathY) | indiv$DeathY > year - 2, ]
     }
 
     # cat(" Cycle completed!\n")
@@ -150,6 +157,9 @@ simulated_data_sets <- pblapply(1:1000, function(i) {
 ## How many individuals are still alive in 'indiv'?
 hist(sapply(simulated_data_sets, function(x) {nrow(x[is.na(x$DeathY), ])}), xlab = "indivs")
 summary(sapply(simulated_data_sets, function(x) {nrow(x[is.na(x$DeathY), ])}))
+
+# Create 100 repeats
+simulated_data_sets <- rep(simulated_data_sets[1], 100)
 
 ## :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 ## Run retrospecitve sampling
@@ -188,7 +198,7 @@ all(is.na(simulated_data_sets[[1]]$SampY))  # should be FALSE
 unique(simulated_data_sets[[1]]$SampY)      # check if this seems correct
 sum(!is.na(simulated_data_sets[[1]]$SampY)) # seem correct as well?
 
-# save(simulated_data_sets, file = "100_simulated_data_sets.RData")
+# save(simulated_data_sets, file = "data/1000_schemes_simulated_data_set.RData")
 
 ## ::::::::::::::::::::::::::::::::
 ## Summary statistics
@@ -218,11 +228,11 @@ N_true <- t(sapply(simulated_data_sets, function(x) {
 #   return((alive_2014 / alive_1915) ^ (1 / 99))
 # })
 
+
 r_true <- sapply(simulated_data_sets, function(x) {
   alive_1915 <- nrow(CKMRcpp::extractTheLiving(x, 1915, F)) # alive at end of year
   alive_2014 <- nrow(CKMRcpp::extractTheLiving(x, 2014, F)) # alive at end of year
   return((alive_2014 / alive_1915) ^ (1 / (2014 - 1915)))
 })
-
 
 summary(data.frame(N_true, r_true))

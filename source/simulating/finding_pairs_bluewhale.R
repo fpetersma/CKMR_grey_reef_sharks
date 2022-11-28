@@ -12,16 +12,19 @@ library(pbapply)
 library(doParallel)
 # library(CKMRcpp)
 
+sim_i <- 7
+
 # source("source/fitting/CKMR_functions.R")
 # source("source/simulating/custom_functions_fishSim.R")
 
 data_folder <- "data/1_population_multiple_sampling_schemes/" 
 
 ## Load the correct 100_sims_vanilla file
-load(file = paste0(data_folder, "1000_sims_sampled.RData"))
+# load(file = paste0(data_folder, "1000_sims_sampled.RData"))
 
 ## Find the pairs in parallel. 
-n_cores <- 10
+cat("Find the pairs...\n")
+n_cores <- 25
 cl <- makeCluster(n_cores)
 # clusterExport(cl, c("findRelativesCustom"))
 pairs_list <- pblapply(simulated_data_sets, function(indiv) {
@@ -42,30 +45,64 @@ pairs_list <- pblapply(simulated_data_sets, function(indiv) {
 ##    FSP: TwoTwo == 2
 ##    GGP: OneThree == 1
 ## :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+cat("Extract the POPs...\n")
 POPs_list <- pblapply(pairs_list, function(pairs) {
   return(pairs[pairs$OneTwo == 1, ]) ## Parent-Offspring pairs)
 })
+
+cat("Extract the HSPs...\n")
+HSPs_list <- pblapply(pairs_list, function(pairs) {
+  return(pairs[pairs$TwoTwo == 1, ]) ## Half sibling pairs)
+})
+
+cat("Extract the FSPs...\n")
+FSPs_list <- pblapply(pairs_list, function(pairs) {
+  return(pairs[pairs$TwoTwo == 2, ]) ## Full sibling pairs)
+})
+
 
 ## Save data
 # save(list = c("POPs_list"), file = paste0(data_folder, "100_sims_vanilla_POPs.RData"))
 # load(paste0(data_folder, "100_sims_vanilla_POPs.RData"))
 
 ## Self-captures
+cat("Find the self captures...\n")
 selfie_list <- pblapply(simulated_data_sets, function(indiv) {
   self_captures <- indiv[indiv$no_samples > 1, ]
 })
 
+## Add history of true population size
+## If population size is the same, just do this once and repeat for every sampling scheme
+cat("Add the true population history...\n")
+N_hist_list <- pblapply(simulated_data_sets[1], function(indiv) {
+  N_hist <- t(sapply(min(indiv$DeathY, na.rm = T):max(indiv$DeathY, na.rm = T), function(year) {
+    N_male <- sum(CKMRcpp::extractTheLiving(indiv, year, TRUE, 17, "male", TRUE))
+    N_female <- sum(CKMRcpp::extractTheLiving(indiv, year, TRUE, 19, "female", TRUE))
+    return(c(N_m = N_male, N_f = N_female))
+  }))
+  row.names(N_hist) <- min(indiv$DeathY, na.rm = T):max(indiv$DeathY, na.rm = T)
+  return(N_hist)
+})
+
+N_hist_list <- rep(N_hist_list, length(simulated_data_sets))
+
 ## Prep data ready for analysis
-combined_data <- lapply(1:length(simulated_data_sets), function(i) {
-  out <- list(POPs = POPs_list[[i]], 
+cat("Combine the data...\n")
+combined_data <- pblapply(1:length(simulated_data_sets), function(i) {
+  out <- list(POPs = POPs_list[[i]],
+              HSPs = HSPs_list[[i]],
+              FSPs = FSPs_list[[i]],
               self = selfie_list[[i]],
+              N_hist = N_hist_list[[i]],
               indiv = simulated_data_sets[[i]])
   return(out)
 })
 
-save(list = c("combined_data"), file = paste0(data_folder, "100_sims_combined_data.RData"))
+cat("Save the combined data sets...\n")
+save(list = c("combined_data"), file = paste0(data_folder, "100_schemes_combined_data_with_N_hist_sim=", sim_i, ".RData"))
 
-n_cores <- 10
+cat("Create the data frames...\n")
+n_cores <- 25
 cl <- makeCluster(n_cores)
 # clusterExport(cl, c("vbgf"))
 dfs <- pblapply(combined_data, function(x) {
@@ -196,21 +233,24 @@ dfs <- pblapply(combined_data, function(x) {
   
 }, cl = cl); stopCluster(cl);
 
-save(list = c("dfs"), file = paste0(data_folder, "1000_sims_dfs_1.RData"))
+# save(list = c("dfs"), file = paste0(data_folder, "1000_schemes_dfs.RData"))
+
+
 
 ## :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 ## Code below can be run to remove covariate_combo_id and covariate_combo_freq
 ## :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-library(dplyr)
-dfs <- pblapply(dfs, function(x) {
-  # x <- x[, -c(ncol(x) - 1, ncol(x))]
-  x <- dplyr::select(x, -c(covariate_combo_id, covariate_combo_freq))
-  return(x)
-})
+# library(dplyr)
+# dfs <- pblapply(dfs, function(x) {
+#   # x <- x[, -c(ncol(x) - 1, ncol(x))]
+#   x <- dplyr::select(x, -c(covariate_combo_id, covariate_combo_freq))
+#   return(x)
+# })
 
 ## :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 ## Run below to add noise the length with the preferred uncertainty
 ## :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+cat("Add measurement error to the lengths...\n")
 dfs <- pblapply(dfs, function(x) {
   x$indiv_1_length <- 
     as.integer(
@@ -230,7 +270,8 @@ dfs <- pblapply(dfs, function(x) {
 ## :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 ## Run below to add unique covariate combo ids and return sufficient dfs
 ## :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-n_cores <- 10
+cat("Create the smaller/sufficient data frames...\n")
+n_cores <- 25
 cl <- makeCluster(n_cores)
 # clusterExport(cl, c("vbgf"))
 dfs_suff <- pblapply(dfs, function(x) {
@@ -265,7 +306,7 @@ dfs_suff <- pblapply(dfs, function(x) {
 # save(list = c("dfs"), file = "data/test_data_dfs.RData")
 # save(list = c("dfs_suff"), file = "data/test_data_dfs_suff.RData")
 
-save(list = c("dfs_suff"), file = paste0(data_folder, "1000_sims_dfs_suff_unique_combos_1.RData"))
+save(list = c("dfs_suff"), file = paste0(data_folder, "100_schemes_dfs_suff_unique_combos_sim=", sim_i, ".RData"))
 
 # ## Looking up relationship between captured pairs
 # pairs <- findRelativesPar(indiv = indiv,
