@@ -8,11 +8,10 @@
 ## ========================================================================== ##
 
 ## Load packages and source custom functions ===================================
-library(fishSim)
+# library(fishSim)
 library(parallel)
 library(pbapply)
-library(ids)
-source("source/simulating/custom_functions_fishSim.R")
+# library(ids)
 
 ## Initialise parameters =======================================================
 ## Set life history parameters
@@ -25,29 +24,25 @@ max_age <- 19                   # maximum age
 mort_rate <- 0.1535              # flat mortality rate (0.1535 gives stable population, but worked with 0.153 which induced a slgiht growth)
 surv_rate <- 1 - mort_rate      # survival is 1 minus mortality
 force_Y1 <- NA                  # first-year mortality (not always used)
-female_curve <- c(rep(0, 10), 
-                  rep(1, 90))   # female maturity curve for categories 0:maxAge
-male_curve <- c(rep(0, 10), 
-                rep(1, 90))     # male maturity curve for categories 0:maxAge
+female_curve <- c(rep(0, first_breed_female), 
+                  rep(1, 100 - first_breed_female))   # female maturity curve for categories 0:maxAge
+male_curve <- c(rep(0, first_breed_male), 
+                rep(1, 100 - first_breed_male))     # male maturity curve for categories 0:maxAge
 mate_type <- "ageSex"           # type of maturity/mating structure
 mort_type <- "age"             # type of mortality structure
 fecundity_dist <- "uniform"     # uniform distribution (custom)
 sex_ratio <- c(0.5, 0.5)        # the offspring male/female sex ratio
 single_paternity <- FALSE        # is there a single father to a litter?
+no_gestation <- TRUE
 
 ## Set simulation and sampling parameters
-years <- 101:140             # number of years to run simulation
-sampling_years <- c((max(years) - 1):max(years))     # years in which sampling occurs
-sample_size <- c(rep(0, sampling_years[1] - 1), 
-                 rep(375, 2))   # number of sampled individuals in each year
-lethal_sampling <- FALSE        # is sampling lethal?
-retrospective_sampling <- TRUE
+years <- 1915:2014             # number of years to run simulation
 
 ## Store simdata sets
-n_cores <- 30
+n_cores <- 50
 cl <- makeCluster(n_cores)
-rm(simulated_data_sets)
-clusterExport(cl, c(ls(), "makeFounders", "mort", "birthdays", "uuid"))
+# rm(simulated_data_sets)
+clusterExport(cl, c(ls()))
 simulated_data_sets <- pblapply(1:1000, function(i) {
   
   ## Set a seed for reproducibility
@@ -55,31 +50,39 @@ simulated_data_sets <- pblapply(1:1000, function(i) {
   
   ## Create initial population =================================================
   ## Set initial population in year 0
-  indiv <-  makeFounders(
+  indiv <-  CKMRcpp::createFounders(
     pop = 8500,                   # starting pop. size 8500 from literature
     osr = sex_ratio,
     stocks = c(1), # a single stock
-    maxAge = max_age,             #
+    maxAge = max_age,         
+    y0 = min(years) - 1,
     survCurv = surv_rate ^ (1:(max_age )) / sum(surv_rate ^ (1:(max_age)))
   )
   
-  # ## Add marker to pregnant females
-  # indiv <- addPregnancy(
-  #   indiv = indssssiv,
-  #   matingAges = c(12, 14, 16, 18))
-  # 
+  ## Create a graveyard to bury the dead
+  graveyard <- data.frame(
+    Me = integer(0),
+    Sex = integer(0),
+    Dad = integer(0),
+    Mum = integer(0),
+    BirthY = integer(0),
+    DeathY = integer(0),
+    Stock = integer(0),
+    AgeLast = integer(0),
+    SampY = integer(0)
+  )
   
   ## Start the simulation ========================================================
-  for (y in years) {
+  for (year in years) {
     # cat("Starting simulation of year:", y, "...")
     
     ## 1. Mating/birth
-    indiv <- mateOrBirth(
+    indiv <- CKMRcpp::mateOrBirth(
       indiv = indiv,
       batchSize = batch_size,
       fecundityDist = fecundity_dist, # uniform is custom
       osr = sex_ratio,
-      year = y,
+      year = year,
       firstBreedFemale = first_breed_female,
       firstBreedMale = first_breed_male,
       firstLitter = first_litter, # firstLitter is custom
@@ -88,57 +91,69 @@ simulated_data_sets <- pblapply(1:1000, function(i) {
       singlePaternity = single_paternity,  
       maleCurve = male_curve,   
       femaleCurve = female_curve,
-      no_gestation = TRUE
+      no_gestation = no_gestation
     )
-    
-    # ## 2. Sampling
-    # if (y %in% sampling_years && !retrospective_sampling) {
-    #   indiv <- captureOnlyFirst(
-    #     indiv = indiv, 
-    #     n = sample_size[y], 
-    #     year = y, 
-    #     fatal = lethal_sampling
-    #   )
-    # }
-    
-    ## 3. Survival
-    indiv <- mort(
+    indiv_g <- indiv
+    ## 2. Survival
+    indiv <- fishSim::mort(
       indiv = indiv, 
-      year = y, 
+      year = year, 
       type = mort_type, 
-      # mortRate = mort_rate,
-      ageMort = rep(mort_rate, max_age + 1),
-      maxAge = max_age - 1 
+      ageMort = rep(mort_rate, max_age + 1L),
+      maxAge = max_age - 1L 
     )
     
-    ## 4. Age incrementation
-    indiv <- birthdays(indiv)
-  
-    # cat(" Cycle completed!\n")
+    ## 3. Age incrementation
+    indiv <- fishSim::birthdays(indiv)
+    
+    ## 4. Every 5 years, bury the dead, and remove them from indiv
+    ## NOTE: always remove those who died from at least two years ago.
+    ## It is important to keep the fathers who died in, as they might have died
+    ## between giving mating and birth, but still need to be assigned the 
+    ## fatherhood.
+    if (year %% 5 == 0) {
+      graveyard <- as.data.frame(
+        data.table::rbindlist(list(graveyard, indiv[!is.na(indiv$DeathY) &
+                                                      indiv$DeathY <= year - 2, ])))
+      indiv <- indiv[is.na(indiv$DeathY) | indiv$DeathY > year - 2, ]
+    }
+    
   }
+  ## Dig up the dead and put them on a pile with the living
+  indiv <- as.data.frame(data.table::rbindlist(list(indiv, graveyard)))
   # cat(paste0("Simulation ", i, " completed!\n"))
   # simulated_data_sets[[i]] <- indiv
   return(indiv)
 }, cl = cl); stopCluster(cl);
 
-# load("data/vanilla_sample_years_139-140_sample_size_375/1000_sims_mix.RData")
-
 ## How many individuals are still alive in 'indiv'?
 hist(sapply(simulated_data_sets, function(x) {nrow(x[is.na(x$DeathY), ])}), xlab = "indivs")
-summary(sapply(simulated_data_sets, function(x) {nrow(x[is.na(x$DeathY), ])}), xlab = "indivs")
+summary(sapply(simulated_data_sets, function(x) {nrow(x[is.na(x$DeathY), ])}))
+# Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+# 6542    8001    8406    8398    8798   10208 
+
+# Create 100 repeats
+simulated_populations <- simulated_data_sets
+## Choose from 1, 144, 333, 800, 
+simulated_data_sets <- rep(simulated_populations[144], 100)
+
+## :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+## Run retrospecitve sampling
+## :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
 ## Set sampling parameters
+n_samples <- 750
 n_sample_year <- 2
 sampling_years <- c((max(years) - n_sample_year + 1):max(years))     # years in which sampling occurs
 sample_size <- c(rep(0, sampling_years[1] - 1), 
-                 rep(375, n_sample_year))   # number of sampled individuals in each year
+                 rep(n_samples / n_sample_year, n_sample_year))   # number of sampled individuals in each year
 lethal_sampling <- FALSE        # is sampling lethal?
 retrospective_sampling <- TRUE
 
 ## Remove previous sampling if required
 simulated_data_sets <- lapply(simulated_data_sets, function(indiv) {
   indiv$SampY <- NA
-  return(indiv[, 1:9]) # only return first 9 columns (before sampling columns)
+  return(as.data.frame(indiv[, 1:9])) # only return first 10 columns (before sampling columns)
 })
 all(is.na(simulated_data_sets[[1]]$SampY)) # should be TRUE before continuing
 ncol(simulated_data_sets[[1]]) == 9 # should also be TRUE
@@ -148,7 +163,7 @@ if (retrospective_sampling) {
   simulated_data_sets <- pblapply(simulated_data_sets, function(indiv) {
     for (year in sampling_years) {
       n <- sample_size[year]
-      indiv <- retroCapture2(indiv, n = n, year = year, fatal = lethal_sampling)
+      indiv <- CKMRcpp::retroCapture2(indiv, n = n, year = year, fatal = lethal_sampling)
     }
     indiv$no_samples <- rowSums(!is.na(indiv[, 10:ncol(indiv)]))
     return(indiv)
@@ -159,30 +174,31 @@ all(is.na(simulated_data_sets[[1]]$SampY))  # should be FALSE
 unique(simulated_data_sets[[1]]$SampY)      # check if this seems correct
 sum(!is.na(simulated_data_sets[[1]]$SampY)) # seem correct as well?
 
-save.image(file = "data/vanilla_sample_years_139-140_sample_size_375/1000_sims_mix.RData")
+
+# save(simulated_data_sets, file = "data/1_population_multiple_sampling_schemes/vanillus/1000_schemes_simulated_data_set.RData")
 
 ## :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 ## Create summary statistics
 ## :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-par(mfrow = c(3, 1))
+# par(mfrow = c(3, 1))
 ## Extracting simulated abundances
 N_true <- t(sapply(simulated_data_sets, function(x) {
-  mature_females <- sum(is.na(x$DeathY) & x$Sex == "F" & x$AgeLast >= 10)
-  mature_males <- sum(is.na(x$DeathY) & x$Sex == "M" & x$AgeLast >= 10)
+  mature_females <- nrow(
+    CKMRcpp::extractTheLiving(x, 2014, F, min_age = first_breed_female,
+                              sex = "female"))
+  mature_males <- nrow(
+    CKMRcpp::extractTheLiving(x, 2014, F, min_age = first_breed_male,
+                              sex = "male"))
   return(c(N_m = mature_males, N_f = mature_females))
 }))
 
-# r_true <- sapply(simulated_data_sets, function(x) {
-#   alive_120 <- sum(!is.na(x$DeathY) & x$DeathY >= 120 & x$BirthY <= 111)
-#   alive_140 <- sum(is.na(x$DeathY) & x$BirthY <= 131)
-#   return((alive_140 / alive_120) ^ (1 / 21))
-# })
-## Derive growht rate based on animals alive AT THE END OF YEAR
+
 r_true <- sapply(simulated_data_sets, function(x) {
-  alive_101 <- sum(!is.na(x$DeathY) & x$DeathY > 101 & x$BirthY <= 101)
-  alive_140 <- sum(is.na(x$DeathY) | x$DeathY > 140 & x$BirthY <= 140)
-  return((alive_140 / alive_101) ^ (1 / 40))
+  alive_1915 <- nrow(CKMRcpp::extractTheLiving(x, 1915, F)) # alive at end of year
+  alive_2014 <- nrow(CKMRcpp::extractTheLiving(x, 2014, F)) # alive at end of year
+  return((alive_2014 / alive_1915) ^ (1 / (2014 - 1915)))
 })
+
 summary(data.frame(N_true, r_true))
 
 hist(N_true[, 1], main = "", xlab = "Number of mature males"); abline(v = c(mean(N_true[, 1]), median(N_true[, 1])), col = "red", lty = c(1, 2))
