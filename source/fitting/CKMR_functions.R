@@ -5,7 +5,6 @@
 ##  -
 ##  -
 ## ========================================================================== ##
-
 nllR <- function(dat, par) {
   ## ===========================================================================
   ## Derive look up table for age-at-length probabilities, if required 
@@ -33,7 +32,7 @@ nllR <- function(dat, par) {
   return(nll)
   
 }
-  
+
 #' vbgf()
 #' A function that derives the length based on age and the vbgf parameters
 #'
@@ -113,7 +112,7 @@ pairProb <- function(pair, s1, c1, l1, s2, c2, l2, alpha_m, alpha_f, max_age,
   ages_parent <- 0:max_age
   if (pair == "PO") {
     # if (s1 == "F") {
-      
+    
     output_parent_level <- rep(NA, length(ages_parent))
     ## Loop over ages for parent
     for (index_age_parent in seq_along(ages_parent)) {
