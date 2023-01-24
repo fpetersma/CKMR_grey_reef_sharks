@@ -37,10 +37,13 @@ double nllPOPCKMRcppAgeKnown(List dat, List par) {
   const int max_age = dat["max_age"];           // maximum age
   const int t0 = dat["t0"];                     // reference  year for abundance
   const int n = dat["n"];                       // number of observations
+  // const double vbgf_l_inf = dat["vbgf_l_inf"];
+  // const double vbgf_k = dat["vbgf_k"];
+  // const double vbgf_t0 = dat["vbgf_t0"];
   
   // Add parameters to be kept as constants here
   // const double r = exp(double(dat["r"]));             // growth parameter
-  // const double sigma_l = exp(double(dat["sigma_l"]));
+  // const double sigma_vbgf = exp(double(dat["sigma_vbgf"]));
   const double phi = exp(double(dat["phi"])) /        // survival parameter
     (1.0 + exp(double(dat["phi"])));
 
@@ -53,7 +56,7 @@ double nllPOPCKMRcppAgeKnown(List dat, List par) {
   // (1.0 + exp(double(par["phi"])));
   const double N_t0_m = exp(double(par["N_t0_m"]));   // male abundance
   const double N_t0_f = exp(double(par["N_t0_f"]));   // female abundance
-  // const double sigma_l = exp(double(par["sigma_l"]));
+  // const double sigma_vbgf = exp(double(par["sigma_vbgf"]));
   const double r = exp(double(par["r"]));             // growth parameter
   
   // std::cout << "r: " << r << std::endl;
@@ -96,37 +99,37 @@ double nllPOPCKMRcppAgeKnown(List dat, List par) {
       }
     }
     
-    double prob12 = prob;
-    // :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-    // Now the other way around, i.e., 1 is the offspring and 2 is the parent
-    // :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-    prob = 0.0;
-
-    // Probability stays zero if offspring was born maturity of parent
-    if ((s2[index] == "F") & (y1 >= y2 + alpha_f) &
-        (a2[index] + y1 - c2[index] <= max_age)) {
-      // Derive the ERRO in the year before the birth year of the offspring
-      prob = 1.0 / (N_t0_f * pow(r, y1 - t0));
-      // std::cout << "Female abundance in year " << y2 << " is: " << N_t0_f * pow(r, y2 - 1 - t0) << std::endl;
-
-      // Account for survival of parent j if i was born after c2
-      if (c2[index] < y1) {
-        // std::cout << "parent j if i was born after c2 + 1! " << std::endl;
-        prob *=  pow(phi, y1 - c2[index]);
-      }
-    }
-    if ((s2[index] == "M") & (y1 >= y2 + alpha_m) &
-        (a2[index] + y1 - c2[index] <= max_age)) {
-      // Derive the ERRO in the year before the birth year of the offspring
-      prob = 1.0 / (N_t0_m * pow(r, y1 - t0));
-
-      // Account for survival of parent i if j was born after c1 + 1
-      if (c2[index] < y1) {
-        // std::cout << "parent i if j was born after c1 + 1! " << std::endl;
-        prob *=  pow(phi, y1 - c2[index]);
-      }
-    }
-    prob += prob12;
+    // double prob12 = prob;
+    // // :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+    // // Now the other way around, i.e., 1 is the offspring and 2 is the parent
+    // // :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+    // prob = 0.0;
+    // 
+    // // Probability stays zero if offspring was born maturity of parent
+    // if ((s2[index] == "F") & (y1 >= y2 + alpha_f) & 
+    //     (a2[index] + y1 - c2[index] <= max_age)) {
+    //   // Derive the ERRO in the year before the birth year of the offspring
+    //   prob = 1.0 / (N_t0_f * pow(r, y1 - t0));
+    //   // std::cout << "Female abundance in year " << y2 << " is: " << N_t0_f * pow(r, y2 - 1 - t0) << std::endl;
+    // 
+    //   // Account for survival of parent j if i was born after c2
+    //   if (c2[index] < y1) {
+    //     // std::cout << "parent j if i was born after c2 + 1! " << std::endl;
+    //     prob *=  pow(phi, y1 - c2[index]);
+    //   }
+    // }
+    // if ((s2[index] == "M") & (y1 >= y2 + alpha_m) & 
+    //     (a2[index] + y1 - c2[index] <= max_age)) {
+    //   // Derive the ERRO in the year before the birth year of the offspring
+    //   prob = 1.0 / (N_t0_m * pow(r, y1 - t0));
+    // 
+    //   // Account for survival of parent i if j was born after c1 + 1
+    //   if (c2[index] < y1) {
+    //     // std::cout << "parent i if j was born after c1 + 1! " << std::endl;
+    //     prob *=  pow(phi, y1 - c2[index]);
+    //   }
+    // }
+    // prob += prob12;
     
     if (kinship[index] != "PO/OP") {
       prob = 1 - prob; 

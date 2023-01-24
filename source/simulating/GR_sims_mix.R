@@ -117,7 +117,6 @@ for (i in 1:100) {
   simulated_data_sets[[i]] <- indiv
 }
 
-
 ## Set sampling parameters
 n_sample_year <- 2
 sampling_years <- c((max(years) - n_sample_year + 1):max(years))     # years in which sampling occurs

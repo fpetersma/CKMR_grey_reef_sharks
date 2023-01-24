@@ -1,5 +1,7 @@
 ## ========================================================================== ##
-## A file with custom R functions for the CKMRcpp package.                    ##
+## A new file with custom functions to add to fishSim to make it more similar ##
+## to the grey reef shark case study from Palmyra. Recovered after            ##
+## accidentally replacing the file. Very stupid.                              ##  
 ## ========================================================================== ##
 
 addBirthRecovery <- function(indiv, 
@@ -35,12 +37,12 @@ addPregnancy <- function(indiv, matingAges) {
   return(indiv)
 }
 
-captureOnlyFirst <- function(indiv, 
-                             n = 1, 
-                             year = "-1", 
-                             fatal = FALSE, 
-                             sex = NULL, 
-                             age = NULL) {
+captureOnlyFirst <- function (indiv, 
+                              n = 1, 
+                              year = "-1", 
+                              fatal = FALSE, 
+                              sex = NULL, 
+                              age = NULL) {
   if (!is.null(sex)) {
     is.sex <- indiv[, 2] == sex
   } else is.sex <- TRUE
@@ -68,52 +70,9 @@ captureOnlyFirst <- function(indiv,
   return(indiv)
 }
 
-extractSampledIndiv <- function(indiv) {
-  ## Extract the self captures
-  self <- indiv[indiv$no_samples > 1, ]
-  
-  ## Extract sampled individuals from the population
-  sampled_indiv <- indiv[!is.na(indiv$SampY),]
-  
-  ## Add the recaptures 
-  self <- self[rep(seq_len(nrow(self)), self$no_samples), ]
-  
-  ## Seperate the sample years and allocate one to every occasion that 
-  ## individual was sampled. 
-  for (id in unique(self$Me)) {
-    ## Get all samplings of the same individual with id
-    selfs <- self[self$Me == id, ]
-    
-    ## Extract all the sampling years of this individual
-    samp_years <- as.numeric(unlist(strsplit(selfs[1, "SampY"], split = "_")))
-    
-    ## Assign one sampling year to every sampling occassion. 
-    for (i in 1:nrow(selfs)) {
-      selfs[i, "SampY"] <- samp_years[i]
-    }
-    
-    ## Updated the rows in 'self'
-    self[self$Me == id, ] <- selfs
-  }
-  ## Bind the single and multiple captures together
-  sampled_indiv <- rbind(sampled_indiv[sampled_indiv$no_samples == 1, ], 
-                         self)
-  
-  ## Ensure SampY is numeric
-  sampled_indiv$SampY <- as.numeric(sampled_indiv$SampY)
-  
-  ## Keep relevant information and rename columns to match theory
-  sampled_indiv$SampAge <- sampled_indiv$SampY - sampled_indiv$BirthY
-  sampled_indiv <- subset(sampled_indiv, select = c(Me, Sex, SampAge, SampY))
-  colnames(sampled_indiv) <- c("id", "sex", "capture_age", "capture_year")
-  
-  ## Return object
-  return(sampled_indiv)
-}
-
 #' findRelativesCustom
 #' 
-#' A version of fishSim::findRelatives() that only looks as far back as great-
+#' a version of fishSim::findRelatives() that only looks as far back as great-
 #' grandparents.
 #'
 #' @param indiv 
@@ -125,10 +84,10 @@ extractSampledIndiv <- function(indiv) {
 #' @export
 #'
 #' @examples
-findRelativesCustom <- function(indiv, 
-                                sampled = TRUE, 
-                                verbose = TRUE,
-                                delimitIndiv = TRUE) {
+findRelativesCustom <- function (indiv, 
+                                 sampled = TRUE, 
+                                 verbose = TRUE,
+                                 delimitIndiv = TRUE) {
   library(doParallel)
   
   if (sampled) {
@@ -209,13 +168,13 @@ findRelativesCustom <- function(indiv,
                            indi1GP))
     TwoFour[i] <- sum(c(indi1Par %in% indi2GGP, indi2Par %in% 
                           indi1GGP))
-    
+
     ThreeThree[i] <- sum(c(indi1GP %in% indi2GP))
     ThreeFour[i] <- sum(c(indi1GP %in% indi2GGP, indi2GP %in% 
                             indi1GGP))
-    
+
     FourFour[i] <- sum(c(indi1GGP %in% indi2GGP))
-    
+
     if (i%%1000 == 0) {
       cat("\r", i, " of ", length(related), 
           " comparisons", sep = "")
@@ -231,11 +190,11 @@ findRelativesCustom <- function(indiv,
 }
 
 
-findRelativesParCustom <- function(indiv, 
-                                   sampled = TRUE, 
-                                   verbose = TRUE,
-                                   nCores = 1, 
-                                   delimitIndiv = TRUE) {
+findRelativesParCustom <- function (indiv, sampled = TRUE, 
+                                 verbose = TRUE,
+                                 nCores = 1, 
+                                 delimitIndiv = TRUE) 
+{
   require(doParallel)
   registerDoParallel(nCores)
   if (sampled) {
@@ -461,94 +420,6 @@ findRelativesParCustom <- function(indiv,
   stopImplicitCluster()
   return(pairs)
 }
-
-fAgeGivenLength <- function(a, 
-                            l,
-                            sigma_l,
-                            p_geom,
-                            max_age,
-                            pmf_age = "geom", 
-                            vbgf_pars = c(l_inf = 175, 
-                                          k = 0.2,
-                                          a_0 = -2)) {
-  ## Run line below for testing
-  # p_geom <- 1 - 0.8455; max_age <- 19; sigma_l <- 2; l <- c(151, 145); a <- c(8, 9);
-  
-  if (length(l) != length(a)) {
-    stop("for every l there should be an a!")
-  }
-  
-  prob_length_given_age <- fLengthGivenAge(l, a, sigma_l, vbgf_pars)
-  prob_sampled_age <- fSampledAge(a, p_geom, max_age)
-  ## OLD -----------------------
-  # expected_length <- vbgf_pars["l_inf"] *
-  #   (1 - exp(-vbgf_pars["k"] * (a - vbgf_pars["a_0"])))
-  # prob_length_given_age <- 
-  #  pnorm(q = l + 0.5, mean = expected_length, sd = sigma_l) - 
-  #   pnorm(q = l - 0.5, mean = expected_length, sd = sigma_l)
-  # prob_sampled_age <- 
-  #  dgeom(a, p_geom) / pgeom(20, p_geom)
-  ## ---------------------------
-  
-  ## requires the function fSampledLength()
-  prob_sampled_length <- fSampledLength(l = l, 
-                                        sigma_l = sigma_l,
-                                        max_age = max_age,
-                                        p_geom = p_geom,
-                                        pmf_age = pmf_age,
-                                        vbgf_pars = vbgf_pars)
-  
-  out <- prob_length_given_age * prob_sampled_age / prob_sampled_length
-  
-  return(out)
-}
-
-
-
-fLengthGivenAge <- function(l, a, sigma_l, vbgf_pars = c(l_inf = 175, 
-                                                         k = 0.2,
-                                                         a_0 = -2)) {
-  expected_length <- vbgf_pars["l_inf"] * 
-    (1 - exp(-vbgf_pars["k"] * (a - vbgf_pars["a_0"])))
-  
-  out <- pDiscreteNorm(x = l, mu = expected_length, sigma = sigma_l)
-}
-
-fSampledAge <- function(a, p_geom, max_age) {
-  if (any(a < 0 | a > max_age)) {
-    stop("all values for a have to be non-negative and at most equal to max_age")
-  }
-  
-  return(dgeom(a, p_geom) / pgeom(max_age + 1, p_geom))
-}
-
-fSampledLength <- function(l, 
-                           sigma_l,
-                           max_age,
-                           p_geom,
-                           pmf_age = "geom", 
-                           vbgf_pars = c(l_inf = 175, 
-                                         k = 0.2,
-                                         a_0 = -2)) {
-  ## Run line below for testing
-  # p_geom <- 1 - 0.8455; max_age <- 19; sigma_l <- 1; l <- c(135, 141, 58);
-  
-  if (pmf_age == "geom") {
-    ## Use sapply() to allow for l to have length > 1
-    prob_mass <- sapply(l, function(l_i) {
-      ## Create potential ages and convert to expected lengths through the vbgf
-      potential_ages <- 0:max_age
-      
-      return(sum(fLengthGivenAge(l_i, potential_ages, sigma_l, vbgf_pars) * 
-                   fSampledAge(potential_ages, p_geom, max_age)))
-    })
-    
-    return(prob_mass)
-  } else {
-    stop("Function only implemented for geometric age distribution as of yet.")
-  }
-}
-
 
 mateOrBirth <- function (indiv,
                          batchSize = 0.5, 
@@ -897,27 +768,22 @@ mateWithRecovery <- function (indiv,
   return(indiv)
 }
 
-# pDiscreteNorm <- function(x, mu, sigma) {
-#   return(pnorm(x + 0.5, mean = mu, sd = sigma) - 
-#            pnorm(x - 0.5, mean = mu, sd = sigma))
-# }
-
-# recover <- function(indiv) 
-# {
-#   ## Reduce 'Recovery' by one year for all living individuals
-#   indiv[is.na(indiv[, 6]), 10] <- indiv[is.na(indiv[, 6]), 10] - 1L
-#   ## Set all negative 'Recovery' to 0
-#   indiv[indiv[, 10] < 0, 10] <- 0
-#   ## Set Recovery for dead animals to 0
-#   indiv[!is.na(indiv[, 6]), 10] <- 0
-#   
-#   return(indiv)
-# }
+recover <- function(indiv) 
+{
+  ## Reduce 'Recovery' by one year for all living individuals
+  indiv[is.na(indiv[, 6]), 10] <- indiv[is.na(indiv[, 6]), 10] - 1L
+  ## Set all negative 'Recovery' to 0
+  indiv[indiv[, 10] < 0, 10] <- 0
+  ## Set Recovery for dead animals to 0
+  indiv[!is.na(indiv[, 6]), 10] <- 0
+  
+  return(indiv)
+}
 
 retroCapture2 <- function (indiv, 
-                           n = 1, 
-                           year = "-1", 
-                           fatal = FALSE) {
+                          n = 1, 
+                          year = "-1", 
+                          fatal = FALSE) {
   ## check which individuals were alive at the sampling occasion
   is_alive <- (is.na(indiv$DeathY) | indiv$DeathY >= year) & indiv$BirthY <= year
   is_dead <- !is_alive
@@ -971,34 +837,259 @@ retroCapture <- function (indiv,
   return(indiv)
 }
 
-#' vbgf()
-#' A function that derives the length based on age and the vbgf parameters
-#'
-#' @param a Age (numeric)
-#' @param t_0 Theoretical age when length is zero (numeric)
-#' @param k Growth parameter (numeric)
-#' @param l_inf Asymptotic length (numeric)
-#'
-#' @return
-#' @export
-#'
-#' @examples
-vbgf <- function(a, t_0 = -3.5, k = 0.1, l_inf = 175) {
-  return(l_inf * (1 - exp(-k * (a - t_0))))
-}
-
-#' invvbgf()
-#' A function that derives the length based on age and the vbgf parameters
-#'
-#' @param a Age (numeric)
-#' @param t_0 Theoretical age when length is zero (numeric)
-#' @param k Growth parameter (numeric)
-#' @param l_inf Asymptotic length (numeric)
-#'
-#' @return
-#' @export
-#'
-#' @examples
-invvbgf <- function(l, t_0 = -3.5, k = 0.1, l_inf = 175) {
-  return(t_0 - log(1 - l/l_inf) / k)
+uniformCheckGrowthrate <- function (
+    fecundityDist = "uniform", 
+    forceY1 = NA,      # year 1 mortality?
+    mateType, # mating type
+    mortType = "flat", # mortality constant or variable?
+    batchSize, # expected litter size
+    firstBreed = 0, # first year of breeding (at least min maturity curve)
+    maxClutch = Inf, # max litter size
+    osr = c(0.5, 0.5), # sex ratio
+    maturityCurve, # equivalent to femaleCurve, but used if mateType == "age"
+    femaleCurve, # female maturity curve
+    maxAge = Inf, # self explanatory
+    mortRate, # rate of mortality
+    ageMort, # input for the mort() call
+    stockMort, # input for the mort() call
+    ageStockMort) # input for the mort() call
+{
+  ## Check inputs
+  if (!(mateType %in% c("flat", "age", "ageSex"))) {
+    stop("'mateType' must be one of 'flat', 'age', or 'ageSex'.")
+  }
+  if (!(mortType %in% c("flat", "age", "stock", "ageStock"))) {
+    stop("'mortType' must be one of 'flat', 'age', 'stock', or 'ageStock'.")
+  }
+  if (missing(batchSize)) 
+    stop("'batchSize' must be specified.")
+  ## creating "batches" from a Poisson to run a simulation to get an expected
+  ## batchSize. For uniform that can be much easier, as it is just the expectation,
+  ## which is the mean. 
+  if (batchSize != Inf && fecundityDist == "uniform") { # this is new!
+    batchSize <- mean(batchSize)
+  } else if (batchSize != Inf) { # this is old
+    batches <- rpois(1e+06, lambda = batchSize)
+    batchSize <- mean(batches[batches <= maxClutch]) 
+  }
+  
+  
+  ## mateType == "flat", not relevant to GR
+  if (mateType == "flat") {
+    if (mortType == "flat") {
+      mat <- matrix(data = 0, nrow = length(0:firstBreed) + 
+                      1, ncol = length(0:firstBreed) + 1)
+      mat[1, ((2 + firstBreed):ncol(mat))] <- batchSize * 
+        osr[2]
+      for (i in 1:ncol(mat)) {
+        if ((i + 1) <= nrow(mat)) 
+          mat[i + 1, i] <- 1 - mortRate
+      }
+      mat[nrow(mat), ncol(mat)] <- 1 - mortRate
+    }
+    else if (mortType == "age") {
+      mat <- matrix(data = 0, nrow = length(ageMort) + 
+                      1, ncol = length(ageMort) + 1)
+      mat[1, ((2 + firstBreed):ncol(mat))] <- batchSize * 
+        osr[2]
+      for (i in 1:ncol(mat)) {
+        if ((i + 1) <= nrow(mat)) 
+          mat[i + 1, i] <- 1 - ageMort[i]
+      }
+      mat[nrow(mat), ncol(mat)] <- 1 - ageMort[length(ageMort)]
+    }
+    else if (mortType == "stock") {
+      mat <- matrix(data = 0, nrow = length(0:firstBreed) + 
+                      1, ncol = length(0:firstBreed) + 1)
+      mat.l <- lapply(seq_len(length(stockMort)), function(X) mat)
+      for (s in 1:length(stockMort)) {
+        mat.l[[s]][1, ((2 + firstBreed):ncol(mat.l[[s]]))] <- batchSize * 
+          osr[2]
+        for (i in 1:ncol(mat.l[[s]])) {
+          if ((i + 1) <= nrow(mat.l[[s]])) 
+            mat.l[[s]][i + 1, i] <- 1 - stockMort[s]
+        }
+        mat.l[[s]][nrow(mat.l[[s]]), ncol(mat.l[[s]])] <- 1 - 
+          stockMort[s]
+      }
+    }
+    else if (mortType == "ageStock") {
+      mat <- matrix(data = 0, nrow = length(ageStockMort[, 
+                                                         1]) + 1, ncol = length(ageStockMort[, 1]) + 
+                      1)
+      mat.l <- lapply(seq_len(ncol(ageStockMort)), function(X) mat)
+      for (s in 1:ncol(ageStockMort)) {
+        mat.l[[s]][1, ((2 + firstBreed):ncol(mat.l[[s]]))] <- batchSize * 
+          osr[2]
+        for (i in 1:ncol(mat.l[[s]])) {
+          if ((i + 1) <= nrow(mat.l[[s]])) 
+            mat.l[[s]][i + 1, i] <- 1 - ageStockMort[i, 
+                                                     s]
+        }
+        mat.l[[s]][nrow(mat.l[[s]]), ncol(mat.l[[s]])] <- 1 - 
+          ageStockMort[nrow(ageStockMort), s]
+      }
+    }
+  }
+  ## mateType == "age" also not relevant to GR
+  else if (mateType == "age") {
+    if (firstBreed > 0) 
+      maturityCurve[1:(firstBreed - 1)] <- 0
+    if (mortType == "flat") {
+      mat <- matrix(data = 0, nrow = length(maturityCurve), 
+                    ncol = length(maturityCurve))
+      mat[1, ] <- maturityCurve * batchSize * osr[2]
+      for (i in 1:ncol(mat)) {
+        if ((i + 1) <= nrow(mat)) 
+          mat[i + 1, i] <- 1 - mortRate
+      }
+      mat[nrow(mat), ncol(mat)] <- 1 - mortRate
+    }
+    else if (mortType == "age") {
+      mat <- matrix(data = 0, nrow = max(c(length(maturityCurve), 
+                                           length(ageMort))), ncol = max(c(length(maturityCurve), 
+                                                                           length(ageMort))))
+      mat[1, (1:length(maturityCurve))] <- maturityCurve * 
+        batchSize * osr[2]
+      mat[1, (length(maturityCurve):ncol(mat))] <- maturityCurve[length(maturityCurve)] * 
+        batchSize * osr[2]
+      for (i in 1:length(ageMort)) {
+        if ((i + 1) <= nrow(mat)) 
+          mat[i + 1, i] <- 1 - ageMort[i]
+      }
+      for (i in length(ageMort):ncol(mat)) {
+        if ((i + 1) <= nrow(mat)) 
+          mat[i + 1, i] <- 1 - ageMort[length(ageMort)]
+      }
+      mat[nrow(mat), ncol(mat)] <- 1 - ageMort[length(ageMort)]
+    }
+    else if (mortType == "stock") {
+      mat <- matrix(data = 0, nrow = length(maturityCurve), 
+                    ncol = length(maturityCurve))
+      mat.l <- lapply(seq_len(length(stockMort)), function(X) mat)
+      for (s in 1:length(stockMort)) {
+        mat.l[[s]][1, (1:length(maturityCurve))] <- maturityCurve * 
+          batchSize * osr[2]
+        mat.l[[s]][1, (length(maturityCurve):ncol(mat.l[[s]]))] <- maturityCurve[length(maturityCurve)] * 
+          batchSize * osr[2]
+        for (i in 1:ncol(mat.l[[s]])) {
+          if ((i + 1) <= nrow(mat.l[[s]])) 
+            mat.l[[s]][i + 1, i] <- 1 - stockMort[s]
+        }
+        mat.l[[s]][nrow(mat.l[[s]]), ncol(mat.l[[s]])] <- 1 - 
+          stockMort[s]
+      }
+    }
+    else if (mortType == "ageStock") {
+      mat <- matrix(data = 0, nrow = max(c(length(maturityCurve), 
+                                           nrow(ageStockMort))), ncol = max(c(length(maturityCurve), 
+                                                                              nrow(ageStockMort))))
+      mat.l <- lapply(seq_len(ncol(ageStockMort)), function(X) mat)
+      for (s in 1:ncol(ageStockMort)) {
+        mat.l[[s]][1, (1:length(maturityCurve))] <- maturityCurve * 
+          batchSize * osr[2]
+        mat.l[[s]][1, (length(maturityCurve):ncol(mat.l[[s]]))] <- maturityCurve[length(maturityCurve)] * 
+          batchSize * osr[2]
+        for (i in 1:ncol(mat.l[[s]])) {
+          if ((i + 1) <= nrow(mat.l[[s]])) 
+            mat.l[[s]][i + 1, i] <- 1 - ageStockMort[i, 
+                                                     s]
+        }
+        for (i in nrow(ageStockMort):ncol(mat.l[[s]])) {
+          if ((i + 1) <= nrow(mat.l[[s]])) 
+            mat.l[[s]][i + 1, i] <- 1 - ageStockMort[nrow(ageMort), 
+                                                     s]
+        }
+        mat.l[[s]][nrow(mat.l[[s]]), ncol(mat.l[[s]])] <- 1 - 
+          ageStockMort[nrow(ageStockMort), s]
+      }
+    }
+  }
+  ## This is the one we are interested in!
+  else if (mateType == "ageSex") {
+    if (mortType == "flat") {   # mortType is assumed flat for GR
+      mat <- matrix(data = 0, nrow = length(femaleCurve), 
+                    ncol = length(femaleCurve))
+      mat[1, ] <- femaleCurve * batchSize * osr[2]
+      for (i in 1:ncol(mat)) {
+        if ((i + 1) <= nrow(mat)) 
+          mat[i + 1, i] <- 1 - mortRate
+      }
+      mat[nrow(mat), ncol(mat)] <- 1 - mortRate
+    }
+    else if (mortType == "age") {
+      mat <- matrix(data = 0, nrow = max(c(length(femaleCurve), 
+                                           length(ageMort))), ncol = max(c(length(femaleCurve), 
+                                                                           length(ageMort))))
+      mat[1, (1:length(femaleCurve))] <- femaleCurve * 
+        batchSize * osr[2]
+      mat[1, (length(femaleCurve):ncol(mat))] <- femaleCurve[length(femaleCurve)] * 
+        batchSize * osr[2]
+      for (i in 1:length(ageMort)) {
+        if ((i + 1) <= nrow(mat)) 
+          mat[i + 1, i] <- 1 - ageMort[i]
+      }
+      for (i in length(ageMort):ncol(mat)) {
+        if ((i + 1) <= nrow(mat)) 
+          mat[i + 1, i] <- 1 - ageMort[length(ageMort)]
+      }
+      mat[nrow(mat), ncol(mat)] <- 1 - ageMort[length(ageMort)]
+    }
+    else if (mortType == "stock") {
+      mat <- matrix(data = 0, nrow = length(femaleCurve), 
+                    ncol = length(femaleCurve))
+      mat.l <- lapply(seq_len(length(stockMort)), function(X) mat)
+      for (s in 1:length(stockMort)) {
+        mat.l[[s]][1, (1:length(femaleCurve))] <- femaleCurve * 
+          batchSize * osr[2]
+        mat.l[[s]][1, (length(femaleCurve):ncol(mat.l[[s]]))] <- femaleCurve[length(femaleCurve)] * 
+          batchSize * osr[2]
+        for (i in 1:ncol(mat.l[[s]])) {
+          if ((i + 1) <= nrow(mat.l[[s]])) 
+            mat.l[[s]][i + 1, i] <- 1 - stockMort[s]
+        }
+        mat.l[[s]][nrow(mat.l[[s]]), ncol(mat.l[[s]])] <- 1 - 
+          stockMort[s]
+      }
+    }
+    else if (mortType == "ageStock") {
+      mat <- matrix(data = 0, nrow = max(c(length(femaleCurve), 
+                                           nrow(ageStockMort))), ncol = max(c(length(femaleCurve), 
+                                                                              nrow(ageStockMort))))
+      mat.l <- lapply(seq_len(ncol(ageStockMort)), function(X) mat)
+      for (s in 1:ncol(ageStockMort)) {
+        mat.l[[s]][1, (1:length(femaleCurve))] <- femaleCurve * 
+          batchSize * osr[2]
+        mat.l[[s]][1, (length(femaleCurve):ncol(mat.l[[s]]))] <- femaleCurve[length(femaleCurve)] * 
+          batchSize * osr[2]
+        for (i in 1:ncol(mat.l[[s]])) {
+          if ((i + 1) <= nrow(mat.l[[s]])) 
+            mat.l[[s]][i + 1, i] <- 1 - ageStockMort[i, 
+                                                     s]
+        }
+        for (i in nrow(ageStockMort):ncol(mat.l[[s]])) {
+          if ((i + 1) <= nrow(mat.l[[s]])) 
+            mat.l[[s]][i + 1, i] <- 1 - ageStockMort[nrow(ageMort), 
+                                                     s]
+        }
+        mat.l[[s]][nrow(mat.l[[s]]), ncol(mat.l[[s]])] <- 1 - 
+          ageStockMort[nrow(ageStockMort), s]
+      }
+    }
+  }
+  if (!is.na(forceY1)) {
+    if (mortType %in% c("flat", "age")) 
+      mat[2, 1] <- 1 - forceY1
+    if (mortType %in% c("stock", "ageStock")) 
+      for (i in 1:length(mat.l)) mat.l[[i]][2, 1] <- 1 - 
+          forceY1
+  }
+  if (mortType %in% c("flat", "age")) {
+    return(eigen(mat)$values[1])
+  }
+  if (mortType %in% c("stock", "ageStock")) {
+    outs <- c(rep(NA, length(mat.l)))
+    for (i in 1:length(outs)) outs[i] <- eigen(mat.l[[i]])$values[1]
+    return(outs)
+  }
 }
