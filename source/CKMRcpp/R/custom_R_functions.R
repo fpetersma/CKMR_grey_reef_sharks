@@ -523,12 +523,21 @@ mateOrBirth <- function (indiv,
     }
     else if (nrow(fathersInStock > 0)) {
       n.sprogs <- sum(clutchInStock)
-      sprog.stock <- data.frame(Me = integer(n.sprogs), 
-                                Sex = integer(n.sprogs), Dad = integer(n.sprogs), 
-                                Mum = integer(n.sprogs), BirthY = integer(n.sprogs), 
-                                DeathY = integer(n.sprogs), Stock = integer(n.sprogs), 
-                                AgeLast = integer(n.sprogs), SampY = integer(n.sprogs),
-                                Pregnant = integer(n.sprogs))
+      if (!no_gestation) {
+        sprog.stock <- data.frame(Me = integer(n.sprogs), 
+                                  Sex = integer(n.sprogs), Dad = integer(n.sprogs), 
+                                  Mum = integer(n.sprogs), BirthY = integer(n.sprogs), 
+                                  DeathY = integer(n.sprogs), Stock = integer(n.sprogs), 
+                                  AgeLast = integer(n.sprogs), SampY = integer(n.sprogs),
+                                  Pregnant = integer(n.sprogs))
+      } else {
+        sprog.stock <- data.frame(Me = integer(n.sprogs), 
+                                  Sex = integer(n.sprogs), Dad = integer(n.sprogs), 
+                                  Mum = integer(n.sprogs), BirthY = integer(n.sprogs), 
+                                  DeathY = integer(n.sprogs), Stock = integer(n.sprogs), 
+                                  AgeLast = integer(n.sprogs), SampY = integer(n.sprogs))
+      }
+      
       ticker <- 1
       for (m in 1:nrow(mothersInStock)) {
         if (nrow(fathersInStock) == 0) {
@@ -613,8 +622,8 @@ plotCKMRabundance <- function(
   ## For every fit, derive the abundance for all years
   if (is.null(fixed_r)) {
     for (i in 1:length(fits)) {
-      abun_f[i, ] <- exp(est[i, "N_t0_f"]) * exp(est[i, "r"]) ^ years
-      abun_m[i, ] <- exp(est[i, "N_t0_m"]) * exp(est[i, "r"]) ^ years
+      abun_f[i, ] <- exp(est[i, "N_t0_f"]) * exp(est[i, "r_f"]) ^ years
+      abun_m[i, ] <- exp(est[i, "N_t0_m"]) * exp(est[i, "r_m"]) ^ years
     }
   } else {
     for (i in 1:length(fits)) {
@@ -693,6 +702,130 @@ plotCKMRabundance <- function(
           y = truth[(nrow(truth)-length(years)+1):nrow(truth), 1])
   }
 }
+
+plotCKMRabundancePretty <- function(
+    fits_list,           # A list of simulation objects 
+    # par_name,     # The name of the abundance parameter
+    year_lim,       # Number of years backward and forward from reference year
+    max_y_axis = 3000,
+    sex = "both",  # male, female, or both 
+    y0 = 2014,       # The reference year
+    truth = NULL,
+    y_axis = "Abundance"
+) {
+  ## load libraries
+  library(tidyverse, quietly = T, warn.conflicts = F)
+  
+  for (i in 1:length(fits_list)) {
+    fits <- fits_list[[i]]
+    
+    ## Extract estimates for selected parameter
+    est <- t(sapply(fits, function(x) x$par))
+    conv <- sapply(fits, function(x) x$message)
+    
+    ## Derive years and create matrices for abundance estimates
+    years <- year_lim[1]:year_lim[2]
+    abun_f <- matrix(NA, nrow = length(fits), ncol = length(years))
+    abun_m <- matrix(NA, nrow = length(fits), ncol = length(years))
+    
+    ## For every fit, derive the abundance for all years
+    for (j in 1:length(fits)) {
+      abun_f[j, ] <- exp(est[j, "N_t0_f"]) * exp(est[j, "r_f"]) ^ years
+      abun_m[j, ] <- exp(est[j, "N_t0_m"]) * exp(est[j, "r_m"]) ^ years
+    }
+    
+    ## Turn the data in long format so ggplot2 knows what to do
+    abun_f_df <- cbind(data.frame(year = y0 + years), 
+                       t(abun_f),
+                       "101"= Rfast::colMedians(abun_m), #median
+                       "102" = truth[years + nrow(truth), 2]) #truth
+    abun_f_long <- reshape2::melt(abun_f_df, value.name = "N", id.vars = "year")
+    abun_f_long$sim_id <- i
+    abun_f_long$sex <- "F"
+    
+    ## Turn the data in long format so ggplot2 knows what to do
+    abun_m_df <- cbind(data.frame(year = y0 + years), 
+                       t(abun_m),
+                       "101"= Rfast::colMedians(abun_m), #median
+                       "102" = truth[years + nrow(truth), 1]) #truth
+    abun_m_long <- reshape2::melt(abun_m_df, value.name = "N", id.vars = "year")
+    abun_m_long$sim_id <- i
+    abun_m_long$sex <- "M"
+    
+    if (any(conv != "relative convergence (4)")) {
+      abun_m_long$conv <- "failed"    
+      abun_f_long$conv <- "failed" 
+    } else {
+      abun_m_long$conv <- "successful"    
+      abun_f_long$conv <- "successful" 
+    }
+    
+    # Combine the male and datasets
+    # If it's the first simulation scenario, create abun_long; else, add to abun_long
+    if (i == 1) {
+      abun_long <- rbind(abun_f_long, abun_m_long)
+    } else {
+      abun_long <- rbind(abun_long, abun_f_long, abun_m_long)
+    }
+  }
+  ## Here starts the ggplot2 magic ----------------------------------------- <<<
+  
+  abun_long$N[abun_long$conv == "failed"] <- NA
+  
+  if (sex == "both") {
+    # Create the plot with 100 fitted abundances, and a mean line
+    p <- ggplot(abun_long) +
+      geom_line(
+        mapping = aes(x = year, y = N, colour = variable),
+        show.legend = F, linewidth = 1) +
+      scale_color_manual(values = c(rep(alpha("darkgrey", 0.2), 100),
+                                    alpha("black", 0.5),
+                                    alpha("red", 0.4))) +
+      theme_minimal() +
+      ylab(y_axis ) +
+      xlab("Year") +
+      facet_wrap(~ sim_id + sex, nrow = sqrt(max(abun_long$sim_id))) + 
+      coord_cartesian(ylim=c(0,max_y_axis)) +
+      scale_x_continuous(breaks = seq(from = min(years) + y0, to = max(years) + y0, by = 5),
+                         labels = seq(from = min(years) + y0, to = max(years) + y0, by = 5))
+    
+  } else if (sex == "male") {
+    p <- ggplot(subset(abun_long, sex == "M")) +
+      geom_line(
+        mapping = aes(x = year, y = N, colour = variable),
+        show.legend = F, linewidth = 1) +
+      scale_color_manual(values = c(rep(alpha("darkgrey", 0.2), 100),
+                                    alpha("black", 0.5),
+                                    alpha("red", 0.4))) +
+      theme_minimal() +
+      ylab(y_axis ) +
+      xlab("Year") +
+      facet_wrap(~ sim_id , nrow = sqrt(max(abun_long$sim_id))) + 
+      coord_cartesian(ylim=c(0,max_y_axis)) +
+      scale_x_continuous(breaks = seq(from = min(years) + y0, to = max(years) + y0, by = 5),
+                         labels = seq(from = min(years) + y0, to = max(years) + y0, by = 5))
+    
+  } else {
+    p <- ggplot(subset(abun_long, sex == "F")) +
+      geom_line(
+        mapping = aes(x = year, y = N, colour = variable),
+        show.legend = F, linewidth = 1) +
+      scale_color_manual(values = c(rep(alpha("darkgrey", 0.2), 100),
+                                    alpha("black", 0.5),
+                                    alpha("red", 0.4))) +
+      theme_minimal() +
+      ylab(y_axis ) +
+      xlab("Year") +
+      facet_wrap(~ sim_id , nrow = sqrt(max(abun_long$sim_id))) + 
+      coord_cartesian(ylim=c(0,max_y_axis)) +
+      scale_x_continuous(breaks = seq(from = min(years) + y0, to = max(years) + y0, by = 5),
+                         labels = seq(from = min(years) + y0, to = max(years) + y0, by = 5))
+    
+  }
+  
+  return(p)
+}
+
 
 retroCapture2 <- function (indiv, 
                            n = 1, 
