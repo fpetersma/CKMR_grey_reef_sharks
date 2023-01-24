@@ -181,9 +181,16 @@ alternative <- usable_grey %>%
 ## Replace 2232 by 2041
 first_batch[first_batch$fin_clip == 2232, 1:13] <- 
   usable_grey[usable_grey$fin_clip == 2041, 1:13]
-## Replace 2301 by 
-first_batch[first_batch$fin_clip == 2301, 1:13] <- 
-  usable_grey[usable_grey$fin_clip == XXX, 1:13]
+
+
+## F68 was empty, so find an alternative
+alternative <- usable_grey %>% 
+  filter(location == "Eastern_Tip") %>%          # only keep Eastern_Tip
+  filter(!(fin_clip %in% first_batch$fin_clip)) %>% # remove the ones that were initially selected
+  sample_n(1)   
+## Replace F68 by 
+first_batch[first_batch$fin_clip == "F68", 1:13] <- 
+  usable_grey[usable_grey$fin_clip == "F303", 1:13]
 
 
 
