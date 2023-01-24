@@ -11,8 +11,8 @@
 
 library(pbapply)
 library(parallel)
-data_folder <- "data/1_population_multiple_sampling_schemes/vanillus/"
-load(paste0(data_folder, "100_schemes_dfs_suff_unique_combos_sim=144.RData"))
+data_folder <- "data/1_population_multiple_sampling_schemes/gestatii/"
+load(paste0(data_folder, "100_schemes_dfs_suff_unique_combos_sim=555.RData"))
 ## :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 ## Set parameter values
 ## :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
@@ -35,7 +35,7 @@ step_l_inf <- 0.05 * l_inf  # 8.15 is 5% of 163
 a0_options <- seq(from = l_inf - step_l_inf * 3, 
                   to = l_inf + step_l_inf * 3, 
                   by = step_l_inf)
-vbgfs <- matrix(c(CKMRcpp::a_0_j(l_inf, a0_options, 0.0554, -8.27), 
+vbgfs <- matrix(c(CKMRcpp::a_0_j(l_inf, a0_options, k, a_0), 
                   a0_options), ncol = 2)
 
 
@@ -82,17 +82,17 @@ scenario_fits <- lapply(1:nrow(pars), function(i) {
     df_select <- df[, ]
     
     ## Create the data object for nlminb()
-    dat <- list(alpha_m = 10,                         # maturity age for males
-                alpha_f = 10,                         # maturity age for females
+    dat <- list(alpha_m = 17,                         # maturity age for males (van=10, ges=17)
+                alpha_f = 19,                         # maturity age for females (van=10, ges=19)
                 
                 # r = log(1.0000),                      # the population growth rate
                 sigma_l = log(sigma_l),               # the measurement error on length
-                phi = boot::logit(1 - 0.1535),        # phi is the survival rate
+                phi = boot::logit(1 - 0.1113),        # phi is the survival rate (van=0.1535, ges=0.1113)
                 
                 ESTIMATE_R = 2,                       # is r fixed (0), estimated (1), 
                                                       # or sex specific (2)?
     
-                max_age = 19,                         # the maximum age to be considered
+                max_age = 63,                         # the maximum age to be considered (van=19, ges=63)
                 max_length = 200,                     # at least the maximum length in the data
                 t0 = 2014,                            # a reference year for the abundance estimation
                 vbgf_l_inf = l_inf,                   # asymptotic length for VBGF
@@ -194,33 +194,28 @@ MCE_1000
 load(paste0(data_folder, "simulation_100_schemes_scenario_1-49_fit_results_sim=144.RData"))
 load(paste0(data_folder, "100_schemes_combined_data_with_N_hist_sim=144.RData"))
 
+## Create male plot
 p_m <- CKMRcpp::plotCKMRabundancePretty(scenario_fits[c(9:13, 16:20, 23:27, 30:34, 37:41)],
                                c(-20, 0),
                                y0 = 2014, 
                                sex = "male", 
                                truth = combined_data[[1]]$N_hist)
 
+## Create female plot
 p_f <- CKMRcpp::plotCKMRabundancePretty(scenario_fits[c(9:13, 16:20, 23:27, 30:34, 37:41)],
                                c(-20, 0),
                                y0 = 2014, 
                                sex = "female", 
                                truth = combined_data[[1]]$N_hist)
+
+## Print the plots
 p_m
 p_f
 
+## Save the plots
+save(list = c("p_m", "p_f", "combined_data", "scenario_fits"), 
+     file = "data/vanillus_abundance_plots_5x5.RData")
 
-plotCKMRabundancePretty(fits_list = scenario_fits[c(30)],
-                                 year_lim = c(-20, 0),
-                                 y0 = 2014, 
-                                 sex = "female", 
-                                 truth = combined_data[[1]]$N_hist)
-
-
-p <- egg::ggarrange(p_f +  theme(axis.text.x = element_blank(),
-                                 axis.ticks.x = element_blank(),
-                                 axis.title.x = element_blank()),
-                    p_m , nrow = 2)
-p
 ## Done. Probably best to keep the two plots separate, not combined.
 ## Next things: plot with the different vbgf curves, and summary statistics of 
 ## bias, error, things like that. 

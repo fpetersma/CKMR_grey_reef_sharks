@@ -772,6 +772,11 @@ plotCKMRabundancePretty <- function(
   
   abun_long$N[abun_long$conv == "failed"] <- NA
   
+  dimension <- sqrt(max(abun_long$sim_id))
+  
+  abun_long$sim_id <- as.factor(abun_long$sim_id)
+  levels(abun_long$sim_id) <- paste0(rep(1:5, each = 5), "-", 1:5)
+  
   if (sex == "both") {
     # Create the plot with 100 fitted abundances, and a mean line
     p <- ggplot(abun_long) +
@@ -781,11 +786,11 @@ plotCKMRabundancePretty <- function(
       scale_color_manual(values = c(rep(alpha("darkgrey", 0.2), 100),
                                     alpha("black", 0.5),
                                     alpha("red", 0.4))) +
-      theme_minimal() +
+      theme_bw() +
       ylab(y_axis ) +
       xlab("Year") +
-      facet_wrap(~ sim_id + sex, nrow = sqrt(max(abun_long$sim_id))) + 
-      coord_cartesian(ylim=c(0,max_y_axis)) +
+      facet_wrap(~ sim_id + sex, nrow = dimension, labeller = label_parsed) + 
+      coord_cartesian(ylim=c(0, max_y_axis)) +
       scale_x_continuous(breaks = seq(from = min(years) + y0, to = max(years) + y0, by = 5),
                          labels = seq(from = min(years) + y0, to = max(years) + y0, by = 5))
     
@@ -797,10 +802,10 @@ plotCKMRabundancePretty <- function(
       scale_color_manual(values = c(rep(alpha("darkgrey", 0.2), 100),
                                     alpha("black", 0.5),
                                     alpha("red", 0.4))) +
-      theme_minimal() +
+      theme_bw() +
       ylab(y_axis ) +
       xlab("Year") +
-      facet_wrap(~ sim_id , nrow = sqrt(max(abun_long$sim_id))) + 
+      facet_wrap(~ sim_id , nrow = dimension, labeller = label_parsed) + 
       coord_cartesian(ylim=c(0,max_y_axis)) +
       scale_x_continuous(breaks = seq(from = min(years) + y0, to = max(years) + y0, by = 5),
                          labels = seq(from = min(years) + y0, to = max(years) + y0, by = 5))
@@ -813,19 +818,17 @@ plotCKMRabundancePretty <- function(
       scale_color_manual(values = c(rep(alpha("darkgrey", 0.2), 100),
                                     alpha("black", 0.5),
                                     alpha("red", 0.4))) +
-      theme_minimal() +
+      theme_bw() +
       ylab(y_axis ) +
       xlab("Year") +
-      facet_wrap(~ sim_id , nrow = sqrt(max(abun_long$sim_id))) + 
+      facet_wrap(~ sim_id , nrow = dimension, labeller = label_parsed) + 
       coord_cartesian(ylim=c(0,max_y_axis)) +
       scale_x_continuous(breaks = seq(from = min(years) + y0, to = max(years) + y0, by = 5),
                          labels = seq(from = min(years) + y0, to = max(years) + y0, by = 5))
     
   }
-  
   return(p)
 }
-
 
 retroCapture2 <- function (indiv, 
                            n = 1, 
