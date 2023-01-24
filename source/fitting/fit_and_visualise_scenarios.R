@@ -11,8 +11,8 @@
 
 library(pbapply)
 library(parallel)
-data_folder <- "data/1_population_multiple_sampling_schemes/"
-load(paste0(data_folder, "100_schemes_dfs_suff_unique_combos_sim=555.RData"))
+data_folder <- "data/1_population_multiple_sampling_schemes/vanillus/"
+load(paste0(data_folder, "100_schemes_dfs_suff_unique_combos_sim=144.RData"))
 ## :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 ## Set parameter values
 ## :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
@@ -30,7 +30,7 @@ errors <- c(1e-8,                         # 1e-8 instead of 0 to avoid overflow
             true_error*4/3,               # 4/3 of true error
             true_error*5/3,               # 5/3 of true error
             true_error*6/3)               # twice the true error
-## vbgfs comes from l.100 onwards in 'explore_vbgf_bias_uncertainty.R'
+## vbgf comes from l.100 onwards in 'explore_vbgf_bias_uncertainty.R'
 step_l_inf <- 0.05 * l_inf  # 8.15 is 5% of 163
 a0_options <- seq(from = l_inf - step_l_inf * 3, 
                   to = l_inf + step_l_inf * 3, 
@@ -56,40 +56,43 @@ n <- 100
 ## :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
 scenario_fits <- lapply(1:nrow(pars), function(i) {
-# scenario_fits_25 <- lapply(c(1), function(i) {
+# scenario_fits_25 <- lapply(25, function(i) {
   cat("Fitting the CKMR model in scenario:" , i, "\n")
   
   a0 <- pars[i, "a_0"]
   l_inf <- pars[i, "l_inf"]
   sigma_l <- pars[i, "sigma_l"]
   
-  n_cores <- 100 # 50 fits per core
+  n_cores <- 25 # 50 fits per core
   cl <- makeCluster(n_cores)
   clusterExport(cl = cl, list("a0", "l_inf", "sigma_l"), envir = environment())
   results <- pblapply(dfs_suff[1:n], function(df) {
     ## Create parameter object for nlminb()
     par <- list(
+      # r = log(1.000),                             # same r for both sexes
+      r_f = log(1.000),                             # female growth rate
+      r_m = log(1.000),                             # male growth rate
       # phi = boot::logit(0.87), # same as plogis(0.9) -- boot::inv.logit() is qlogis()
-      N_t0_m = log(500),                              # number of reproductive males
-      r = log(1.000),                                # the population growth rate
+      N_t0_m = log(500),                            # number of reproductive males
       # sigma_l = log(0.01),
       # phi = boot::logit(1 - 0.153),
-      N_t0_f = log(500))                              # number of reproductive females
+      N_t0_f = log(500))                            # number of reproductive females
     
     ## Take a subset of the data if required
     df_select <- df[, ]
     
     ## Create the data object for nlminb()
-    dat <- list(alpha_m = 17,                         # maturity age for males
-                alpha_f = 19,                         # maturity age for females
+    dat <- list(alpha_m = 10,                         # maturity age for males
+                alpha_f = 10,                         # maturity age for females
                 
                 # r = log(1.0000),                      # the population growth rate
                 sigma_l = log(sigma_l),               # the measurement error on length
-                phi = boot::logit(1 - 0.1113),        # phi is the survival rate
+                phi = boot::logit(1 - 0.1535),        # phi is the survival rate
                 
-                fixed_r = 0,                          # is r fixed or estimated?
-                
-                max_age = 63,                         # the maximum age to be considered
+                ESTIMATE_R = 2,                       # is r fixed (0), estimated (1), 
+                                                      # or sex specific (2)?
+    
+                max_age = 19,                         # the maximum age to be considered
                 max_length = 200,                     # at least the maximum length in the data
                 t0 = 2014,                            # a reference year for the abundance estimation
                 vbgf_l_inf = l_inf,                   # asymptotic length for VBGF
@@ -111,7 +114,7 @@ scenario_fits <- lapply(1:nrow(pars), function(i) {
     ##                         are correct)
     # system.time({
     res <- nlminb(start = par, 
-                  objective = CKMRcpp::nllPOPCKMRcppAgeUnknownGestation, 
+                  objective = CKMRcpp::nllPOPCKMRcppAgeUnknown, 
                   dat = dat, 
                   control = list(trace = 1, rel.tol = 1e-7))
     # })
@@ -123,7 +126,8 @@ scenario_fits <- lapply(1:nrow(pars), function(i) {
 
 
 ## Save the environment
-save.image("data/simulation_100_schemes_scenario_1-49_fit_results_n=100.RData")
+save(list = c("scenario_fits"),
+     file = "data/simulation_100_schemes_scenario_1-49_fit_results_sim=144.RData")
 
 ## :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 ## Visualise the results.
@@ -151,7 +155,8 @@ save.image("data/simulation_100_schemes_scenario_1-49_fit_results_n=100.RData")
 ## UPDATE: when sigma_l = 0, it fails. This makes sense, as it results in a
 ## probability density of positive infinity (due to division by 0). 
 ## Change this to 1e-8.
-result_list <- scenario_fits_25[[1]]
+result_list <- scenario_fits[[25]]
+# result_list <- scenario_fits_25[[1]]
 ## Look at the estimates
 N_est <- t(sapply(result_list, function(res){
   return(c(N_male = exp(res$par["N_t0_m"]), N_female = exp(res$par["N_t0_f"])))
@@ -186,21 +191,90 @@ MCE_1000
 ## :::::::::::::::::::::::::::::::::::::::::::::::::::
 ## Plot multiple scenarios
 ## :::::::::::::::::::::::::::::::::::::::::::::::::::
-load(paste0(data_folder, "simulation_100_schemes_scenario_1-49_fit_results_sim=555.RData"))
-load(paste0(data_folder, "100_schemes_combined_data_with_N_hist_sim=555.RData"))
+load(paste0(data_folder, "simulation_100_schemes_scenario_1-49_fit_results_sim=144.RData"))
+load(paste0(data_folder, "100_schemes_combined_data_with_N_hist_sim=144.RData"))
 
-for (i in 1:49) {
-  readline(prompt="Press [enter] to continue")
+p_m <- CKMRcpp::plotCKMRabundancePretty(scenario_fits[c(9:13, 16:20, 23:27, 30:34, 37:41)],
+                               c(-20, 0),
+                               y0 = 2014, 
+                               sex = "male", 
+                               truth = combined_data[[1]]$N_hist)
 
-  p1 <- CKMRcpp::plotCKMRabundance(scenario_fits[[i]],
-                                   c(-20,0),
-                                   3000,
-                                   fixed_r = NULL ,
-                                   med = T,
-                                   truth = combined_data[[1]]$N_hist,
-                                   y0 = 2014)
+p_f <- CKMRcpp::plotCKMRabundancePretty(scenario_fits[c(9:13, 16:20, 23:27, 30:34, 37:41)],
+                               c(-20, 0),
+                               y0 = 2014, 
+                               sex = "female", 
+                               truth = combined_data[[1]]$N_hist)
+p_m
+p_f
 
 
-}
+plotCKMRabundancePretty(fits_list = scenario_fits[c(30)],
+                                 year_lim = c(-20, 0),
+                                 y0 = 2014, 
+                                 sex = "female", 
+                                 truth = combined_data[[1]]$N_hist)
 
 
+p <- egg::ggarrange(p_f +  theme(axis.text.x = element_blank(),
+                                 axis.ticks.x = element_blank(),
+                                 axis.title.x = element_blank()),
+                    p_m , nrow = 2)
+p
+## Done. Probably best to keep the two plots separate, not combined.
+## Next things: plot with the different vbgf curves, and summary statistics of 
+## bias, error, things like that. 
+
+# BELOW IS OLD STUFF
+# plots <- list()
+# for (i in 1:49) {
+#   # readline(prompt="Press [Enter] for next plot, or [Esc] to exit.")
+# 
+#   plots[[i]] <- plotCKMRabundancePretty(fits = scenario_fits[[i]],
+#                                    year_lim = c(-20,0),
+#                                    max_y_axis = 3000,
+#                                    truth = combined_data[[1]]$N_hist,
+#                                    y0 = 2014)
+#   # p1 <- CKMRcpp::plotCKMRabundance(fits = scenario_fits[[i]],
+#   #                                  year_lim = c(-20,0),
+#   #                                  max_y_axis = 3000,
+#   #                                  fixed_r = NULL,
+#   #                                  med = T,
+#   #                                  truth = combined_data[[1]]$N_hist,
+#   #                                  y0 = 2014)
+# 
+# 
+# }
+# gridExtra::grid.arrange(grobs = plots, ncol = 7, nrow = 7)
+# 
+# ## What if I only look at a 5x5 grid
+# fits_5by5 <- scenario_fits[c(9:13, 16:20, 23:27, 30:34, 37:41)]
+# plots <- list()
+# for (i in 1:25) {
+#   # readline(prompt="Press [Enter] for next plot, or [Esc] to exit.")
+#   
+#   plots[[i]] <- plotCKMRabundancePretty(fits = fits_5by5[[i]],
+#                                         year_lim = c(-20,0),
+#                                         max_y_axis = 3000,
+#                                         truth = combined_data[[1]]$N_hist,
+#                                         y0 = 2014)
+#   
+#   
+# }
+# gridExtra::grid.arrange(grobs = plots, ncol = 5)
+# egg::ggarrange(plots = plots, ncol = 5)
+# 
+# # And now for male
+# plots <- list()
+# for (i in 1:25) {
+#   # readline(prompt="Press [Enter] for next plot, or [Esc] to exit.")
+#   
+#   plots[[i]] <- plotCKMRabundancePretty(fits = fits_5by5[[i]],
+#                                         year_lim = c(-20,0),
+#                                         max_y_axis = 3000,
+#                                         female = FALSE,
+#                                         truth = combined_data[[1]]$N_hist,
+#                                         y0 = 2014)
+#   
+# }
+# gridExtra::grid.arrange(grobs = plots, ncol = 5)

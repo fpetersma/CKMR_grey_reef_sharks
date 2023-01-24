@@ -12,7 +12,7 @@ library(pbapply)
 library(doParallel)
 # library(CKMRcpp)
 
-sim_i <- 7
+sim_i <- 144
 
 # source("source/fitting/CKMR_functions.R")
 # source("source/simulating/custom_functions_fishSim.R")
@@ -76,8 +76,8 @@ selfie_list <- pblapply(simulated_data_sets, function(indiv) {
 cat("Add the true population history...\n")
 N_hist_list <- pblapply(simulated_data_sets[1], function(indiv) {
   N_hist <- t(sapply(min(indiv$DeathY, na.rm = T):max(indiv$DeathY, na.rm = T), function(year) {
-    N_male <- sum(CKMRcpp::extractTheLiving(indiv, year, TRUE, 17, "male", TRUE))
-    N_female <- sum(CKMRcpp::extractTheLiving(indiv, year, TRUE, 19, "female", TRUE))
+    N_male <- sum(CKMRcpp::extractTheLiving(indiv, year, TRUE, 10, "male", TRUE))
+    N_female <- sum(CKMRcpp::extractTheLiving(indiv, year, TRUE, 10, "female", TRUE))
     return(c(N_m = N_male, N_f = N_female))
   }))
   row.names(N_hist) <- min(indiv$DeathY, na.rm = T):max(indiv$DeathY, na.rm = T)

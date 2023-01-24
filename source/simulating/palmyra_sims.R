@@ -1,5 +1,5 @@
 ## ========================================================================== ##
-## GR_sims_Palmyra.R
+## palmyra_sims.R
 ## 
 ## In this script I will simulate GR population data using information life 
 ##  history trait estimates from the Palmyra study (Bradley et al, 2017).
@@ -51,8 +51,8 @@ n_cores <- 1
 cl <- makeCluster(n_cores)
 # rm(simulated_data_sets)
 clusterExport(cl, c(ls()))
-# simulated_data_sets <- pblapply(1:1000, function(i) {
-simulated_data_sets <- pblapply(c(7), function(i) {
+simulated_data_sets <- pblapply(1:1000, function(i) {
+# simulated_data_sets <- pblapply(c(7), function(i) {
   
   ## Set a seed for reproducibility
   set.seed(170593 + 121 * i)
@@ -115,6 +115,7 @@ simulated_data_sets <- pblapply(c(7), function(i) {
       femaleCurve = female_curve,
       no_gestation = no_gestation
     )
+    
     ## 2. Survival
     indiv <- fishSim::mort(
       indiv = indiv, 
