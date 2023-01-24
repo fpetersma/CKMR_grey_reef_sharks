@@ -31,7 +31,7 @@ double fLengthGivenAge(int l,
 }
 
 // Probability mass function for sampled age
-// LOK INTO THIS, AS IT SEM LIKE I CAN WOKR WITH POP AGE (THE SAME HERE< BUT STILL)
+// LOOK INTO THIS, AS IT SEEMS LIKE I CAN WOKR WITH POP AGE (THE SAME HERE< BUT STILL)
 double fSampledAge(int a, 
                    double p_geom, 
                    int max_age) {
@@ -149,13 +149,15 @@ double nllPOPCKMRcppAgeUnknownGestation(List dat, List par) {
   const double vbgf_a0 = dat["vbgf_a0"];        // theoretical age at length zero
   
   // Extract boolean for fixed parameters
-  const int fixed_r = dat["fixed_r"]; 
-  double r = -1.0; // Define r with impossible value here for compiling
+  const int ESTIMATE_R = dat["ESTIMATE_R"]; 
+  NumericVector r (2, -1.0); // Define r with impossible value here for compiling
   
   // Add parameters to be kept as constants here
-  if (fixed_r == 1) {
-    r = std::exp(double(dat["r"]));             // growth parameter
+  if (ESTIMATE_R == 0) {
+    r[0] = std::exp(double(dat["r"]));             // male growth parameter
+    r[1] = std::exp(double(dat["r"]));             // female growth parameter
   }
+  
   const double sigma_l = std::exp(double(dat["sigma_l"])); // length measurement error
   const double phi = std::exp(double(dat["phi"])) /        // survival parameter
     (1.0 + std::exp(double(dat["phi"])));
@@ -170,13 +172,18 @@ double nllPOPCKMRcppAgeUnknownGestation(List dat, List par) {
   const double N_t0_m = std::exp(double(par["N_t0_m"]));   // male abundance
   const double N_t0_f = std::exp(double(par["N_t0_f"]));   // female abundance
   // const double sigma_l = std::exp(double(par["sigma_l"]));
-  if (fixed_r == 0) {
-    r = std::exp(double(par["r"]));             // growth parameter
+  if (ESTIMATE_R == 1) {
+    r[0] = std::exp(double(par["r"]));             // male growth parameter
+    r[1] = std::exp(double(par["r"]));             // female growth parameter
+  }
+  if (ESTIMATE_R == 2) {
+    r[0] = std::exp(double(par["r_m"]));             // male growth parameter
+    r[1] = std::exp(double(par["r_f"]));             // female growth parameter
   }
   
-  // Make sure r is not -1.0
-  if (r < 0.0) {
-    stop("'r' cannot be negative.");
+  // Make sure male growth rate r[0] is not -1.0
+  if (r[0] < 0.0) {
+    stop("The growth rate 'r[0]' cannot be negative.");
   }
   // ===========================================================================
   
@@ -386,7 +393,7 @@ double nllPOPCKMRcppAgeUnknownGestation(List dat, List par) {
             (a_i + y_j - c_i[index] <= max_age))  // was the parent mature?
         {
           // Derive the ERRO in the year before the birth year of the offspring
-          prob_ij_2 = 1.0 / (N_t0_f * std::pow(r, y_j - t0 - 1) * phi); // subtract 1 for one year gestation
+          prob_ij_2 = 1.0 / (N_t0_f * std::pow(r[1], y_j - t0 - 1) * phi); // subtract 1 for one year gestation
           
           // Account for survival of mother i if j was born after c_i
           if (c_i[index] < y_j) {
@@ -398,7 +405,7 @@ double nllPOPCKMRcppAgeUnknownGestation(List dat, List par) {
             (a_i + y_j - c_i[index] - 1 <= max_age))  // Was the parent mature?
           {
           // Derive the ERRO in the year before the birth year of the offspring
-          prob_ij_2 = 1.0 / (N_t0_m * std::pow(r, y_j - t0 - 1));
+          prob_ij_2 = 1.0 / (N_t0_m * std::pow(r[0], y_j - t0 - 1));
 
           // Account for survival of father i if j was born after c_i + 1
           if (c_i[index] + 1 < y_j) {
@@ -564,7 +571,7 @@ double nllPOPCKMRcppAgeUnknownGestation(List dat, List par) {
 
         // Probability stays zero if offspring was born before maturity of parent
         if ((s_j[index] == 1) & (a_j + y_i - c_j[index] <= max_age)) {
-          prob_ji_2 = 1.0 / (N_t0_f * std::pow(r, y_i - t0 - 1) * phi); // subtract 1 for one year gestation
+          prob_ji_2 = 1.0 / (N_t0_f * std::pow(r[1], y_i - t0 - 1) * phi); // subtract 1 for one year gestation
 
           // Account for survival of mother j if i was born after c_j
           if (c_j[index] < y_i) {
@@ -573,7 +580,7 @@ double nllPOPCKMRcppAgeUnknownGestation(List dat, List par) {
         }
         if ((s_j[index] == 0) & (a_j + y_i - c_j[index] - 1 <= max_age)) {
           // Derive the ERRO in the year before the birth year of the offspring
-          prob_ji_2 = 1.0 / (N_t0_m * std::pow(r, y_i - t0 - 1));
+          prob_ji_2 = 1.0 / (N_t0_m * std::pow(r[0], y_i - t0 - 1));
 
           // Account for survival of father j if i was born after c_j + 1
           if (c_j[index] + 1 < y_i) {
@@ -632,12 +639,12 @@ double nllPOPCKMRcppAgeUnknown(List dat, List par) {
   // ===========================================================================
   // 1. EXTRACT DATA OBJECTS
   // ---------------------------------------------------------------------------
-  const IntegerVector s1 = dat["s1"];         // sex of individual 1 (1=F, 0=M)
-  const IntegerVector s2 = dat["s2"];         // sex of individual 2
-  const IntegerVector l1 = dat["l1"];           // length of individual 1
-  const IntegerVector l2 = dat["l2"];           // length of individual 2
-  const IntegerVector c1 = dat["c1"];           // capture year of individual 1
-  const IntegerVector c2 = dat["c2"];           // capture year of individual 2
+  const IntegerVector s1 = dat["s_i"];         // sex of individual 1 (1=F, 0=M)
+  const IntegerVector s2 = dat["s_j"];         // sex of individual 2
+  const IntegerVector l1 = dat["l_i"];           // length of individual 1
+  const IntegerVector l2 = dat["l_j"];           // length of individual 2
+  const IntegerVector c1 = dat["c_i"];           // capture year of individual 1
+  const IntegerVector c2 = dat["c_j"];           // capture year of individual 2
   const IntegerVector kinship =               // So far, can be either U=0, PO/OP=1, 
     dat["kinship"];                             // or U=2.
   const IntegerVector cov_combo_freq = 
@@ -659,6 +666,16 @@ double nllPOPCKMRcppAgeUnknown(List dat, List par) {
   const double phi = std::exp(double(dat["phi"])) /        // survival parameter
     (1.0 + std::exp(double(dat["phi"])));
   
+  // Extract boolean for fixed parameters
+  const int ESTIMATE_R = dat["ESTIMATE_R"]; 
+  NumericVector r (2, -1.0); // Define r with impossible value here for compiling
+  
+  // Add parameters to be kept as constants here
+  if (ESTIMATE_R == 0) {
+    r[0] = std::exp(double(dat["r"]));             // male growth parameter
+    r[1] = std::exp(double(dat["r"]));             // female growth parameter
+  }
+  
   // ===========================================================================
   
   // ===========================================================================
@@ -669,8 +686,22 @@ double nllPOPCKMRcppAgeUnknown(List dat, List par) {
   const double N_t0_m = std::exp(double(par["N_t0_m"]));   // male abundance
   const double N_t0_f = std::exp(double(par["N_t0_f"]));   // female abundance
   // const double sigma_l = std::exp(double(par["sigma_l"]));
-  const double r = std::exp(double(par["r"]));             // growth parameter
   
+  // Same growth rate for both sexes
+  if (ESTIMATE_R == 1) {
+    r[0] = std::exp(double(par["r"]));             // male growth parameter
+    r[1] = std::exp(double(par["r"]));             // female growth parameter
+  }
+  // Separate growth rate for both sexes
+  if (ESTIMATE_R == 2) {
+    r[0] = std::exp(double(par["r_m"]));             // male growth parameter
+    r[1] = std::exp(double(par["r_f"]));             // female growth parameter
+  }
+  
+  // Make sure male growth rate r[0] is not -1.0
+  if (r[0] < 0.0) {
+    stop("The growth rate 'r[0]' cannot be negative.");
+  }
   // std::cout << "r: " << r << std::endl;
   // ===========================================================================
   
@@ -763,7 +794,7 @@ double nllPOPCKMRcppAgeUnknown(List dat, List par) {
       
       // If sex is female
       if (s1[index] == 1) {
-        prob_a2 = 1.0 / (N_t0_f * std::pow(r, y2 - t0));
+        prob_a2 = 1.0 / (N_t0_f * std::pow(r[1], y2 - t0));
         // prob12_2 = 1.0 / (N_t0_f_vector[y2 - t0] + 40);
         
         // Account for survival of parent i if j was born after c1
@@ -775,7 +806,7 @@ double nllPOPCKMRcppAgeUnknown(List dat, List par) {
       // If sex is male
       if (s1[index] == 0) {
         // Derive the ERRO in the year before the birth year of the offspring
-        prob_a2 = 1.0 / (N_t0_m * std::pow(r, y2 - t0));
+        prob_a2 = 1.0 / (N_t0_m * std::pow(r[0], y2 - t0));
         // prob12_2 = 1.0 / (N_t0_m_vector[y2 - t0] + 40);
         
         // Account for survival of parent i if j was born after c1 + 1
@@ -940,7 +971,7 @@ double nllPOPCKMRcppAgeUnknown(List dat, List par) {
       
       // If parent sex is female
       if (s2[index] == 1) {
-        prob_a1 = 1.0 / (N_t0_f * std::pow(r, y1 - t0));
+        prob_a1 = 1.0 / (N_t0_f * std::pow(r[1], y1 - t0));
         // prob12_2 = 1.0 / (N_t0_f_vector[y2 - t0] + 40);
         
         // Account for survival of parent i if j was born after c1
@@ -952,7 +983,7 @@ double nllPOPCKMRcppAgeUnknown(List dat, List par) {
       // If parent sex is male
       if (s2[index] == 0) {
         // Derive the ERRO in the year before the birth year of the offspring
-        prob_a1 = 1.0 / (N_t0_m * std::pow(r, y1 - t0));
+        prob_a1 = 1.0 / (N_t0_m * std::pow(r[0], y1 - t0));
         // prob12_2 = 1.0 / (N_t0_m_vector[y2 - t0] + 40);
         
         // Account for survival of parent i if j was born after c1 + 1
