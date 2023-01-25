@@ -52,7 +52,7 @@ cl <- makeCluster(n_cores)
 # rm(simulated_data_sets)
 clusterExport(cl, c(ls()))
 simulated_data_sets <- pblapply(1:1000, function(i) {
-# simulated_data_sets <- pblapply(c(7), function(i) {
+# simulated_data_sets <- pblapply(c(555), function(i) {
   
   ## Set a seed for reproducibility
   set.seed(170593 + 121 * i)
@@ -99,7 +99,7 @@ simulated_data_sets <- pblapply(1:1000, function(i) {
     # cat("Starting simulation of year:", y, "...")
     
     ## 1. Mating/birth
-    indiv <- CKMRcpp::mateOrBirth(
+    indiv <- mateOrBirth(
       indiv = indiv,
       batchSize = batch_size,
       fecundityDist = fecundity_dist, # uniform is custom
