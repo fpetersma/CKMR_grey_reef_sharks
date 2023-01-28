@@ -402,10 +402,11 @@ double nllPOPCKMRcppAgeUnknownGestation(List dat, List par) {
         }
 
         if ((s_i[index] == 0) &                       // is the potential parent male?
-            (a_i + y_j - c_i[index] - 1 <= max_age))  // Was the parent mature?
+            (a_i + y_j - c_i[index] <= max_age))  // was the parent mature?
           {
-          // Derive the ERRO in the year before the birth year of the offspring
-          prob_ij_2 = 1.0 / (N_t0_m * std::pow(r[0], y_j - t0 - 1));
+          // Derive the ERRO in the year before the birth year of the offspring 
+          // Does this require a correction for survival of the mother (through '* phi')?
+          prob_ij_2 = 1.0 / (N_t0_m * std::pow(r[0], y_j - t0 - 1)); // * phi;
 
           // Account for survival of father i if j was born after c_i + 1
           if (c_i[index] + 1 < y_j) {
@@ -570,7 +571,8 @@ double nllPOPCKMRcppAgeUnknownGestation(List dat, List par) {
         double prob_ji_2 = 0.0;
 
         // Probability stays zero if offspring was born before maturity of parent
-        if ((s_j[index] == 1) & (a_j + y_i - c_j[index] <= max_age)) {
+        if ((s_j[index] == 1) &                      // was the parent female...
+            (a_j + y_i - c_j[index] <= max_age)) {   // ...and mature?
           prob_ji_2 = 1.0 / (N_t0_f * std::pow(r[1], y_i - t0 - 1) * phi); // subtract 1 for one year gestation
 
           // Account for survival of mother j if i was born after c_j
@@ -578,9 +580,11 @@ double nllPOPCKMRcppAgeUnknownGestation(List dat, List par) {
             prob_ji_2 *=  std::pow(phi, y_i - c_j[index]);
           } 
         }
-        if ((s_j[index] == 0) & (a_j + y_i - c_j[index] - 1 <= max_age)) {
+        if ((s_j[index] == 0) &                        // was the parent male...
+            (a_j + y_i - c_j[index] <= max_age)) {     // ... and mature?
           // Derive the ERRO in the year before the birth year of the offspring
-          prob_ji_2 = 1.0 / (N_t0_m * std::pow(r[0], y_i - t0 - 1));
+          // Does this require a correction for survival of the mother (through '* phi')?
+          prob_ji_2 = 1.0 / (N_t0_m * std::pow(r[0], y_i - t0 - 1)); // * phi;
 
           // Account for survival of father j if i was born after c_j + 1
           if (c_j[index] + 1 < y_i) {
