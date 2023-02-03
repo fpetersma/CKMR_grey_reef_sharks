@@ -11,8 +11,8 @@
 
 library(pbapply)
 library(parallel)
-data_folder <- "data/1_population_multiple_sampling_schemes/gestatii/"
-load(paste0(data_folder, "100_schemes_dfs_suff_unique_combos_sim=555.RData"))
+data_folder <- "data/1_population_multiple_sampling_schemes/"
+load(paste0(data_folder, "gestatii/100_schemes_dfs_suff_unique_combos_sim=555.RData"))
 ## :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 ## Set parameter values
 ## :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
@@ -56,14 +56,14 @@ n <- 100
 ## :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
 scenario_fits <- lapply(1:nrow(pars), function(i) {
-# scenario_fits_25 <- lapply(25, function(i) {
+# scenario_fits <- lapply(25, function(i) {
   cat("Fitting the CKMR model in scenario:" , i, "\n")
   
   a0 <- pars[i, "a_0"]
   l_inf <- pars[i, "l_inf"]
   sigma_l <- pars[i, "sigma_l"]
   
-  n_cores <- 25 # 50 fits per core
+  n_cores <- 50 # 2 fits per core
   cl <- makeCluster(n_cores)
   clusterExport(cl = cl, list("a0", "l_inf", "sigma_l"), envir = environment())
   results <- pblapply(dfs_suff[1:n], function(df) {
@@ -114,7 +114,7 @@ scenario_fits <- lapply(1:nrow(pars), function(i) {
     ##                         are correct)
     # system.time({
     res <- nlminb(start = par, 
-                  objective = CKMRcpp::nllPOPCKMRcppAgeUnknown, 
+                  objective = CKMRcpp::nllPOPCKMRcppAgeUnknownGestation, 
                   dat = dat, 
                   control = list(trace = 1, rel.tol = 1e-7))
     # })
@@ -125,9 +125,9 @@ scenario_fits <- lapply(1:nrow(pars), function(i) {
 })
 
 
-## Save the environment
+## Save the scenario_fits object
 save(list = c("scenario_fits"),
-     file = "data/simulation_100_schemes_scenario_1-49_fit_results_sim=144.RData")
+     file = paste0(data_folder, "simulation_100_schemes_scenario_25_fit_results_sim=.RData"))
 
 ## :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 ## Visualise the results.
@@ -191,19 +191,21 @@ MCE_1000
 ## :::::::::::::::::::::::::::::::::::::::::::::::::::
 ## Plot multiple scenarios
 ## :::::::::::::::::::::::::::::::::::::::::::::::::::
-load(paste0(data_folder, "simulation_100_schemes_scenario_1-49_fit_results_sim=144.RData"))
-load(paste0(data_folder, "100_schemes_combined_data_with_N_hist_sim=144.RData"))
+load(paste0(data_folder, "gestatii/simulation_100_schemes_scenario_1-49_fit_results_sim=555.RData"))
+load(paste0(data_folder, "gestatii/100_schemes_combined_data_with_N_hist_sim=555.RData"))
 
 ## Create male plot
-p_m <- CKMRcpp::plotCKMRabundancePretty(scenario_fits[c(9:13, 16:20, 23:27, 30:34, 37:41)],
+p_m <- CKMRcpp::plotCKMRabundance(scenario_fits[c(9:13, 16:20, 23:27, 30:34, 37:41)],
+# p_m <- CKMRcpp::plotCKMRabundance(fits_list = scenario_fits,
                                c(-20, 0),
                                y0 = 2014, 
                                sex = "male", 
                                truth = combined_data[[1]]$N_hist)
-
+p_m
 ## Create female plot
-p_f <- CKMRcpp::plotCKMRabundancePretty(scenario_fits[c(9:13, 16:20, 23:27, 30:34, 37:41)],
-                               c(-20, 0),
+p_f <- CKMRcpp::plotCKMRabundance(scenario_fits[c(9:13, 16:20, 23:27, 30:34, 37:41)],
+# p_f <- CKMRcpp::plotCKMRabundance(fits_list = scenario_fits,
+                               year_lim = c(-20, 0),
                                y0 = 2014, 
                                sex = "female", 
                                truth = combined_data[[1]]$N_hist)
