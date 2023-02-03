@@ -118,6 +118,7 @@ scenario_fits <- lapply(1:nrow(pars), function(i) {
                   dat = dat, 
                   control = list(trace = 1, rel.tol = 1e-7))
     # })
+    res$dat <- dat
     
     return(res)
   }, cl = cl); stopCluster(cl) # end of pblapply() in parallel
