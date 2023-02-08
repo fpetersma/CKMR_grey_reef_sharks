@@ -37,12 +37,12 @@ devtools::build("source/CKMRcpp")
 library(CKMRcpp)
 ## Unload the package
 detach("package:CKMRcpp", unload=TRUE)
-## Sometimes it is required 
+## Sometimes it is required to restart R first
 
 ## 2. Make the sure the updated/new cpp files are added to "CKMRcpp/src" 
 
 ## 3. Re-compile 
-compileAttributes("source/CKMRcpp")
+Rcpp::compileAttributes("source/CKMRcpp")
 
 ## 4. Install the updated package
 devtools::install("source/CKMRcpp")

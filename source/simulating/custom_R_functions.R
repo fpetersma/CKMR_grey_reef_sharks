@@ -1,7 +1,5 @@
 ## ========================================================================== ##
-## A new file with custom functions to add to fishSim to make it more similar ##
-## to the grey reef shark case study from Palmyra. Recovered after            ##
-## accidentally replacing the file. Very stupid.                              ##  
+## A file with custom R functions for the CKMRcpp package.                    ##
 ## ========================================================================== ##
 
 addBirthRecovery <- function(indiv, 
@@ -899,22 +897,22 @@ mateWithRecovery <- function (indiv,
   return(indiv)
 }
 
-pDiscreteNorm <- function(x, mu, sigma) {
-  return(pnorm(x + 0.5, mean = mu, sd = sigma) - 
-           pnorm(x - 0.5, mean = mu, sd = sigma))
-}
+# pDiscreteNorm <- function(x, mu, sigma) {
+#   return(pnorm(x + 0.5, mean = mu, sd = sigma) - 
+#            pnorm(x - 0.5, mean = mu, sd = sigma))
+# }
 
-recover <- function(indiv) 
-{
-  ## Reduce 'Recovery' by one year for all living individuals
-  indiv[is.na(indiv[, 6]), 10] <- indiv[is.na(indiv[, 6]), 10] - 1L
-  ## Set all negative 'Recovery' to 0
-  indiv[indiv[, 10] < 0, 10] <- 0
-  ## Set Recovery for dead animals to 0
-  indiv[!is.na(indiv[, 6]), 10] <- 0
-  
-  return(indiv)
-}
+# recover <- function(indiv) 
+# {
+#   ## Reduce 'Recovery' by one year for all living individuals
+#   indiv[is.na(indiv[, 6]), 10] <- indiv[is.na(indiv[, 6]), 10] - 1L
+#   ## Set all negative 'Recovery' to 0
+#   indiv[indiv[, 10] < 0, 10] <- 0
+#   ## Set Recovery for dead animals to 0
+#   indiv[!is.na(indiv[, 6]), 10] <- 0
+#   
+#   return(indiv)
+# }
 
 retroCapture2 <- function (indiv, 
                            n = 1, 
@@ -971,262 +969,6 @@ retroCapture <- function (indiv,
     }
   }
   return(indiv)
-}
-
-uniformCheckGrowthrate <- function (
-  fecundityDist = "uniform", 
-  forceY1 = NA,      # year 1 mortality?
-  mateType, # mating type
-  mortType = "flat", # mortality constant or variable?
-  batchSize, # expected litter size
-  firstBreed = 0, # first year of breeding (at least min maturity curve)
-  maxClutch = Inf, # max litter size
-  osr = c(0.5, 0.5), # sex ratio
-  maturityCurve, # equivalent to femaleCurve, but used if mateType == "age"
-  femaleCurve, # female maturity curve
-  maxAge = Inf, # self explanatory
-  mortRate, # rate of mortality
-  ageMort, # input for the mort() call
-  stockMort, # input for the mort() call
-  ageStockMort) { # input for the mort() call 
-  ## Check inputs
-  if (!(mateType %in% c("flat", "age", "ageSex"))) {
-    stop("'mateType' must be one of 'flat', 'age', or 'ageSex'.")
-  }
-  if (!(mortType %in% c("flat", "age", "stock", "ageStock"))) {
-    stop("'mortType' must be one of 'flat', 'age', 'stock', or 'ageStock'.")
-  }
-  if (missing(batchSize)) 
-    stop("'batchSize' must be specified.")
-  ## creating "batches" from a Poisson to run a simulation to get an expected
-  ## batchSize. For uniform that can be much easier, as it is just the expectation,
-  ## which is the mean. 
-  if (batchSize != Inf && fecundityDist == "uniform") { # this is new!
-    batchSize <- mean(batchSize)
-  } else if (batchSize != Inf) { # this is old
-    batches <- rpois(1e+06, lambda = batchSize)
-    batchSize <- mean(batches[batches <= maxClutch]) 
-  }
-  
-  
-  ## mateType == "flat", not relevant to GR
-  if (mateType == "flat") {
-    if (mortType == "flat") {
-      mat <- matrix(data = 0, nrow = length(0:firstBreed) + 
-                      1, ncol = length(0:firstBreed) + 1)
-      mat[1, ((2 + firstBreed):ncol(mat))] <- batchSize * 
-        osr[2]
-      for (i in 1:ncol(mat)) {
-        if ((i + 1) <= nrow(mat)) 
-          mat[i + 1, i] <- 1 - mortRate
-      }
-      mat[nrow(mat), ncol(mat)] <- 1 - mortRate
-    }
-    else if (mortType == "age") {
-      mat <- matrix(data = 0, nrow = length(ageMort) + 
-                      1, ncol = length(ageMort) + 1)
-      mat[1, ((2 + firstBreed):ncol(mat))] <- batchSize * 
-        osr[2]
-      for (i in 1:ncol(mat)) {
-        if ((i + 1) <= nrow(mat)) 
-          mat[i + 1, i] <- 1 - ageMort[i]
-      }
-      mat[nrow(mat), ncol(mat)] <- 1 - ageMort[length(ageMort)]
-    }
-    else if (mortType == "stock") {
-      mat <- matrix(data = 0, nrow = length(0:firstBreed) + 
-                      1, ncol = length(0:firstBreed) + 1)
-      mat.l <- lapply(seq_len(length(stockMort)), function(X) mat)
-      for (s in 1:length(stockMort)) {
-        mat.l[[s]][1, ((2 + firstBreed):ncol(mat.l[[s]]))] <- batchSize * 
-          osr[2]
-        for (i in 1:ncol(mat.l[[s]])) {
-          if ((i + 1) <= nrow(mat.l[[s]])) 
-            mat.l[[s]][i + 1, i] <- 1 - stockMort[s]
-        }
-        mat.l[[s]][nrow(mat.l[[s]]), ncol(mat.l[[s]])] <- 1 - 
-          stockMort[s]
-      }
-    }
-    else if (mortType == "ageStock") {
-      mat <- matrix(data = 0, nrow = length(ageStockMort[, 
-                                                         1]) + 1, ncol = length(ageStockMort[, 1]) + 
-                      1)
-      mat.l <- lapply(seq_len(ncol(ageStockMort)), function(X) mat)
-      for (s in 1:ncol(ageStockMort)) {
-        mat.l[[s]][1, ((2 + firstBreed):ncol(mat.l[[s]]))] <- batchSize * 
-          osr[2]
-        for (i in 1:ncol(mat.l[[s]])) {
-          if ((i + 1) <= nrow(mat.l[[s]])) 
-            mat.l[[s]][i + 1, i] <- 1 - ageStockMort[i, 
-                                                     s]
-        }
-        mat.l[[s]][nrow(mat.l[[s]]), ncol(mat.l[[s]])] <- 1 - 
-          ageStockMort[nrow(ageStockMort), s]
-      }
-    }
-  }
-  ## mateType == "age" also not relevant to GR
-  else if (mateType == "age") {
-    if (firstBreed > 0) 
-      maturityCurve[1:(firstBreed - 1)] <- 0
-    if (mortType == "flat") {
-      mat <- matrix(data = 0, nrow = length(maturityCurve), 
-                    ncol = length(maturityCurve))
-      mat[1, ] <- maturityCurve * batchSize * osr[2]
-      for (i in 1:ncol(mat)) {
-        if ((i + 1) <= nrow(mat)) 
-          mat[i + 1, i] <- 1 - mortRate
-      }
-      mat[nrow(mat), ncol(mat)] <- 1 - mortRate
-    }
-    else if (mortType == "age") {
-      mat <- matrix(data = 0, nrow = max(c(length(maturityCurve), 
-                                           length(ageMort))), ncol = max(c(length(maturityCurve), 
-                                                                           length(ageMort))))
-      mat[1, (1:length(maturityCurve))] <- maturityCurve * 
-        batchSize * osr[2]
-      mat[1, (length(maturityCurve):ncol(mat))] <- maturityCurve[length(maturityCurve)] * 
-        batchSize * osr[2]
-      for (i in 1:length(ageMort)) {
-        if ((i + 1) <= nrow(mat)) 
-          mat[i + 1, i] <- 1 - ageMort[i]
-      }
-      for (i in length(ageMort):ncol(mat)) {
-        if ((i + 1) <= nrow(mat)) 
-          mat[i + 1, i] <- 1 - ageMort[length(ageMort)]
-      }
-      mat[nrow(mat), ncol(mat)] <- 1 - ageMort[length(ageMort)]
-    }
-    else if (mortType == "stock") {
-      mat <- matrix(data = 0, nrow = length(maturityCurve), 
-                    ncol = length(maturityCurve))
-      mat.l <- lapply(seq_len(length(stockMort)), function(X) mat)
-      for (s in 1:length(stockMort)) {
-        mat.l[[s]][1, (1:length(maturityCurve))] <- maturityCurve * 
-          batchSize * osr[2]
-        mat.l[[s]][1, (length(maturityCurve):ncol(mat.l[[s]]))] <- maturityCurve[length(maturityCurve)] * 
-          batchSize * osr[2]
-        for (i in 1:ncol(mat.l[[s]])) {
-          if ((i + 1) <= nrow(mat.l[[s]])) 
-            mat.l[[s]][i + 1, i] <- 1 - stockMort[s]
-        }
-        mat.l[[s]][nrow(mat.l[[s]]), ncol(mat.l[[s]])] <- 1 - 
-          stockMort[s]
-      }
-    }
-    else if (mortType == "ageStock") {
-      mat <- matrix(data = 0, nrow = max(c(length(maturityCurve), 
-                                           nrow(ageStockMort))), ncol = max(c(length(maturityCurve), 
-                                                                              nrow(ageStockMort))))
-      mat.l <- lapply(seq_len(ncol(ageStockMort)), function(X) mat)
-      for (s in 1:ncol(ageStockMort)) {
-        mat.l[[s]][1, (1:length(maturityCurve))] <- maturityCurve * 
-          batchSize * osr[2]
-        mat.l[[s]][1, (length(maturityCurve):ncol(mat.l[[s]]))] <- maturityCurve[length(maturityCurve)] * 
-          batchSize * osr[2]
-        for (i in 1:ncol(mat.l[[s]])) {
-          if ((i + 1) <= nrow(mat.l[[s]])) 
-            mat.l[[s]][i + 1, i] <- 1 - ageStockMort[i, 
-                                                     s]
-        }
-        for (i in nrow(ageStockMort):ncol(mat.l[[s]])) {
-          if ((i + 1) <= nrow(mat.l[[s]])) 
-            mat.l[[s]][i + 1, i] <- 1 - ageStockMort[nrow(ageMort), 
-                                                     s]
-        }
-        mat.l[[s]][nrow(mat.l[[s]]), ncol(mat.l[[s]])] <- 1 - 
-          ageStockMort[nrow(ageStockMort), s]
-      }
-    }
-  }
-  ## This is the one we are interested in!
-  else if (mateType == "ageSex") {
-    if (mortType == "flat") {   # mortType is assumed flat for GR
-      mat <- matrix(data = 0, nrow = length(femaleCurve), 
-                    ncol = length(femaleCurve))
-      mat[1, ] <- femaleCurve * batchSize * osr[2]
-      for (i in 1:ncol(mat)) {
-        if ((i + 1) <= nrow(mat)) 
-          mat[i + 1, i] <- 1 - mortRate
-      }
-      mat[nrow(mat), ncol(mat)] <- 1 - mortRate
-    }
-    else if (mortType == "age") {
-      mat <- matrix(data = 0, nrow = max(c(length(femaleCurve), 
-                                           length(ageMort))), ncol = max(c(length(femaleCurve), 
-                                                                           length(ageMort))))
-      mat[1, (1:length(femaleCurve))] <- femaleCurve * 
-        batchSize * osr[2]
-      mat[1, (length(femaleCurve):ncol(mat))] <- femaleCurve[length(femaleCurve)] * 
-        batchSize * osr[2]
-      for (i in 1:length(ageMort)) {
-        if ((i + 1) <= nrow(mat)) 
-          mat[i + 1, i] <- 1 - ageMort[i]
-      }
-      for (i in length(ageMort):ncol(mat)) {
-        if ((i + 1) <= nrow(mat)) 
-          mat[i + 1, i] <- 1 - ageMort[length(ageMort)]
-      }
-      mat[nrow(mat), ncol(mat)] <- 1 - ageMort[length(ageMort)]
-    }
-    else if (mortType == "stock") {
-      mat <- matrix(data = 0, nrow = length(femaleCurve), 
-                    ncol = length(femaleCurve))
-      mat.l <- lapply(seq_len(length(stockMort)), function(X) mat)
-      for (s in 1:length(stockMort)) {
-        mat.l[[s]][1, (1:length(femaleCurve))] <- femaleCurve * 
-          batchSize * osr[2]
-        mat.l[[s]][1, (length(femaleCurve):ncol(mat.l[[s]]))] <- femaleCurve[length(femaleCurve)] * 
-          batchSize * osr[2]
-        for (i in 1:ncol(mat.l[[s]])) {
-          if ((i + 1) <= nrow(mat.l[[s]])) 
-            mat.l[[s]][i + 1, i] <- 1 - stockMort[s]
-        }
-        mat.l[[s]][nrow(mat.l[[s]]), ncol(mat.l[[s]])] <- 1 - 
-          stockMort[s]
-      }
-    }
-    else if (mortType == "ageStock") {
-      mat <- matrix(data = 0, nrow = max(c(length(femaleCurve), 
-                                           nrow(ageStockMort))), ncol = max(c(length(femaleCurve), 
-                                                                              nrow(ageStockMort))))
-      mat.l <- lapply(seq_len(ncol(ageStockMort)), function(X) mat)
-      for (s in 1:ncol(ageStockMort)) {
-        mat.l[[s]][1, (1:length(femaleCurve))] <- femaleCurve * 
-          batchSize * osr[2]
-        mat.l[[s]][1, (length(femaleCurve):ncol(mat.l[[s]]))] <- femaleCurve[length(femaleCurve)] * 
-          batchSize * osr[2]
-        for (i in 1:ncol(mat.l[[s]])) {
-          if ((i + 1) <= nrow(mat.l[[s]])) 
-            mat.l[[s]][i + 1, i] <- 1 - ageStockMort[i, 
-                                                     s]
-        }
-        for (i in nrow(ageStockMort):ncol(mat.l[[s]])) {
-          if ((i + 1) <= nrow(mat.l[[s]])) 
-            mat.l[[s]][i + 1, i] <- 1 - ageStockMort[nrow(ageMort), 
-                                                     s]
-        }
-        mat.l[[s]][nrow(mat.l[[s]]), ncol(mat.l[[s]])] <- 1 - 
-          ageStockMort[nrow(ageStockMort), s]
-      }
-    }
-  }
-  if (!is.na(forceY1)) {
-    if (mortType %in% c("flat", "age")) 
-      mat[2, 1] <- 1 - forceY1
-    if (mortType %in% c("stock", "ageStock")) 
-      for (i in 1:length(mat.l)) mat.l[[i]][2, 1] <- 1 - 
-          forceY1
-  }
-  if (mortType %in% c("flat", "age")) {
-    return(eigen(mat)$values[1])
-  }
-  if (mortType %in% c("stock", "ageStock")) {
-    outs <- c(rep(NA, length(mat.l)))
-    for (i in 1:length(outs)) outs[i] <- eigen(mat.l[[i]])$values[1]
-    return(outs)
-  }
 }
 
 #' vbgf()

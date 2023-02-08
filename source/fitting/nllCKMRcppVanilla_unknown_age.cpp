@@ -132,9 +132,6 @@ double fAgeGivenLengthFast(int a,
 
 // -----------------------------------------------------------------------------
 
-// =============================================================================
-// PAIR PROBABILITY RCPP
-// -----------------------------------------------------------------------------
 // [[Rcpp::export]]
 double nllPOPCKMRcppAgeUnknown(List dat, List par) {
   // ===========================================================================
@@ -154,6 +151,7 @@ double nllPOPCKMRcppAgeUnknown(List dat, List par) {
   const int alpha_m = dat["alpha_m"];           // male age of maturity
   const int alpha_f = dat["alpha_f"];           // female age of maturity
   const int max_age = dat["max_age"];           // maximum age
+  const int max_length = dat["max_length"];     // maximum possible length
   const int t0 = dat["t0"];                     // reference  year for abundance
   const int n = dat["n"];                       // number of observations
   const double vbgf_l_inf = dat["vbgf_l_inf"];
@@ -190,7 +188,6 @@ double nllPOPCKMRcppAgeUnknown(List dat, List par) {
     probs_sampled_ages[a] = fSampledAge(a, 1 - phi, max_age);
   }
   
-  int max_length = 200;
   // Derive fAgeGivenLength for all age-length combos
   NumericMatrix age_length_prob_matrix ((max_age + 1), (max_length + 1));
   for (int age = 0; age <= max_age; age++) {
@@ -514,7 +511,7 @@ double nllPOPCKMRcppAgeUnknown(List dat, List par) {
     prob += sum(temp_2);
   
     // :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-    // Start of faster but more complicated version
+    // Start of slower but less complicated version
     // :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
   
     // // Loop over the ages, the other way around now

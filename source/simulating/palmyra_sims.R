@@ -1,10 +1,18 @@
 ## ========================================================================== ##
-## vanilla_sims.R
+## palmyra_sims.R
 ## 
-## In this script I will simulate the vanilla population data using a mix of 
-## information on life  history trait estimates from the GBR, Hawaii and Palmyra 
-## study. This is a very basic population and details can be found in the 
-## Overleaf document.
+## In this script I will simulate GR population data using information life 
+##  history trait estimates from the Palmyra study (Bradley et al, 2017).
+##  Also see the script "checking_vbgf_Bradley_2017.R".
+##  The one thing I do not follow from the paper is the survival, as this is
+##  what I adjust to achieve a constant population size through time. 
+
+## Little note: stacking two data.frames with data.table::rbindlist() is almost
+##  twice as fast as turning them into matrices and then using rbind().. 
+##  MIND = BLOWN!
+
+## Also, starting using environments as lists:
+##  https://adv-r.hadley.nz/environments.html
 ## ========================================================================== ##
 
 ## Load packages and source custom functions ===================================
@@ -15,39 +23,41 @@ library(pbapply)
 
 ## Initialise parameters =======================================================
 ## Set life history parameters
-first_breed_male <- 10          # applies only to males
-first_breed_female <- 10        # applies only to females
-first_litter <- 2               # first litter 
-batch_size <- 2                 # all possible values for random draw
+first_breed_male <- 17          # applies only to males
+first_breed_female <- 19        # applies only to females
+first_litter <- 3:6            # first litter 
+batch_size <- 3:6               # all possible values for random draw
 max_clutch <- Inf               # maximum litter sizes
-max_age <- 19                   # maximum age
-mort_rate <- 0.1535              # flat mortality rate (0.1535 gives stable population, but worked with 0.153 which induced a slgiht growth)
+max_age <- 63                   # maximum age
+mort_rate <- 0.1113              # flat mortality rate
 surv_rate <- 1 - mort_rate      # survival is 1 minus mortality
-force_Y1 <- NA                  # first-year mortality (not always used)
-female_curve <- c(rep(0, first_breed_female), 
-                  rep(1, 100 - first_breed_female))   # female maturity curve for categories 0:maxAge
-male_curve <- c(rep(0, first_breed_male), 
-                rep(1, 100 - first_breed_male))     # male maturity curve for categories 0:maxAge
+force_Y1 <- NA                # first-year mortality (not always used)
+female_curve <- c(rep(0, first_breed_female),  # female maturity curve 
+                  rep(1, 100 - first_breed_female))  
+male_curve <- c(rep(0, first_breed_male), # male maturity curve 
+                rep(1, 100 - first_breed_male))
 mate_type <- "ageSex"           # type of maturity/mating structure
 mort_type <- "age"             # type of mortality structure
 fecundity_dist <- "uniform"     # uniform distribution (custom)
 sex_ratio <- c(0.5, 0.5)        # the offspring male/female sex ratio
 single_paternity <- FALSE        # is there a single father to a litter?
-no_gestation <- TRUE
+no_gestation <- FALSE
 
 ## Set simulation and sampling parameters
 years <- 1915:2014             # number of years to run simulation
 
-## Store simdata sets
-n_cores <- 50
+## Store simulated sets
+n_cores <- 1
 cl <- makeCluster(n_cores)
 # rm(simulated_data_sets)
 clusterExport(cl, c(ls()))
-simulated_data_sets <- pblapply(1:1000, function(i) {
+# simulated_data_sets <- pblapply(1:1000, function(i) {
+simulated_data_sets <- pblapply(c(256), function(i) {
   
   ## Set a seed for reproducibility
   set.seed(170593 + 121 * i)
   
+  # system.time({
   ## Create initial population =================================================
   ## Set initial population in year 0
   indiv <-  CKMRcpp::createFounders(
@@ -59,6 +69,17 @@ simulated_data_sets <- pblapply(1:1000, function(i) {
     survCurv = surv_rate ^ (1:(max_age )) / sum(surv_rate ^ (1:(max_age)))
   )
   
+  ## Add marker to pregnant females
+  indiv <- CKMRcpp::addPregnancy(
+    indiv = indiv,
+    matingAges = seq(from = first_breed_female, to = max_age, by = 2))
+  
+  # ## Add the individuals that died in min_year - 1, so that we can look back
+  # addDeadBodies <- function(indiv, year, surv_prob) {
+  #   dead_indivs
+  # }
+  # indiv <- addDeadBodies()
+  
   ## Create a graveyard to bury the dead
   graveyard <- data.frame(
     Me = integer(0),
@@ -69,7 +90,8 @@ simulated_data_sets <- pblapply(1:1000, function(i) {
     DeathY = integer(0),
     Stock = integer(0),
     AgeLast = integer(0),
-    SampY = integer(0)
+    SampY = integer(0),
+    Pregnant = integer(0)
   )
   
   ## Start the simulation ========================================================
@@ -93,7 +115,7 @@ simulated_data_sets <- pblapply(1:1000, function(i) {
       femaleCurve = female_curve,
       no_gestation = no_gestation
     )
-    indiv_g <- indiv
+    
     ## 2. Survival
     indiv <- fishSim::mort(
       indiv = indiv, 
@@ -117,10 +139,17 @@ simulated_data_sets <- pblapply(1:1000, function(i) {
                                                       indiv$DeathY <= year - 2, ])))
       indiv <- indiv[is.na(indiv$DeathY) | indiv$DeathY > year - 2, ]
     }
-    
+
+    # cat(" Cycle completed!\n")
   }
+  
+  # })
+  
   ## Dig up the dead and put them on a pile with the living
   indiv <- as.data.frame(data.table::rbindlist(list(indiv, graveyard)))
+  
+  # nrow(indiv[is.na(indiv$DeathY), ])
+  
   # cat(paste0("Simulation ", i, " completed!\n"))
   # simulated_data_sets[[i]] <- indiv
   return(indiv)
@@ -129,13 +158,9 @@ simulated_data_sets <- pblapply(1:1000, function(i) {
 ## How many individuals are still alive in 'indiv'?
 hist(sapply(simulated_data_sets, function(x) {nrow(x[is.na(x$DeathY), ])}), xlab = "indivs")
 summary(sapply(simulated_data_sets, function(x) {nrow(x[is.na(x$DeathY), ])}))
-# Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
-# 6542    8001    8406    8398    8798   10208 
 
 # Create 100 repeats
-simulated_populations <- simulated_data_sets
-## Choose from 1, 144, 333, 800, 
-simulated_data_sets <- rep(simulated_populations[144], 100)
+simulated_data_sets <- rep(simulated_data_sets[1], 100)
 
 ## :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 ## Run retrospecitve sampling
@@ -153,10 +178,10 @@ retrospective_sampling <- TRUE
 ## Remove previous sampling if required
 simulated_data_sets <- lapply(simulated_data_sets, function(indiv) {
   indiv$SampY <- NA
-  return(as.data.frame(indiv[, 1:9])) # only return first 10 columns (before sampling columns)
+  return(as.data.frame(indiv[, 1:10])) # only return first 10 columns (before sampling columns)
 })
 all(is.na(simulated_data_sets[[1]]$SampY)) # should be TRUE before continuing
-ncol(simulated_data_sets[[1]]) == 9 # should also be TRUE
+ncol(simulated_data_sets[[1]]) == 10 # should also be TRUE
 
 ## Add sampling
 if (retrospective_sampling) {
@@ -165,7 +190,7 @@ if (retrospective_sampling) {
       n <- sample_size[year]
       indiv <- CKMRcpp::retroCapture2(indiv, n = n, year = year, fatal = lethal_sampling)
     }
-    indiv$no_samples <- rowSums(!is.na(indiv[, 10:ncol(indiv)]))
+    indiv$no_samples <- rowSums(!is.na(indiv[, 11:ncol(indiv)]))
     return(indiv)
   })
 }
@@ -174,23 +199,35 @@ all(is.na(simulated_data_sets[[1]]$SampY))  # should be FALSE
 unique(simulated_data_sets[[1]]$SampY)      # check if this seems correct
 sum(!is.na(simulated_data_sets[[1]]$SampY)) # seem correct as well?
 
+# save(simulated_data_sets, file = "data/1000_schemes_simulated_data_set.RData")
 
-# save(simulated_data_sets, file = "data/1_population_multiple_sampling_schemes/vanillus/1000_schemes_simulated_data_set.RData")
+## ::::::::::::::::::::::::::::::::
+## Summary statistics
+## ::::::::::::::::::::::::::::::::
 
-## :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-## Create summary statistics
-## :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# par(mfrow = c(3, 1))
 ## Extracting simulated abundances
+# N_true <- t(sapply(simulated_data_sets, function(x) {
+#   mature_females <- sum(is.na(x$DeathY) & x$Sex == 1 & x$AgeLast >= 19)
+#   mature_males <- sum(is.na(x$DeathY) & x$Sex == 0 & x$AgeLast >= 17)
+#   return(c(N_m = mature_males, N_f = mature_females))
+# }))
+
 N_true <- t(sapply(simulated_data_sets, function(x) {
   mature_females <- nrow(
-    CKMRcpp::extractTheLiving(x, 2014, F, min_age = first_breed_female,
+    CKMRcpp::extractTheLiving(x, 2014, F, min_age = first_breed_female + 1,
                               sex = "female"))
   mature_males <- nrow(
     CKMRcpp::extractTheLiving(x, 2014, F, min_age = first_breed_male,
                               sex = "male"))
   return(c(N_m = mature_males, N_f = mature_females))
 }))
+
+## Derive growht rate based on animals alive AT THE END OF YEAR
+# r_true <- sapply(simulated_data_sets, function(x) {
+#   alive_1915 <- sum(!is.na(x$DeathY) & x$DeathY > 1915 & x$BirthY <= 1915)
+#   alive_2014 <- sum(is.na(x$DeathY) | x$DeathY > 2014 & x$BirthY <= 2014)
+#   return((alive_2014 / alive_1915) ^ (1 / 99))
+# })
 
 
 r_true <- sapply(simulated_data_sets, function(x) {
@@ -200,9 +237,3 @@ r_true <- sapply(simulated_data_sets, function(x) {
 })
 
 summary(data.frame(N_true, r_true))
-
-hist(N_true[, 1], main = "", xlab = "Number of mature males"); abline(v = c(mean(N_true[, 1]), median(N_true[, 1])), col = "red", lty = c(1, 2))
-
-hist(N_true[, 2], main = "",  xlab = "Number of mature females"); abline(v = c(mean(N_true[, 2]), median(N_true[, 2])), col = "red", lty = c(1, 2))
-
-hist(r_true, main = "", xlab = "Yearly growth rate"); abline(v = c(mean(r_true), median(r_true)), col = "red", lty = c(1, 2))

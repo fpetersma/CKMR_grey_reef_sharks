@@ -15,7 +15,7 @@ library(pbapply)
 ## BE CAREFULL WHICH DATA TO LOAD
 ## ==============================
 
-file_folder <- "data/vanilla_variable_reproduction_sample_years_136-140_sample_size_150/"
+file_folder <- "data/vanilla_gestation_repro=U(1,4)_sample_years_139-140/"
 
 load(paste0(file_folder, "smaller_files/1000_sims_dfs_suff_length_sd=2_unique_combos.RData"))
 
@@ -32,7 +32,7 @@ load(paste0(file_folder, "smaller_files/1000_sims_dfs_suff_length_sd=2_unique_co
 # })
 
 ## The unknown age version is a lot slower, so run in parallel
-n_cores <- 20 # 50 fits per core
+n_cores <- 30 # 50 fits per core
 cl <- makeCluster(n_cores)
 result_list <- pblapply(dfs_suff[1:1000], function(df) {
   ## Source cpp file if not using the CKMRcpp package
@@ -41,23 +41,25 @@ result_list <- pblapply(dfs_suff[1:1000], function(df) {
   ## Create parameter object for nlminb()
   par <- list(
     # phi = boot::logit(0.87), # same as plogis(0.9) -- boot::inv.logit() is qlogis()
-    N_t0_m = log(500), 
-    # r = log(1.2),
+    N_t0_m = log(500),
+    # r = log(1.0002),
     # sigma_l = log(0.01),
     # phi = boot::logit(1 - 0.153),
     N_t0_f = log(500))
-  
+
   ## Take a subset of the data if required
   df_select <- df[, ]
-  
+
   ## Create the data object for nlminb()
-  dat <- list(alpha_m = 10,
-              alpha_f = 10,
-              
+  dat <- list(alpha_m = 10,                         # maturity age for males
+              alpha_f = 12,                         # maturity age for females
+
               ## MAKE SURE sigma_l AND phi ARE CORRECT!
               r = log(1.0002),
               sigma_l = log(2),
-              phi = boot::logit(1 - 0.1675),
+              phi = boot::logit(1 - 0.097),         # phi is the surival rate
+              
+              fixed_r = 1,                          # is r fixed or estimated?
               
               max_age = 19,
               max_length = 250,
@@ -83,17 +85,17 @@ result_list <- pblapply(dfs_suff[1:1000], function(df) {
   ## Start the optimisation (make sure the trace and relative tolerance values
   ##                         are correct)
   # system.time({
-    res <- nlminb(start = par, 
-                  objective = CKMRcpp::nllPOPCKMRcppAgeUnknown, 
-                  dat = dat, 
-                  control = list(trace = 0, rel.tol = 1e-10))
+  res <- nlminb(start = par, 
+                objective = CKMRcpp::nllPOPCKMRcppAgeUnknownGestation, 
+                dat = dat, 
+                control = list(trace = 0, rel.tol = 1e-8))
   # })
   
   return(res)
 }, cl = cl); stopCluster(cl); # end of pblapply() in parallel
 
 
-# save(list = c("result_list"), file = paste0(file_folder, "result_list_1-1000_unknown_age_sd=10.RData"))
+# save(list = c("result_list"), file = paste0(file_folder, "result_list_1-1000_unknown_age_sd=2_r=1.0002.RData"))
 
 ## Look at the estimates
 N_est <- t(sapply(result_list, function(res){
@@ -119,7 +121,7 @@ par(mfrow = c(3, 1))
 hist(N_est[, 1], main = "", xlab = "Number of mature males"); abline(v = c(mean(N_est[, 1]), median(N_est[, 1])), col = "red", lty = c(1, 2))
 hist(N_est[, 2], main = "",  xlab = "Number of mature females"); abline(v = c(mean(N_est[, 2]), median(N_est[, 2])), col = "red", lty = c(1, 2))
 hist(r_est, main = "", xlab = "Yearly growth rate"); abline(v = c(mean(r_est), median(r_est)), col = "red", lty = c(1, 2))
-# hist(phi_est, main = "", xlab = "Yearly surival rate"); abline(v = c(mean(phi_est), median(phi_est)), col = "red", lty = c(1, 2))
+# hist(phi_est, main = "", xlab = "Yearly survival rate"); abline(v = c(mean(phi_est), median(phi_est)), col = "red", lty = c(1, 2))
 
 MCE_data <- t(sapply(seq(from = 1, to = 901, by = 100), function(x) {
   mean_male <- mean(N_est[x:(x+99), 1])
@@ -133,4 +135,3 @@ MCE_100 <- apply(MCE_data, 2, sd)
 MCE_1000 <- MCE_100 / sqrt(10)
 MCE_100
 MCE_1000
-
