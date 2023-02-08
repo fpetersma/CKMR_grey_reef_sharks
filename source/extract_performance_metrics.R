@@ -20,12 +20,13 @@
 ## =============================================================================
 library(tidyverse)
 library(Rfast)
+# library(viridis)
 
 load("data/1_population_multiple_sampling_schemes/vanillus/simulation_100_schemes_scenario_1-49_fit_results_sim=144.RData")
 load("data/1_population_multiple_sampling_schemes/vanillus/single_combined_data_i=144.RData")
 
-load("data/1_population_multiple_sampling_schemes/gestatii/simulation_100_schemes_scenario_1-49_fit_results_sim=555.RData")
-load("data/1_population_multiple_sampling_schemes/gestatii/single_combined_data_i=555.RData")
+# load("data/1_population_multiple_sampling_schemes/gestatii/simulation_100_schemes_scenario_1-49_fit_results_sim=555.RData")
+# load("data/1_population_multiple_sampling_schemes/gestatii/single_combined_data_i=555.RData")
 
 ## =============================================================================
 ## 2. CREATE THE MASTER DATA FRAME
@@ -43,6 +44,9 @@ true_N_f <- single_combined_data$N_hist[, "N_f"] # mature female abundance
 
 true_N_m_y0 <- true_N_m[100]
 true_N_f_y0 <- true_N_f[100]
+
+true_N_m_10 <- mean(true_N_m[91:100])
+true_N_f_10 <- mean(true_N_f[91:100])
 
 true_r_m <- (true_N_m[100] - true_N_m[1]) ^ (1 / 99) / 100 + 1
 true_r_f <- (true_N_f[100] - true_N_f[1]) ^ (1 / 99) / 100 + 1
@@ -191,17 +195,17 @@ median_sqrd_error <- data.frame(N_f_y0 = colMedians((error_N_f_y0) ^ 2),
                                 r_m = colMedians((error_r_m) ^ 2))
 
 ## standard deviation and variance
-SD <- data.frame(N_f_y0 = apply(est_N_f_y0, 2, sd),
+std_dev <- data.frame(N_f_y0 = apply(est_N_f_y0, 2, sd),
                  N_m_y0 = apply(est_N_m_y0, 2, sd), 
                  N_f_10 = apply(est_N_f_10, 2, sd),
                  N_m_10 = apply(est_N_m_10, 2, sd),
                  r_f = apply(est_r_f, 2, sd), 
                  r_m = apply(est_r_m, 2, sd))
-variance <- sd ^ 2
+variance <- std_dev ^ 2
 
 ## Coefficient of variation (works as the support for these estimates is 
 ## strictly positive)
-CV <- data.frame(N_f_y0 = apply(est_N_f_y0, 2, raster::cv),
+coeff_var <- data.frame(N_f_y0 = apply(est_N_f_y0, 2, raster::cv),
                  N_m_y0 = apply(est_N_m_y0, 2, raster::cv), 
                  N_f_10 = apply(est_N_f_10, 2, raster::cv),
                  N_m_10 = apply(est_N_m_10, 2, raster::cv), 
@@ -212,6 +216,175 @@ CV <- data.frame(N_f_y0 = apply(est_N_f_y0, 2, raster::cv),
 ## 3. CREATE FIGURES AND TABLES FOR MANUSCRIPT
 ## =============================================================================
 
-## -------------------------
-## Estimates and uncertainty
-## -------------------------
+scenarios_to_drop <- c(1:7,
+                       seq(from=8, to=36, by=7), 
+                       seq(from=14, to=42, by=7),
+                       43:49)
+scenario_to_keep <- c(1:49)[-scenarios_to_drop]
+
+## :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+## Boxplots for the main manuscript
+## :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+
+
+
+## -----------------------------------------
+## The abundance in y0 estimates violin plot
+## -----------------------------------------
+est_N_f_y0_long <- est_N_f_y0[, scenario_to_keep]
+colnames(est_N_f_y0_long) <- paste0(rep(1:5, each = 5), "-", 1:5)
+est_N_f_y0_long <- reshape2::melt(est_N_f_y0_long,
+                                    value.name = "Abundance", 
+                                    na.rm = TRUE)[, -1] # Removes NA scenarios
+est_N_f_y0_long$Sex = "Female"
+
+est_N_m_y0_long <- est_N_m_y0[, scenario_to_keep]
+colnames(est_N_m_y0_long) <- paste0(rep(1:5, each = 5), "-", 1:5)
+est_N_m_y0_long <- reshape2::melt(est_N_m_y0_long,
+                                    value.name = "Abundance", 
+                                    na.rm = TRUE)[, -1]
+est_N_m_y0_long$Sex = "Male"
+
+est_N_y0_long <- rbind(est_N_m_y0_long, est_N_f_y0_long)
+colnames(est_N_y0_long) <- c("Scenario", "Abundance", "Sex")
+est_N_y0_long$Scenario <- as.factor(as.character(est_N_y0_long$Scenario))
+
+y0_plot <- ggplot(data=est_N_y0_long, aes(fill=Sex, x=Scenario, y=Abundance)) +
+  geom_violin(position="dodge", alpha=0.5, draw_quantiles = c(0.5)) +
+  theme_minimal() +
+  theme(legend.position = "bottom") +
+  geom_hline(yintercept = true_N_f_y0, 
+             colour = scales::hue_pal()(2)[1], 
+             alpha = 0.5, linewidth = 1)+
+  geom_hline(yintercept = true_N_m_y0, 
+             colour = scales::hue_pal()(2)[2], 
+             alpha = 0.5, linewidth = 1)+
+  # coord_flip() +  # comment out for normal plot
+  # scale_x_discrete(limits = rev(levels(est_N_y0_long$Scenario))) +
+  scale_fill_discrete(name = "") 
+  # scale_fill_viridis(discrete=T, name="")
+
+## ----------------------------------------------------------
+## The mean abundance over year 1 to 10 estimates violin plot
+## ----------------------------------------------------------
+est_N_f_10_long <- est_N_f_10[, scenario_to_keep]
+colnames(est_N_f_10_long) <- paste0(rep(1:5, each = 5), "-", 1:5)
+est_N_f_10_long <- reshape2::melt(est_N_f_10_long,
+                                  value.name = "Abundance", 
+                                  na.rm = TRUE)[, -1] # Removes NA scenarios
+est_N_f_10_long$Sex = "Female"
+
+est_N_m_10_long <- est_N_m_10[, scenario_to_keep]
+colnames(est_N_m_10_long) <- paste0(rep(1:5, each = 5), "-", 1:5)
+est_N_m_10_long <- reshape2::melt(est_N_m_10_long,
+                                  value.name = "Abundance", 
+                                  na.rm = TRUE)[, -1]
+est_N_m_10_long$Sex = "Male"
+
+est_N_10_long <- rbind(est_N_m_10_long, est_N_f_10_long)
+colnames(est_N_10_long) <- c("Scenario", "Abundance", "Sex")
+est_N_10_long$Scenario <- as.factor(as.character(est_N_10_long$Scenario))
+
+mean_y_10_plot <- ggplot(data=est_N_10_long, aes(fill=Sex, x=Scenario, y=Abundance)) +
+  geom_violin(position="dodge", alpha=0.5, draw_quantiles = c(0.5)) +
+  theme_minimal() +
+  theme(legend.position = "bottom") +
+  geom_hline(yintercept = true_N_f_10, 
+             colour = scales::hue_pal()(2)[1], 
+             alpha = 0.5, linewidth = 1)+
+  geom_hline(yintercept = true_N_m_10, 
+             colour = scales::hue_pal()(2)[2], 
+             alpha = 0.5, linewidth = 1)+
+  # coord_flip() +  # comment out for normal plot
+  # scale_x_discrete(limits = rev(levels(est_N_10_long$Scenario))) +
+  ylim(c(0, 3000)) +
+  scale_fill_discrete(name = "") 
+
+## --------------------------------
+## The growth estimates violin plot
+## --------------------------------
+est_r_f_long <- est_r_f[, scenario_to_keep]
+colnames(est_r_f_long) <- paste0(rep(1:5, each = 5), "-", 1:5)
+est_r_f_long <- reshape2::melt(est_r_f_long,
+                                  value.name = "Growth", 
+                                  na.rm = TRUE)[, -1] # Removes NA scenarios
+est_r_f_long$Sex = "Female"
+
+est_r_m_long <- est_r_m[, scenario_to_keep]
+colnames(est_r_m_long) <- paste0(rep(1:5, each = 5), "-", 1:5)
+est_r_m_long <- reshape2::melt(est_r_m_long,
+                                  value.name = "Growth", 
+                                  na.rm = TRUE)[, -1]
+est_r_m_long$Sex = "Male"
+
+est_r_long <- rbind(est_r_m_long, est_r_f_long)
+colnames(est_r_long) <- c("Scenario", "Growth", "Sex")
+est_r_long$Scenario <- as.factor(as.character(est_r_long$Scenario))
+
+r_plot <- ggplot(data=est_r_long, aes(fill=Sex, x=Scenario, y=Growth)) +
+  geom_violin(position="dodge", alpha=0.5, draw_quantiles = c(0.5)) +
+  theme_minimal() +
+  theme(legend.position = "bottom") +
+  geom_hline(yintercept = true_r_f, 
+             colour = scales::hue_pal()(2)[1], 
+             alpha = 0.5, linewidth = 1)+
+  geom_hline(yintercept = true_r_m, 
+             colour = scales::hue_pal()(2)[2], 
+             alpha = 0.5, linewidth = 1)+
+  # coord_flip() +  # comment out for normal plot, together with line below
+  # scale_x_discrete(limits = rev(levels(est_r_long$Scenario))) +
+  scale_fill_discrete(name = "") 
+
+## -------------------------------
+## Combine all plots into one plot
+## -------------------------------
+
+library(gridExtra)
+# library(svglite)
+p <- grid.arrange(y0_plot + 
+                    theme(legend.position = "none") +
+                    ylab("Abundance in 2014") +
+                    xlab(element_blank()) +
+                    coord_cartesian(ylim=c(0, 3000)), # truncate at 3000 without removing values outside
+                  mean_y_10_plot + 
+                    theme(legend.position = "none") +
+                    ylab("Mean abundance (2005-2014)") +
+                    xlab(element_blank()) +
+                    coord_cartesian(ylim=c(0, 3000)), # truncate at 3000 without removing values outside
+                  r_plot + 
+                    ylab("Yearly growth rate"),
+                  nrow=3, ncol=1); p;
+# now export it with width 1000 and height 750
+
+
+## :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+## Now  the errors [currently commented out]
+## ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+
+# error_N_f_y0_long <- error_N_f_y0[, scenario_to_keep]
+# colnames(error_N_f_y0_long) <- paste0(rep(1:5, each = 5), "-", 1:5)
+# error_N_f_y0_long <- reshape2::melt(error_N_f_y0_long,
+#                                     value.name = "Abundance", 
+#                                     na.rm = TRUE)[, -1] # Removes NA scenarios
+# error_N_f_y0_long$Sex = "Female"
+# 
+# error_N_m_y0_long <- error_N_m_y0[, scenario_to_keep]
+# colnames(error_N_m_y0_long) <- paste0(rep(1:5, each = 5), "-", 1:5)
+# error_N_m_y0_long <- reshape2::melt(error_N_m_y0_long,
+#                                     value.name = "Abundance", 
+#                                     na.rm = TRUE)[, -1]
+# error_N_m_y0_long$Sex = "Male"
+# 
+# error_N_y0_long <- rbind(error_N_m_y0_long, error_N_f_y0_long)
+# colnames(error_N_y0_long) <- c("Scenario", "Abundance", "Sex")
+# error_N_y0_long$Scenario <- as.factor(as.character(error_N_y0_long$Scenario))
+# 
+# ggplot(data=error_N_y0_long, aes(fill=Sex, x=Scenario, y=Abundance)) +
+#   geom_violin(position="dodge", alpha=0.5, draw_quantiles = c(0.5)) +
+#   theme_minimal() +
+#   geom_hline(yintercept = 0, colour = "red", alpha = 0.5)+
+#   scale_x_discrete(limits = rev(levels(error_N_y0_long$Scenario))) +
+#   scale_fill_viridis(discrete=T, name="") +
+#   coord_flip()
+
+
