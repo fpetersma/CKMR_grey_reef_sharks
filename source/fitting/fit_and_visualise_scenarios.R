@@ -12,11 +12,12 @@
 library(pbapply)
 library(parallel)
 data_folder <- "data/1_population_multiple_sampling_schemes/"
-load(paste0(data_folder, "gestatii/100_schemes_dfs_suff_unique_combos_sim=555.RData"))
+load(paste0(data_folder, 
+            "gestatii/100_schemes_dfs_suff_unique_combos_sim=555.RData"))
+
 ## :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 ## Set parameter values
 ## :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-
 true_error <- 2.89          # what is the true measurement error
 
 a_0 <- -8.27                # theoretical age at length zero              
@@ -192,26 +193,32 @@ MCE_1000
 ## :::::::::::::::::::::::::::::::::::::::::::::::::::
 ## Plot multiple scenarios
 ## :::::::::::::::::::::::::::::::::::::::::::::::::::
-load(paste0(data_folder, "vanillus/simulation_100_schemes_scenario_1-49_fit_results_sim=144.RData"))
-load(paste0(data_folder, "vanillus/single_combined_data_i=144.RData"))
+data_folder <- "data/1_population_multiple_sampling_schemes/"
+# load(paste0(data_folder, "vanillus/simulation_100_schemes_scenario_1-49_fit_results_sim=144.RData"))
+# load(paste0(data_folder, "vanillus/single_combined_data_i=144.RData"))
 
-# load(paste0(data_folder, "gestatii/simulation_100_schemes_scenario_1-49_fit_results_sim=555.RData"))
-# load(paste0(data_folder, "gestatii/single_combined_data_i=555.RData"))
+load(paste0(data_folder, "gestatii/simulation_100_schemes_scenario_1-49_fit_results_sim=555.RData"))
+load(paste0(data_folder, "gestatii/single_combined_data_i=555.RData"))
+
+scenarios_to_drop <- c(1:7,
+                       seq(from=8, to=36, by=7), 
+                       seq(from=14, to=42, by=7),
+                       43:49)
+scenarios_to_keep <- c(1:49)[-scenarios_to_drop]
 
 ## Create male plot
-p_m <- CKMRcpp::plotCKMRabundance(scenario_fits[c(9:13, 16:20, 23:27, 30:34, 37:41)],
-# p_m <- CKMRcpp::plotCKMRabundance(fits_list = scenario_fits,
+p_m <- CKMRcpp::plotCKMRabundance(scenario_fits[scenarios_to_keep],
                                c(-20, 0),
                                y0 = 2014, 
                                sex = "male", 
+                                y_axis = "Number of mature males",
                                truth = single_combined_data$N_hist)
-p_m
 ## Create female plot
-p_f <- CKMRcpp::plotCKMRabundance(scenario_fits[c(9:13, 16:20, 23:27, 30:34, 37:41)],
-                                  # p_f <- CKMRcpp::plotCKMRabundance(fits_list = scenario_fits,
+p_f <- CKMRcpp::plotCKMRabundance(scenario_fits[scenarios_to_keep],
                                   year_lim = c(-20, 0),
                                   y0 = 2014, 
                                   sex = "female", 
+                                  y_axis = "Number of mature females",
                                   truth = single_combined_data$N_hist)
 
 ## Print the plots
@@ -222,60 +229,4 @@ p_f
 save(list = c("p_m", "p_f", "single_combined_data", "scenario_fits"), 
      file = "data/vanilla_abundance_plots_5x5.RData")
 
-## Done. Probably best to keep the two plots separate, not combined.
-## Next things: plot with the different vbgf curves, and summary statistics of 
-## bias, error, things like that. 
-
-# BELOW IS OLD STUFF
-# plots <- list()
-# for (i in 1:49) {
-#   # readline(prompt="Press [Enter] for next plot, or [Esc] to exit.")
-# 
-#   plots[[i]] <- plotCKMRabundancePretty(fits = scenario_fits[[i]],
-#                                    year_lim = c(-20,0),
-#                                    max_y_axis = 3000,
-#                                    truth = combined_data[[1]]$N_hist,
-#                                    y0 = 2014)
-#   # p1 <- CKMRcpp::plotCKMRabundance(fits = scenario_fits[[i]],
-#   #                                  year_lim = c(-20,0),
-#   #                                  max_y_axis = 3000,
-#   #                                  fixed_r = NULL,
-#   #                                  med = T,
-#   #                                  truth = combined_data[[1]]$N_hist,
-#   #                                  y0 = 2014)
-# 
-# 
-# }
-# gridExtra::grid.arrange(grobs = plots, ncol = 7, nrow = 7)
-# 
-# ## What if I only look at a 5x5 grid
-# fits_5by5 <- scenario_fits[c(9:13, 16:20, 23:27, 30:34, 37:41)]
-# plots <- list()
-# for (i in 1:25) {
-#   # readline(prompt="Press [Enter] for next plot, or [Esc] to exit.")
-#   
-#   plots[[i]] <- plotCKMRabundancePretty(fits = fits_5by5[[i]],
-#                                         year_lim = c(-20,0),
-#                                         max_y_axis = 3000,
-#                                         truth = combined_data[[1]]$N_hist,
-#                                         y0 = 2014)
-#   
-#   
-# }
-# gridExtra::grid.arrange(grobs = plots, ncol = 5)
-# egg::ggarrange(plots = plots, ncol = 5)
-# 
-# # And now for male
-# plots <- list()
-# for (i in 1:25) {
-#   # readline(prompt="Press [Enter] for next plot, or [Esc] to exit.")
-#   
-#   plots[[i]] <- plotCKMRabundancePretty(fits = fits_5by5[[i]],
-#                                         year_lim = c(-20,0),
-#                                         max_y_axis = 3000,
-#                                         female = FALSE,
-#                                         truth = combined_data[[1]]$N_hist,
-#                                         y0 = 2014)
-#   
-# }
-# gridExtra::grid.arrange(grobs = plots, ncol = 5)
+## Save the plots as svg with dimensions 1100x700

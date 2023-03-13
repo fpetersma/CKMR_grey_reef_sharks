@@ -25,8 +25,8 @@ library(Rfast)
 load("data/1_population_multiple_sampling_schemes/vanillus/simulation_100_schemes_scenario_1-49_fit_results_sim=144.RData")
 load("data/1_population_multiple_sampling_schemes/vanillus/single_combined_data_i=144.RData")
 
-# load("data/1_population_multiple_sampling_schemes/gestatii/simulation_100_schemes_scenario_1-49_fit_results_sim=555.RData")
-# load("data/1_population_multiple_sampling_schemes/gestatii/single_combined_data_i=555.RData")
+load("data/1_population_multiple_sampling_schemes/gestatii/simulation_100_schemes_scenario_1-49_fit_results_sim=555.RData")
+load("data/1_population_multiple_sampling_schemes/gestatii/single_combined_data_i=555.RData")
 
 ## =============================================================================
 ## 2. CREATE THE MASTER DATA FRAME
@@ -178,21 +178,21 @@ mean_error <- data.frame(N_f_y0 = colmeans(error_N_f_y0),
                          r_m = colmeans(error_r_m))
 
 
-## Median absolute error
-median_abs_error <- data.frame(N_f_y0 = colMedians(abs(error_N_f_y0)), 
-                               N_m_y0 = colMedians(abs(error_N_m_y0)),
-                               N_f_10 = colMedians(abs(error_N_f_10)), 
-                               N_m_10 = colMedians(abs(error_N_m_10)),
-                               r_f = colMedians(abs(error_r_f)),
-                               r_m = colMedians(abs(error_r_m)))
+## Mean absolute error
+mean_abs_error <- data.frame(N_f_y0 = colmeans(abs(error_N_f_y0)), 
+                               N_m_y0 = colmeans(abs(error_N_m_y0)),
+                               N_f_10 = colmeans(abs(error_N_f_10)), 
+                               N_m_10 = colmeans(abs(error_N_m_10)),
+                               r_f = colmeans(abs(error_r_f)),
+                               r_m = colmeans(abs(error_r_m)))
 
-## Median squared error
-median_sqrd_error <- data.frame(N_f_y0 = colMedians((error_N_f_y0) ^ 2), 
-                                N_m_y0 = colMedians((error_N_m_y0) ^ 2),
-                                N_f_10 = colMedians((error_N_f_10) ^ 2), 
-                                N_m_10 = colMedians((error_N_m_10) ^ 2),
-                                r_f = colMedians((error_r_f) ^ 2),
-                                r_m = colMedians((error_r_m) ^ 2))
+## Mean squared error
+mean_sqrd_error <- data.frame(N_f_y0 = colmeans((error_N_f_y0) ^ 2), 
+                                N_m_y0 = colmeans((error_N_m_y0) ^ 2),
+                                N_f_10 = colmeans((error_N_f_10) ^ 2), 
+                                N_m_10 = colmeans((error_N_m_10) ^ 2),
+                                r_f = colmeans((error_r_f) ^ 2),
+                                r_m = colmeans((error_r_m) ^ 2))
 
 ## standard deviation and variance
 std_dev <- data.frame(N_f_y0 = apply(est_N_f_y0, 2, sd),
@@ -220,25 +220,86 @@ scenarios_to_drop <- c(1:7,
                        seq(from=8, to=36, by=7), 
                        seq(from=14, to=42, by=7),
                        43:49)
-scenario_to_keep <- c(1:49)[-scenarios_to_drop]
+scenarios_to_keep <- c(1:49)[-scenarios_to_drop]
+
+## :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+## Create a big table with all the results for the supplemenatry materials
+## :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+
+summarise_performance_metrics <- function(column, truth) {
+  df <- data.frame(
+    true = truth, 
+    median_est = median_est[, column], 
+    mean_est = mean_est[, column], 
+    std_dev = std_dev[, column], 
+    coeff_var = coeff_var[, column], 
+    median_error = median_error[, column], 
+    mean_error = mean_error[, column], 
+    mean_abs_error = mean_abs_error[, column], 
+    mean_sqrd_error = mean_sqrd_error[, column])
+  df <- df[scenarios_to_keep, ]
+  df$scenario <- paste0(rep(1:5, each = 5), "-", 1:5)
+  df <- na.omit(df[, c(10, 1:9)])
+  return(df)
+}
+
+summary_N_f_y0 <- summarise_performance_metrics("N_f_y0", true_N_f_y0)
+
+summary_N_m_y0 <- summarise_performance_metrics("N_m_y0", true_N_m_y0)
+
+summary_N_f_10 <- summarise_performance_metrics("N_f_10", true_N_f_10)
+
+summary_N_m_10 <- summarise_performance_metrics("N_m_10", true_N_m_10)
+
+summary_r_f <- summarise_performance_metrics("r_f", true_r_f)
+
+summary_r_m <- summarise_performance_metrics("r_m", true_r_m)
+
+labels <- c("Scen.", 
+            "Mdn. Est.", 
+            "Mean Est.", 
+            "Std. Dev.", 
+            "CV", 
+            "Mdn. Err.", 
+            "Mean Err.", 
+            "MAE", 
+            "MSE")
+
+caption <- "Various performance metrics for the parameter [quantity], extracted from 100 simulations of the gestating shark population. The columns are, from left to right: scenario, median estimate, mean estimate, standard deviation, coefficient of variation (\\%), median error, mean error, mean absolute error, and mean squared error. Scenarios 1-1, 1-2, 1-3, 2-1, 2-2, and 3-1 were not included as (most of) the simulations did not fit successfully. Scenario 3-3 uses the correct measurement error (2.89) and growth curve specification."
+kable(summary_N_f_y0[, -2], booktabs = T, format = "latex", digits = 2,
+      col.names = labels, row.names = F, linesep = "", caption = caption)
+
+kable(summary_N_m_y0[, -2], booktabs = T, format = "latex", digits = 2,
+      col.names = labels, row.names = F, linesep = "", caption = caption)
+
+kable(summary_N_f_10[, -2], booktabs = T, format = "latex", digits = 2,
+      col.names = labels, row.names = F, linesep = "", caption = caption)
+
+kable(summary_N_m_10[, -2], booktabs = T, format = "latex", digits = 2,
+      col.names = labels, row.names = F, linesep = "", caption = caption)
+
+kable(summary_r_f[, -2], booktabs = T, format = "latex", digits = 3,
+      col.names = labels, row.names = F, linesep = "", caption = caption)
+
+kable(summary_r_m[, -2], booktabs = T, format = "latex", digits = 3,
+      col.names = labels, row.names = F, linesep = "", caption = caption)
+
 
 ## :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 ## Boxplots for the main manuscript
 ## :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
-
-
 ## -----------------------------------------
 ## The abundance in y0 estimates violin plot
 ## -----------------------------------------
-est_N_f_y0_long <- est_N_f_y0[, scenario_to_keep]
+est_N_f_y0_long <- est_N_f_y0[, scenarios_to_keep]
 colnames(est_N_f_y0_long) <- paste0(rep(1:5, each = 5), "-", 1:5)
 est_N_f_y0_long <- reshape2::melt(est_N_f_y0_long,
                                     value.name = "Abundance", 
                                     na.rm = TRUE)[, -1] # Removes NA scenarios
 est_N_f_y0_long$Sex = "Female"
 
-est_N_m_y0_long <- est_N_m_y0[, scenario_to_keep]
+est_N_m_y0_long <- est_N_m_y0[, scenarios_to_keep]
 colnames(est_N_m_y0_long) <- paste0(rep(1:5, each = 5), "-", 1:5)
 est_N_m_y0_long <- reshape2::melt(est_N_m_y0_long,
                                     value.name = "Abundance", 
@@ -267,14 +328,14 @@ y0_plot <- ggplot(data=est_N_y0_long, aes(fill=Sex, x=Scenario, y=Abundance)) +
 ## ----------------------------------------------------------
 ## The mean abundance over year 1 to 10 estimates violin plot
 ## ----------------------------------------------------------
-est_N_f_10_long <- est_N_f_10[, scenario_to_keep]
+est_N_f_10_long <- est_N_f_10[, scenarios_to_keep]
 colnames(est_N_f_10_long) <- paste0(rep(1:5, each = 5), "-", 1:5)
 est_N_f_10_long <- reshape2::melt(est_N_f_10_long,
                                   value.name = "Abundance", 
                                   na.rm = TRUE)[, -1] # Removes NA scenarios
 est_N_f_10_long$Sex = "Female"
 
-est_N_m_10_long <- est_N_m_10[, scenario_to_keep]
+est_N_m_10_long <- est_N_m_10[, scenarios_to_keep]
 colnames(est_N_m_10_long) <- paste0(rep(1:5, each = 5), "-", 1:5)
 est_N_m_10_long <- reshape2::melt(est_N_m_10_long,
                                   value.name = "Abundance", 
@@ -303,14 +364,14 @@ mean_y_10_plot <- ggplot(data=est_N_10_long, aes(fill=Sex, x=Scenario, y=Abundan
 ## --------------------------------
 ## The growth estimates violin plot
 ## --------------------------------
-est_r_f_long <- est_r_f[, scenario_to_keep]
+est_r_f_long <- est_r_f[, scenarios_to_keep]
 colnames(est_r_f_long) <- paste0(rep(1:5, each = 5), "-", 1:5)
 est_r_f_long <- reshape2::melt(est_r_f_long,
                                   value.name = "Growth", 
                                   na.rm = TRUE)[, -1] # Removes NA scenarios
 est_r_f_long$Sex = "Female"
 
-est_r_m_long <- est_r_m[, scenario_to_keep]
+est_r_m_long <- est_r_m[, scenarios_to_keep]
 colnames(est_r_m_long) <- paste0(rep(1:5, each = 5), "-", 1:5)
 est_r_m_long <- reshape2::melt(est_r_m_long,
                                   value.name = "Growth", 
@@ -361,14 +422,14 @@ p <- grid.arrange(y0_plot +
 ## Now  the errors [currently commented out]
 ## ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
-# error_N_f_y0_long <- error_N_f_y0[, scenario_to_keep]
+# error_N_f_y0_long <- error_N_f_y0[, scenarios_to_keep]
 # colnames(error_N_f_y0_long) <- paste0(rep(1:5, each = 5), "-", 1:5)
 # error_N_f_y0_long <- reshape2::melt(error_N_f_y0_long,
 #                                     value.name = "Abundance", 
 #                                     na.rm = TRUE)[, -1] # Removes NA scenarios
 # error_N_f_y0_long$Sex = "Female"
 # 
-# error_N_m_y0_long <- error_N_m_y0[, scenario_to_keep]
+# error_N_m_y0_long <- error_N_m_y0[, scenarios_to_keep]
 # colnames(error_N_m_y0_long) <- paste0(rep(1:5, each = 5), "-", 1:5)
 # error_N_m_y0_long <- reshape2::melt(error_N_m_y0_long,
 #                                     value.name = "Abundance", 
