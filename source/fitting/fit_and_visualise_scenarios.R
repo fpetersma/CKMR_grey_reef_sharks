@@ -192,8 +192,11 @@ MCE_1000
 ## :::::::::::::::::::::::::::::::::::::::::::::::::::
 ## Plot multiple scenarios
 ## :::::::::::::::::::::::::::::::::::::::::::::::::::
-load(paste0(data_folder, "gestatii/simulation_100_schemes_scenario_1-49_fit_results_sim=555.RData"))
-load(paste0(data_folder, "gestatii/100_schemes_combined_data_with_N_hist_sim=555.RData"))
+load(paste0(data_folder, "vanillus/simulation_100_schemes_scenario_1-49_fit_results_sim=144.RData"))
+load(paste0(data_folder, "vanillus/single_combined_data_i=144.RData"))
+
+# load(paste0(data_folder, "gestatii/simulation_100_schemes_scenario_1-49_fit_results_sim=555.RData"))
+# load(paste0(data_folder, "gestatii/single_combined_data_i=555.RData"))
 
 ## Create male plot
 p_m <- CKMRcpp::plotCKMRabundance(scenario_fits[c(9:13, 16:20, 23:27, 30:34, 37:41)],
@@ -201,23 +204,23 @@ p_m <- CKMRcpp::plotCKMRabundance(scenario_fits[c(9:13, 16:20, 23:27, 30:34, 37:
                                c(-20, 0),
                                y0 = 2014, 
                                sex = "male", 
-                               truth = combined_data[[1]]$N_hist)
+                               truth = single_combined_data$N_hist)
 p_m
 ## Create female plot
 p_f <- CKMRcpp::plotCKMRabundance(scenario_fits[c(9:13, 16:20, 23:27, 30:34, 37:41)],
-# p_f <- CKMRcpp::plotCKMRabundance(fits_list = scenario_fits,
-                               year_lim = c(-20, 0),
-                               y0 = 2014, 
-                               sex = "female", 
-                               truth = combined_data[[1]]$N_hist)
+                                  # p_f <- CKMRcpp::plotCKMRabundance(fits_list = scenario_fits,
+                                  year_lim = c(-20, 0),
+                                  y0 = 2014, 
+                                  sex = "female", 
+                                  truth = single_combined_data$N_hist)
 
 ## Print the plots
 p_m
 p_f
 
 ## Save the plots
-save(list = c("p_m", "p_f", "combined_data", "scenario_fits"), 
-     file = "data/vanillus_abundance_plots_5x5.RData")
+save(list = c("p_m", "p_f", "single_combined_data", "scenario_fits"), 
+     file = "data/vanilla_abundance_plots_5x5.RData")
 
 ## Done. Probably best to keep the two plots separate, not combined.
 ## Next things: plot with the different vbgf curves, and summary statistics of 
