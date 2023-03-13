@@ -10,12 +10,20 @@
 ## =============================================================================
 
 ## Packages
-library(numDeriv)
-library(CKMRcpp)
+# library(numDeriv)
+# library(CKMRcpp)
+library(pbapply)
+library(parallel)
 
 ## Data
-load("data/1_population_multiple_sampling_schemes/gestatii/simulation_100_schemes_scenario_1-49_fit_results_sim=555.RData")
-load("data/1_population_multiple_sampling_schemes/gestatii/100_schemes_dfs_suff_unique_combos_sim=555.RData")
+load("data/1_population_multiple_sampling_schemes/vanillus/simulation_100_schemes_scenario_1-49_fit_results_sim=144.RData")
+load("data/1_population_multiple_sampling_schemes/vanillus/100_schemes_dfs_suff_unique_combos_sim=144.RData")
+
+## Extract failed fit scenarios
+conv <- sapply(scenario_fits, function(scen) {
+  all(sapply(scen, function(fit) fit$message) == "relative convergence (4)")
+})
+names(conv) <- 1:49
 
 ## Add data to fit results
 true_error <- 2.89          # what is the true measurement error
@@ -53,27 +61,39 @@ pars <- do.call(rbind, lapply(seq_along(errors), function(i) {
 n <- 100
 
 ## :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-## Fit all models
+## Loop through the converged models and add the data and the hessian
 ## :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-for (i in 1:nrow(pars)) {
+## Create list to store the extra info in
+extra_info_list <- list()
+
+scenarios_to_keep <- (1:49)[conv]
+
+## Start the loopin'
+for (i in scenarios_to_keep) {
   a0 <- pars[i, "a_0"]
   l_inf <- pars[i, "l_inf"]
   sigma_l <- pars[i, "sigma_l"]
   
-  for (j in 1:n) {
+  n_cores <- 25 # 2 fits per core
+  cl <- makeCluster(n_cores)
+  clusterExport(cl = cl, list("a0", "l_inf", "sigma_l", "dfs_suff", 
+                              "scenario_fits", "i"), 
+                envir = environment())
+  # for (j in 1:n) {
+  extra_info <- pblapply(1:n, function(j)  {
     df_select <- dfs_suff[[j]]
     ## Create the data object for nlminb()
-    dat <- list(alpha_m = 17,                         # maturity age for males (van=10, ges=17)
-                alpha_f = 19,                         # maturity age for females (van=10, ges=19)
+    dat <- list(alpha_m = 10,                         # maturity age for males (van=10, ges=17)
+                alpha_f = 10,                         # maturity age for females (van=10, ges=19)
                 
                 # r = log(1.0000),                      # the population growth rate
                 sigma_l = log(sigma_l),               # the measurement error on length
-                phi = boot::logit(1 - 0.1113),        # phi is the survival rate (van=0.1535, ges=0.1113)
+                phi = boot::logit(1 - 0.1535),        # phi is the survival rate (van=0.1535, ges=0.1113)
                 
-                ESTIMATE_R = 2,                       # is r fixed (0), estimated (1), 
+                ESTIMATE_R = 2,                       # is r fixed (0), estimated (1), both(2)
                 # or sex specific (2)?
                 
-                max_age = 63,                         # the maximum age to be considered (van=19, ges=63)
+                max_age = 19,                         # the maximum age to be considered (van=19, ges=63)
                 max_length = 200,                     # at least the maximum length in the data
                 t0 = 2014,                            # a reference year for the abundance estimation
                 vbgf_l_inf = l_inf,                   # asymptotic length for VBGF
@@ -99,6 +119,143 @@ for (i in 1:nrow(pars)) {
                               dat=dat)
     scenario_fits[[i]][[j]]$hessian <- hess
     
+    return(list(dat = dat, hessian = hess))
+    
+  }, cl = cl); stopCluster(cl);
+  extra_info_list[[i]] <- extra_info
+}
+save(list="extra_info_list", file="extra_info_for_fits_i=144.RData")
+
+## Repeating the data file is pretty redundant, but do add the variances
+for(i in 1:49) {
+  if (i %in% scenarios_to_keep) {
+    for (j in 1:100) {
+      hess <- extra_info_list[[i]][[j]]$hess
+      var <- diag(solve(hess))
+      par <- exp(scenario_fits[[i]][[j]]$par)
+      var_real <- par^2 * (exp(var) - 1) # if X=logY, then var(Y)=E(Y)^2(e^Var(X)-1)
+
+      scenario_fits[[i]][[j]]$hess <- hess
+      scenario_fits[[i]][[j]]$var <- var
+      scenario_fits[[i]][[j]]$var_real <- var_real
+    }
+  }
+  else {
+    for (j in 1:100) {
+      scenario_fits[[i]][[j]]$hess <- NA
+      scenario_fits[[i]][[j]]$var <- NA
+    }
+
   }
 }
 
+save(list="scenario_fits", file="data/1_population_multiple_sampling_schemes/vanillus/simulation_100_schemes_scenario_1-49_fit_results_sim=555_with_estimated_variance.RData")
+
+
+## -----------------------------------------------------------------------------
+## Extract the variances
+## -----------------------------------------------------------------------------
+
+load("data/1_population_multiple_sampling_schemes/vanilla/simulation_100_schemes_scenario_1-49_fit_results_sim=144_with_estimated_variance.RData")
+vanilla_fits <- scenario_fits
+load("data/1_population_multiple_sampling_schemes/complex/simulation_100_schemes_scenario_1-49_fit_results_sim=555_with_estimated_variance.RData")
+complex_fits <- scenario_fits
+rm(scenario_fits)
+
+## Extract failed fit scenarios
+conv <- sapply(vanilla_fits, function(scen) {
+  all(sapply(scen, function(fit) fit$message) == "relative convergence (4)")
+})
+
+scenarios_to_drop <- c(1:7,
+                       seq(from=8, to=36, by=7), 
+                       seq(from=14, to=42, by=7),
+                       43:49)
+scenarios_to_keep <- c(1:49)[-scenarios_to_drop]
+scenarios_to_keep <- 1:49 %in% scenarios_to_keep ## Turn it in to true and false
+scenarios_to_keep <- scenarios_to_keep & conv
+scenarios_to_keep <- (1:49)[scenarios_to_keep] # convert TRUE/FALSE to indices
+
+## -----------------------------------------
+## Create data frame for the vanilla species
+## -----------------------------------------
+sd_vanilla <- matrix(NA, nrow = length(scenarios_to_keep), ncol = 4)
+cv_vanilla <- matrix(NA, nrow = length(scenarios_to_keep), ncol = 4)
+for (i in seq_along(scenarios_to_keep)) {
+  sd_vanilla[i, ] <- rowMeans(sapply(1:100, function(j) {
+    ## There is one fit that resulted that did not have positive definite hessina (and thus negative variance). this one was ignored (i=19 j = 1)
+    # if (any(vanilla_fits[[scenarios_to_keep[i]]][[j]]$var < 0)) print(paste(" STOP", i, j))
+    return(sqrt(vanilla_fits[[scenarios_to_keep[i]]][[j]]$var_real))
+  }), na.rm = TRUE)
+  
+  cv_vanilla[i, ] <- rowMeans(sapply(1:100, function(j) {
+    ## There is one fit that resulted that did not have positive definite hessina (and thus negative variance). this one was ignored (i=19 j = 1)
+    # if (any(vanilla_fits[[scenarios_to_keep[i]]][[j]]$var < 0)) print(paste(" STOP", i, j))
+    std_dev <- sqrt(vanilla_fits[[scenarios_to_keep[i]]][[j]]$var_real) 
+    
+    return(std_dev / exp(vanilla_fits[[scenarios_to_keep[i]]][[j]]$par) * 100)
+  }), na.rm = TRUE)
+}
+
+## -----------------------------------------
+## Create data frame for the complex species
+## -----------------------------------------
+sd_complex <- matrix(NA, nrow = length(scenarios_to_keep), ncol = 4)
+cv_complex <- matrix(NA, nrow = length(scenarios_to_keep), ncol = 4)
+for (i in seq_along(scenarios_to_keep)) {
+  sd_complex[i, ] <- rowMeans(sapply(1:100, function(j) {
+    ## There is one fit that resulted that did not have positive definite hessina (and thus negative variance). this one was ignored (i=19 j = 1)
+    # if (any(complex_fits[[scenarios_to_keep[i]]][[j]]$var < 0)) print(paste(" STOP", i, j))
+    return(sqrt(complex_fits[[scenarios_to_keep[i]]][[j]]$var_real))
+  }), na.rm = TRUE)
+  
+  cv_complex[i, ] <- rowMeans(sapply(1:100, function(j) {
+    std_dev <- sqrt(complex_fits[[scenarios_to_keep[i]]][[j]]$var_real) 
+    
+    return(std_dev / exp(complex_fits[[scenarios_to_keep[i]]][[j]]$par) * 100)
+  }), na.rm = TRUE)
+}
+
+## ----------------------------
+## Combine into data frames
+## -----------------------------
+sd_df <- cbind(data.frame(paste0(rep(0:6, each=7), "-", rep(0:6, rep=7))[scenarios_to_keep]), 
+               sd_vanilla[, c(2,1,3,4)], sd_complex[, c(2,1,3,4)])
+cv_df <- cbind(data.frame(paste0(rep(0:6, each=7), "-", rep(0:6, rep=7))[scenarios_to_keep]), 
+               cv_vanilla[, c(2,1,3,4)], cv_complex[, c(2,1,3,4)])
+
+colnames(sd_df) <- c("scenario", 
+                     "van_r_m", "van_r_f" , "van_N_y0_m" , "van_N_y0_f",
+                     "com_r_m", "com_r_f" , "com_N_y0_m" , "com_N_y0_f")
+colnames(cv_df) <- c("scenario", 
+                     "van_r_m", "van_r_f" , "van_N_y0_m" , "van_N_y0_f",
+                     "com_r_m", "com_r_f" , "com_N_y0_m" , "com_N_y0_f") 
+
+## Create tables for latex
+library(kableExtra)
+
+labels <- c("Scen.", 
+            "$r_{male}$", 
+            "$r_{female}$", 
+            "$N^A_{male}$", 
+            "$N^A_{female}$", 
+            "$r_{male}$", 
+            "$r_{female}$",
+            "$N^A_{male}$", 
+            "$N^A_{female}$")
+
+caption <- "" 
+kable(sd_df, booktabs = T, 
+      format = "latex", 
+      digits = 2,
+      col.names = labels, 
+      row.names = F, linesep = "", caption = caption) %>%
+  add_header_above( c(" " = 1, "Vanilla species" = 4, "Complex species" = 4))
+ 
+caption <- "" 
+kable(cv_df, booktabs = T, 
+      format = "latex", 
+      digits = 2,
+      col.names = labels, 
+      row.names = F, linesep = "", caption = caption) %>% 
+  add_header_above( c(" " = 1, "Vanilla species" = 4, "Complex species" = 4))
