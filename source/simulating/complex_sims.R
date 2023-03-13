@@ -1,5 +1,5 @@
 ## ========================================================================== ##
-## palmyra_sims.R
+## complex_sims.R
 ## 
 ## In this script I will simulate GR population data using information life 
 ##  history trait estimates from the Palmyra study (Bradley et al, 2017).
