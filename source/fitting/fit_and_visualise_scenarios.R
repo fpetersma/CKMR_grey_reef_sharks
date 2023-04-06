@@ -11,9 +11,9 @@
 
 library(pbapply)
 library(parallel)
-data_folder <- "data/1_population_multiple_sampling_schemes/"
+data_folder <- "data/simulation_study/complex/"
 load(paste0(data_folder, 
-            "gestatii/100_schemes_dfs_suff_unique_combos_sim=555.RData"))
+            "1000_schemes_dfs_suff_unique_combos_sim=all.RData"))
 
 ## :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 ## Set parameter values
@@ -24,17 +24,19 @@ a_0 <- -8.27                # theoretical age at length zero
 k <- 0.0554                 # growth rate
 l_inf <- 163                # asymptotic length
   
-errors <- c(1e-8,                         # 1e-8 instead of 0 to avoid overflow
-            true_error*1/3,               # 1/3 of true error
-            true_error*2/3,               # 2/3 of true error
-            true_error,                   # true error
-            true_error*4/3,               # 4/3 of true error
-            true_error*5/3,               # 5/3 of true error
-            true_error*6/3)               # twice the true error
+errors <- c(
+  # 1e-8,                         # 1e-8 instead of 0 to avoid overflow
+  true_error*1/3,               # 1/3 of true error
+  true_error*2/3,               # 2/3 of true error
+  true_error,                   # true error
+  true_error*4/3,               # 4/3 of true error
+  true_error*5/3 #,               # 5/3 of true error
+  # true_error*6/3
+)               # twice the true error
 ## vbgf comes from l.100 onwards in 'explore_vbgf_bias_uncertainty.R'
 step_l_inf <- 0.05 * l_inf  # 8.15 is 5% of 163
-a0_options <- seq(from = l_inf - step_l_inf * 3, 
-                  to = l_inf + step_l_inf * 3, 
+a0_options <- seq(from = l_inf - step_l_inf * 2, 
+                  to = l_inf + step_l_inf * 2, 
                   by = step_l_inf)
 vbgfs <- matrix(c(CKMRcpp::a_0_j(l_inf, a0_options, k, a_0), 
                   a0_options), ncol = 2)
@@ -50,21 +52,20 @@ pars <- do.call(rbind, lapply(seq_along(errors), function(i) {
 }))
 
 ## Number of fitted models for every scenario
-n <- 100
+n <- 1000
 
 ## :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 ## Fit all models
 ## :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
 scenario_fits <- lapply(1:nrow(pars), function(i) {
-# scenario_fits <- lapply(25, function(i) {
   cat("Fitting the CKMR model in scenario:" , i, "\n")
   
   a0 <- pars[i, "a_0"]
   l_inf <- pars[i, "l_inf"]
   sigma_l <- pars[i, "sigma_l"]
   
-  n_cores <- 50 # 2 fits per core
+  n_cores <- 34 # n / 50 = fits per core
   cl <- makeCluster(n_cores)
   clusterExport(cl = cl, list("a0", "l_inf", "sigma_l"), envir = environment())
   results <- pblapply(dfs_suff[1:n], function(df) {
@@ -119,8 +120,12 @@ scenario_fits <- lapply(1:nrow(pars), function(i) {
                   dat = dat, 
                   control = list(trace = 1, rel.tol = 1e-7))
     # })
-    res$dat <- dat
+    res$dat <- dat 
     
+    hess <- numDeriv::hessian(func = CKMRcpp::nllPOPCKMRcppAgeUnknownGestation,
+                              x = res$par,
+                              dat = dat)
+    res$hess <- hess
     return(res)
   }, cl = cl); stopCluster(cl) # end of pblapply() in parallel
   return(results)
@@ -129,7 +134,7 @@ scenario_fits <- lapply(1:nrow(pars), function(i) {
 
 ## Save the scenario_fits object
 save(list = c("scenario_fits"),
-     file = paste0(data_folder, "simulation_100_schemes_scenario_25_fit_results_sim=.RData"))
+     file = paste0(data_folder, "simulation_1000_schemes_all_scenarios_fit_results_sim=all.RData"))
 
 ## :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 ## Visualise the results.
