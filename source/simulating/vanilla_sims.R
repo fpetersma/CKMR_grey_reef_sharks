@@ -132,10 +132,11 @@ summary(sapply(simulated_data_sets, function(x) {nrow(x[is.na(x$DeathY), ])}))
 # Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
 # 6542    8001    8406    8398    8798   10208 
 
-# Create 100 repeats
-simulated_populations <- simulated_data_sets
-## Choose from 1, 144, 333, 800, 
-simulated_data_sets <- rep(simulated_populations[144], 100)
+# CODE BELOW WAS USED TO REPEAT THE SAME POP REALISATION 100 TIMES
+# # Create 100 repeats
+# simulated_populations <- simulated_data_sets
+# ## Choose from 1, 144, 333, 800, 
+# simulated_data_sets <- rep(simulated_populations[144], 100)
 
 ## :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 ## Run retrospecitve sampling
@@ -174,8 +175,7 @@ all(is.na(simulated_data_sets[[1]]$SampY))  # should be FALSE
 unique(simulated_data_sets[[1]]$SampY)      # check if this seems correct
 sum(!is.na(simulated_data_sets[[1]]$SampY)) # seem correct as well?
 
-
-# save(simulated_data_sets, file = "data/1_population_multiple_sampling_schemes/vanillus/1000_schemes_simulated_data_set.RData")
+# save(simulated_data_sets, file = "data/simulation_study/vanilla/1000_simulated_data_sets.RData")
 
 ## :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 ## Create summary statistics
