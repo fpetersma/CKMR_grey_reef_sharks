@@ -47,13 +47,12 @@ no_gestation <- FALSE
 years <- 1915:2014             # number of years to run simulation
 
 ## Store simulated sets
-n_cores <- 1
+n_cores <- 50
 cl <- makeCluster(n_cores)
 # rm(simulated_data_sets)
 clusterExport(cl, c(ls()))
-# simulated_data_sets <- pblapply(1:1000, function(i) {
-simulated_data_sets <- pblapply(c(256), function(i) {
-  
+simulated_data_sets <- pblapply(1:1000, function(i) {
+
   ## Set a seed for reproducibility
   set.seed(170593 + 121 * i)
   
@@ -159,11 +158,12 @@ simulated_data_sets <- pblapply(c(256), function(i) {
 hist(sapply(simulated_data_sets, function(x) {nrow(x[is.na(x$DeathY), ])}), xlab = "indivs")
 summary(sapply(simulated_data_sets, function(x) {nrow(x[is.na(x$DeathY), ])}))
 
+## THE LINE BELOW IS THE OLD VERSION, PRIOR TO USING A DIFFERENT POP FOR EVERY SIM
 # Create 100 repeats
-simulated_data_sets <- rep(simulated_data_sets[1], 100)
+# simulated_data_sets <- rep(simulated_data_sets[1], 100)
 
 ## :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-## Run retrospecitve sampling
+## Run retrospective sampling
 ## :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
 ## Set sampling parameters
@@ -199,7 +199,7 @@ all(is.na(simulated_data_sets[[1]]$SampY))  # should be FALSE
 unique(simulated_data_sets[[1]]$SampY)      # check if this seems correct
 sum(!is.na(simulated_data_sets[[1]]$SampY)) # seem correct as well?
 
-# save(simulated_data_sets, file = "data/1000_schemes_simulated_data_set.RData")
+# save(simulated_data_sets, file = "data/simulation_study/complex/1000_simulated_data_sets.RData")
 
 ## ::::::::::::::::::::::::::::::::
 ## Summary statistics
