@@ -1,9 +1,9 @@
 ################################################################################
 ##  Extract POP from a indiv object. This script is mainly to run stuff       ##
 ##  on the many cores of the bluewhale server.                                ##
-##
-##  Note: when rerunning this, it might suffice to load some preprocessed
-##  Rdata files. This will safe a lot of time. I repeat, a *lot*.
+##                                                                            ##
+##  Note: when rerunning this, it might suffice to load some preprocessed     ##
+##  Rdata files. This will safe a lot of time. I repeat, a *lot*.             ##
 ################################################################################
 
 ## Load packages and source custom functions ===================================
@@ -12,12 +12,12 @@ library(pbapply)
 library(doParallel)
 # library(CKMRcpp)
 
-sim_i <- 256
+sim_i <- "all"
 
 # source("source/fitting/CKMR_functions.R")
 # source("source/simulating/custom_functions_fishSim.R")
 
-data_folder <- "data/1_population_multiple_sampling_schemes/" 
+data_folder <- "data/simulation_study/" 
 
 ## Load the correct 100_sims_vanilla file
 # load(file = paste0(data_folder, "1000_sims_sampled.RData"))
@@ -74,7 +74,11 @@ selfie_list <- pblapply(simulated_data_sets, function(indiv) {
 ## Add history of true population size
 ## If population size is the same, just do this once and repeat for every sampling scheme
 cat("Add the true population history...\n")
-N_hist_list <- pblapply(simulated_data_sets[1], function(indiv) {
+n_cores <- 25
+cl <- makeCluster(n_cores)
+clusterExport(cl, varlist = c("first_breed_male", "first_breed_female"))
+
+N_hist_list <- pblapply(simulated_data_sets, function(indiv) {
   N_hist <- t(sapply(min(indiv$DeathY, na.rm = T):max(indiv$DeathY, na.rm = T), 
                      function(year) {
     N_male <- sum(CKMRcpp::extractTheLiving(indiv, year, TRUE, 
@@ -85,9 +89,9 @@ N_hist_list <- pblapply(simulated_data_sets[1], function(indiv) {
   }))
   row.names(N_hist) <- min(indiv$DeathY, na.rm = T):max(indiv$DeathY, na.rm = T)
   return(N_hist)
-})
+}, cl = cl); stopCluster(cl);
 
-N_hist_list <- rep(N_hist_list, length(simulated_data_sets))
+# N_hist_list <- rep(N_hist_list, length(simulated_data_sets))
 
 ## Prep data ready for analysis
 cat("Combine the data...\n")
@@ -101,8 +105,12 @@ combined_data <- pblapply(1:length(simulated_data_sets), function(i) {
   return(out)
 })
 
+# for (i in 1:1000) {
+#   combined_data[[i]]$N_hist <- N_hist_list[[i]]
+# }
+
 cat("Save the combined data sets...\n")
-save(list = c("combined_data"), file = paste0(data_folder, "100_schemes_combined_data_with_N_hist_sim=", sim_i, ".RData"))
+save(list = c("combined_data"), file = paste0(data_folder, "1000_schemes_combined_data_with_N_hist_sim=", sim_i, ".RData"))
 
 cat("Create the data frames...\n")
 n_cores <- 25
