@@ -213,7 +213,6 @@ mean_est <- data.frame(N_f_y0 = colmeans(est_N_f_y0),
                          r_f = colmeans(est_r_f),
                          r_m = colmeans(est_r_m))
 
-
 ## Average error
 median_error <- data.frame(N_f_y0 = colMedians(error_N_f_y0), 
                            N_m_y0 = colMedians(error_N_m_y0),
@@ -420,6 +419,7 @@ y0_plot <- ggplot(data=bias_N_y0_long, aes(fill=Sex, x=Scenario, y=Abundance)) +
   geom_hline(yintercept = 0, 
              colour = "black", 
              alpha = 0.5)+
+  ylab("Relative error in abundance") +
   # coord_flip() +  # comment out for normal plot
   # scale_x_discrete(limits = rev(levels(est_N_10_long$Scenario))) +
   coord_cartesian(ylim = c(-100, 500)) +
@@ -546,16 +546,21 @@ colnames(bias_r_long)[1] <- c("Scenario")
 bias_r_long$Scenario <- as.factor(as.character(bias_r_long$Scenario))
 
 r_plot <- ggplot(data=bias_r_long, aes(fill=Sex, x=Scenario, y=Growth)) +
-  geom_boxplot(position="dodge", alpha=0.5, draw_quantiles = c(0.5)) +
+  geom_boxplot(position="dodge", 
+               # draw_quantiles = c(0.5), # for violin plots
+               coef = 5,   # for boxplots, how many times the IQR values are included (defaults to 1.5)
+               alpha=0.5) +
+  stat_summary(mapping = aes(fill=Sex), position=position_dodge(0.75),
+               fun = mean, geom="point", shape=21, color="black") +
   theme_minimal() +
   theme(legend.position = "bottom") +
   geom_hline(yintercept = 0, 
              colour = "black", 
              alpha = 0.5)+
-  # coord_flip() +  # comment out for normal plot, together with line below
-  # scale_x_discrete(limits = rev(levels(est_r_long$Scenario))) +
+  ylab("Relative error in growth rate") +
+  # coord_flip() +  # comment out for normal plot
+  # scale_x_discrete(limits = rev(levels(est_N_10_long$Scenario))) +
   scale_fill_discrete(name = "") 
-
 ## -------------------------------
 ## Combine all plots into one plot
 ## -------------------------------
