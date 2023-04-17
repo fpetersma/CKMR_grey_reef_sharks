@@ -198,18 +198,18 @@ MCE_1000
 ## :::::::::::::::::::::::::::::::::::::::::::::::::::
 ## Plot multiple scenarios
 ## :::::::::::::::::::::::::::::::::::::::::::::::::::
-data_folder <- "data/1_population_multiple_sampling_schemes/"
+data_folder <- "data/simulation_study/"
 # load(paste0(data_folder, "vanillus/simulation_100_schemes_scenario_1-49_fit_results_sim=144.RData"))
 # load(paste0(data_folder, "vanillus/single_combined_data_i=144.RData"))
 
-load(paste0(data_folder, "gestatii/simulation_100_schemes_scenario_1-49_fit_results_sim=555.RData"))
-load(paste0(data_folder, "gestatii/single_combined_data_i=555.RData"))
+load(paste0(data_folder, "complex/simulation_1000_schemes_all_scenarios_fit_results_sim=all.RData"))
+load(paste0(data_folder, "complex/1000_schemes_combined_data_with_N_hist_sim=all.RData"))
 
-scenarios_to_drop <- c(1:7,
-                       seq(from=8, to=36, by=7), 
-                       seq(from=14, to=42, by=7),
-                       43:49)
-scenarios_to_keep <- c(1:49)[-scenarios_to_drop]
+# scenarios_to_drop <- c(1:7,
+#                        seq(from=8, to=36, by=7), 
+#                        seq(from=14, to=42, by=7),
+#                        43:49)
+# scenarios_to_keep <- c(1:49)[-scenarios_to_drop]
 
 ## Create male plot
 p_m <- CKMRcpp::plotCKMRabundance(scenario_fits[scenarios_to_keep],
