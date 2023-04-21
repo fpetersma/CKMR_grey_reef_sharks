@@ -21,7 +21,6 @@ n_years <- year_lim[2] - year_lim[1] + 1
 y0 <- 2014
 max_y_axis <- 1000
 
-
 ## -----------------------
 ## Create long format data
 ## -----------------------
@@ -123,7 +122,7 @@ p_m <- ggplot(subset(error_long, sex == "M")) +
                                 alpha("black", 0.5),
                                 alpha("red", 0.4))) +
   theme_bw() +
-  ylab("Error in abundance estimate") +
+  ylab("Error in adult abundance estimate") +
   xlab("Year") +
   facet_wrap(~ sim_id , nrow = dimension, labeller = label_parsed) + 
   coord_cartesian(ylim=c(-1000,3000)) +
@@ -138,7 +137,7 @@ p_f <- ggplot(subset(error_long, sex == "F")) +
                                 alpha("black", 0.5),
                                 alpha("red", 0.4))) +
   theme_bw() +
-  ylab("Error in abundance estimate") +
+  ylab("Error in adult abundance estimate") +
   xlab("Year") +
   facet_wrap(~ sim_id , nrow = dimension, labeller = label_parsed) + 
   coord_cartesian(ylim=c(-1000,3000)) +
@@ -150,17 +149,7 @@ p_f
 
 ## Save the plots as svg with dimensions 1100x700 [manually]
 
-
-
-
-
-
-
-
-
-
-
-
+hist(sapply(scenario_fits[[13]], function(fit) fit$par[,3]))
 
 
 

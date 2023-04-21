@@ -22,14 +22,11 @@ library(tidyverse)
 library(Rfast)
 library(kableExtra)
 
-# load("data/1_population_multiple_sampling_schemes/vanillus/simulation_100_schemes_scenario_1-49_fit_results_sim=144.RData")
-# load("data/1_population_multiple_sampling_schemes/vanillus/single_combined_data_i=144.RData")
-# 
-# load("data/1_population_multiple_sampling_schemes/gestatii/simulation_100_schemes_scenario_1-49_fit_results_sim=555.RData")
-# load("data/1_population_multiple_sampling_schemes/gestatii/single_combined_data_i=555.RData")
-
 load("data/simulation_study/vanilla/simulation_1000_schemes_all_scenarios_fit_results_sim=all.RData")
 load("data/simulation_study/vanilla/1000_schemes_combined_data_with_N_hist_sim=all.RData")
+
+# load("data/simulation_study/complex/simulation_1000_schemes_all_scenarios_fit_results_sim=all.RData")
+# load("data/simulation_study/complex/1000_schemes_combined_data_with_N_hist_sim=all.RData")
 
 ## =============================================================================
 ## 2. CREATE THE MASTER DATA FRAME
@@ -48,11 +45,11 @@ true_N_f <- t(sapply(combined_data, function(dat) return(dat$N_hist[, "N_f"]))) 
 true_N_m_y0 <- true_N_m[, 100]
 true_N_f_y0 <- true_N_f[, 100]
 
-true_N_m_10 <- rowMeans(true_N_m[, 91:100])
-true_N_f_10 <- rowMeans(true_N_f[, 91:100])
+true_N_m_10 <- rowMeans(true_N_m[, 96:100]) # for 5
+true_N_f_10 <- rowMeans(true_N_f[, 96:100]) # for 5
 
 true_r_m <- (true_N_m_y0 / true_N_m[, 1]) ^ (1 / 99)
-true_r_f <- (true_N_f_y0 / true_N_m[, 1]) ^ (1 / 99)
+true_r_f <- (true_N_f_y0 / true_N_f[, 1]) ^ (1 / 99)
 
 ## Extract the estimated abundances in y0
 est_N_m_y0 <- sapply(scenario_fits, function(scen) { # mature male abundance
@@ -86,59 +83,7 @@ est_r_f[, !conv] <- NA # set failed convergence estimates to NA
 est_N_m_10 <- sapply(scenario_fits, function(scen) { # mature female abundance
   vec <- sapply(scen, function(fit) {
     N_y0 <- exp(fit$par["N_t0_m"])
-    r_10 <- exp(fit$par["r_m"]) ^ (-9:0)
-    N_10 <- N_y0 * r_10
-    return(mean(N_10))
-  })
-  ## set to NA if there was failed convergence
-  if (!all(sapply(scen, function(fit) fit$message) == "relative convergence (4)")) {
-    vec <- matrix(NA, nrow = 1, ncol = 1000)
-  }
-  return(vec)
-}, simplify = "array")  
-
-error_N_m_10 <- sapply(scenario_fits, function(scen) { # mature female abundance
-  ## set to NA if there was failed convergence
-  if (!all(sapply(scen, function(fit) fit$message) == "relative convergence (4)")) {
-    mat <- rep(NA, 1000)
-  } else {
-    mat <- sapply(1:1000, function(i) {
-      fit <- scen[[i]]
-      N_y0 <- exp(fit$par["N_t0_m"])
-      r_10 <- exp(fit$par["r_m"]) ^ (-9:0)
-      N_10 <- N_y0 * r_10
-      
-      N_10_diff <- mean(N_10) - mean(true_N_m[i, 91:100])
-      return(N_10_diff)
-    })
-  }
-  return(mat)
-})  
-
-bias_N_m_10 <- sapply(scenario_fits, function(scen) { # mature female abundance
-  ## set to NA if there was failed convergence
-  if (!all(sapply(scen, function(fit) fit$message) == "relative convergence (4)")) {
-    mat <- rep(NA, 1000)
-  } else {
-    mat <- sapply(1:1000, function(i) {
-      fit <- scen[[i]]
-      N_y0 <- exp(fit$par["N_t0_m"])
-      r_10 <- exp(fit$par["r_m"]) ^ (-9:0)
-      N_10 <- N_y0 * r_10
-      # cat("N_10:", N_10, "\n")
-      
-      N_10_bias <- (mean(N_10) - mean(true_N_m[i, 91:100])) / mean(true_N_m[i, 91:100]) * 100
-      return(N_10_bias)
-    })
-  }
-  return(mat)
-}) 
-
-## The female abundance
-est_N_f_10 <- sapply(scenario_fits, function(scen) { # mature female abundance
-  vec <- sapply(scen, function(fit) {
-    N_y0 <- exp(fit$par["N_t0_f"])
-    r_10 <- exp(fit$par["r_f"]) ^ (-9:0)
+    r_10 <- exp(fit$par["r_m"]) ^ (-4:0) # actually 5 years now
     N_10 <- N_y0 * r_10
     return(mean(N_10))
   })
@@ -149,43 +94,65 @@ est_N_f_10 <- sapply(scenario_fits, function(scen) { # mature female abundance
   return(vec)
 }, simplify = "array") 
 
-error_N_f_10 <- sapply(scenario_fits, function(scen) { # mature female abundance
-  ## set to NA if there was failed convergence
-  if (!all(sapply(scen, function(fit) fit$message) == "relative convergence (4)")) {
-    mat <- rep(NA, 1000)
-  } else {
-    mat <- sapply(1:1000, function(i) {
-      fit <- scen[[i]]
-      N_y0 <- exp(fit$par["N_t0_f"])
-      r_10 <- exp(fit$par["r_f"]) ^ (-9:0)
-      N_10 <- N_y0 * r_10
-      # cat("N_10:", N_10, "\n")
-      
-      N_10_diff <- mean(N_10) - mean(true_N_f[i, 91:100])
-      return(N_10_diff)
-    })
-  }
-  return(mat)
-}) 
+error_N_m_10 <- est_N_m_10 - matrix(true_N_m_10, ncol = 25, nrow = 1000)
 
-bias_N_f_10 <- sapply(scenario_fits, function(scen) { # mature female abundance
+bias_N_m_10 <- error_N_m_10 / matrix(true_N_m_10, ncol = 25, nrow = 1000) * 100
+
+# error_N_m_10 <- sapply(scenario_fits, function(scen) { # mature female abundance
+#   ## set to NA if there was failed convergence
+#   if (!all(sapply(scen, function(fit) fit$message) == "relative convergence (4)")) {
+#     mat <- rep(NA, 1000)
+#   } else {
+#     mat <- sapply(1:1000, function(i) {
+#       fit <- scen[[i]]
+#       N_y0 <- exp(fit$par["N_t0_m"])
+#       r_10 <- exp(fit$par["r_m"]) ^ (-9:0)
+#       N_10 <- N_y0 * r_10
+#       
+#       N_10_diff <- mean(N_10) - mean(true_N_m[i, 91:100])
+#       return(N_10_diff)
+#     })
+#   }
+#   return(mat)
+# })  
+# 
+# bias_N_m_10 <- sapply(scenario_fits, function(scen) { # mature female abundance
+#   ## set to NA if there was failed convergence
+#   if (!all(sapply(scen, function(fit) fit$message) == "relative convergence (4)")) {
+#     mat <- rep(NA, 1000)
+#   } else {
+#     mat <- sapply(1:1000, function(i) {
+#       fit <- scen[[i]]
+#       N_y0 <- exp(fit$par["N_t0_m"])
+#       r_10 <- exp(fit$par["r_m"]) ^ (-9:0)
+#       N_10 <- N_y0 * r_10
+#       # cat("N_10:", N_10, "\n")
+#       
+#       N_10_bias <- (mean(N_10) - mean(true_N_m[i, 91:100])) / mean(true_N_m[i, 91:100]) * 100
+#       return(N_10_bias)
+#     })
+#   }
+#   return(mat)
+# }) 
+
+## The female abundance
+est_N_f_10 <- sapply(scenario_fits, function(scen) { # mature female abundance
+  vec <- sapply(scen, function(fit) {
+    N_y0 <- exp(fit$par["N_t0_f"])
+    r_10 <- exp(fit$par["r_f"]) ^ (-4:0) # actually 5 years now
+    N_10 <- N_y0 * r_10
+    return(mean(N_10))
+  })
   ## set to NA if there was failed convergence
   if (!all(sapply(scen, function(fit) fit$message) == "relative convergence (4)")) {
-    mat <- rep(NA, 1000)
-  } else {
-    mat <- sapply(1:1000, function(i) {
-      fit <- scen[[i]]
-      N_y0 <- exp(fit$par["N_t0_f"])
-      r_10 <- exp(fit$par["r_f"]) ^ (-9:0)
-      N_10 <- N_y0 * r_10
-      # cat("N_10:", N_10, "\n")
-      
-      N_10_bias <- (mean(N_10) - mean(true_N_f[i, 91:100])) / mean(true_N_f[i, 91:100]) * 100
-      return(N_10_bias)
-    })
+    vec <- matrix(NA, nrow = 1, ncol = 1000)
   }
-  return(mat)
-})
+  return(vec)
+}, simplify = "array")
+
+error_N_f_10 <- est_N_f_10 - matrix(true_N_f_10, ncol = 25, nrow = 1000)
+
+bias_N_f_10 <- error_N_f_10 / matrix(true_N_f_10, ncol = 25, nrow = 1000) * 100
 
 
 ## Mean error
@@ -195,7 +162,7 @@ error_r_m <- est_r_m - matrix(true_r_m, nrow = 1000, ncol = 25, byrow = F)
 error_r_f <- est_r_f - matrix(true_r_f, nrow = 1000, ncol = 25, byrow = F) 
 # new: bias
 bias_N_m_y0 <- error_N_m_y0 / matrix(true_N_m_y0, nrow = 1000, ncol = 25, byrow = F) * 100
-bias_N_f_y0 <- error_N_m_y0 / matrix(true_N_f_y0, nrow = 1000, ncol = 25, byrow = F) * 100
+bias_N_f_y0 <- error_N_f_y0 / matrix(true_N_f_y0, nrow = 1000, ncol = 25, byrow = F) * 100
 bias_r_m <- error_r_m / matrix(true_r_m, nrow = 1000, ncol = 25, byrow = F) * 100
 bias_r_f <- error_r_f / matrix(true_r_f, nrow = 1000, ncol = 25, byrow = F) * 100
 
@@ -260,7 +227,7 @@ mean_sqrd_error <- data.frame(N_f_y0 = colmeans((error_N_f_y0) ^ 2),
                                 r_f = colmeans((error_r_f) ^ 2),
                                 r_m = colmeans((error_r_m) ^ 2))
 
-## standard deviation and variance
+## standard deviation and variance of estimates
 std_dev <- data.frame(N_f_y0 = apply(est_N_f_y0, 2, sd),
                  N_m_y0 = apply(est_N_m_y0, 2, sd), 
                  N_f_10 = apply(est_N_f_10, 2, sd),
@@ -268,6 +235,15 @@ std_dev <- data.frame(N_f_y0 = apply(est_N_f_y0, 2, sd),
                  r_f = apply(est_r_f, 2, sd), 
                  r_m = apply(est_r_m, 2, sd))
 variance <- std_dev ^ 2
+
+## standard deviation and variance of error
+std_dev_error <- data.frame(N_f_y0 = apply(error_N_f_y0, 2, sd),
+                      N_m_y0 = apply(error_N_m_y0, 2, sd), 
+                      N_f_10 = apply(error_N_f_10, 2, sd),
+                      N_m_10 = apply(error_N_m_10, 2, sd),
+                      r_f = apply(error_r_f, 2, sd), 
+                      r_m = apply(error_r_m, 2, sd))
+variance_error <- std_dev_error ^ 2
 
 ## Coefficient of variation (works as the support for these estimates is 
 ## strictly positive)
@@ -282,67 +258,7 @@ coeff_var <- data.frame(N_f_y0 = apply(est_N_f_y0, 2, raster::cv),
 ## 3. CREATE FIGURES AND TABLES FOR MANUSCRIPT
 ## =============================================================================
 
-## :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-## Create a big table with all the results for the supplemenatry materials
-## :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
-summarise_performance_metrics <- function(column, truth) {
-  df <- data.frame(
-    true = truth, 
-    median_est = median_est[, column], 
-    mean_est = mean_est[, column], 
-    std_dev = std_dev[, column], 
-    coeff_var = coeff_var[, column], 
-    median_error = median_error[, column], 
-    mean_error = mean_error[, column], 
-    mean_abs_error = mean_abs_error[, column], 
-    mean_sqrd_error = mean_sqrd_error[, column])
-  df <- df[scenarios_to_keep, ]
-  df$scenario <- paste0(rep(1:5, each = 5), "-", 1:5)
-  df <- na.omit(df[, c(10, 1:9)])
-  return(df)
-}
-
-summary_N_f_y0 <- summarise_performance_metrics("N_f_y0", true_N_f_y0)
-
-summary_N_m_y0 <- summarise_performance_metrics("N_m_y0", true_N_m_y0)
-
-summary_N_f_10 <- summarise_performance_metrics("N_f_10", true_N_f_10)
-
-summary_N_m_10 <- summarise_performance_metrics("N_m_10", true_N_m_10)
-
-summary_r_f <- summarise_performance_metrics("r_f", true_r_f)
-
-summary_r_m <- summarise_performance_metrics("r_m", true_r_m)
-
-labels <- c("Scen.", 
-            "Mdn. Est.", 
-            "Mean Est.", 
-            "Std. Dev.", 
-            "CV", 
-            "Mdn. Err.", 
-            "Mean Err.", 
-            "MAE", 
-            "MSE")
-
-caption <- "Various performance metrics for the parameter [quantity], extracted from 100 simulations of the gestating shark population. The columns are, from left to right: scenario, median estimate, mean estimate, standard deviation, coefficient of variation (\\%), median error, mean error, mean absolute error, and mean squared error. Scenarios 1-1, 1-2, 1-3, 2-1, 2-2, and 3-1 were not included as (most of) the simulations did not fit successfully. Scenario 3-3 uses the correct measurement error (2.89) and growth curve specification."
-kable(summary_N_f_y0[, -2], booktabs = T, format = "latex", digits = 2,
-      col.names = labels, row.names = F, linesep = "", caption = caption)
-
-kable(summary_N_m_y0[, -2], booktabs = T, format = "latex", digits = 2,
-      col.names = labels, row.names = F, linesep = "", caption = caption)
-
-kable(summary_N_f_10[, -2], booktabs = T, format = "latex", digits = 2,
-      col.names = labels, row.names = F, linesep = "", caption = caption)
-
-kable(summary_N_m_10[, -2], booktabs = T, format = "latex", digits = 2,
-      col.names = labels, row.names = F, linesep = "", caption = caption)
-
-kable(summary_r_f[, -2], booktabs = T, format = "latex", digits = 3,
-      col.names = labels, row.names = F, linesep = "", caption = caption)
-
-kable(summary_r_m[, -2], booktabs = T, format = "latex", digits = 3,
-      col.names = labels, row.names = F, linesep = "", caption = caption)
 
 
 ## :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
@@ -409,6 +325,8 @@ bias_N_y0_long$Scenario <- as.factor(as.character(bias_N_y0_long$Scenario))
 
 y0_plot <- ggplot(data=bias_N_y0_long, aes(fill=Sex, x=Scenario, y=Abundance)) +
   geom_boxplot(position="dodge", 
+               outlier.alpha = 0.1,
+               # outlier.shape = NA,
                # draw_quantiles = c(0.5), # for violin plots
                coef = 5,   # for boxplots, how many times the IQR values are included (defaults to 1.5)
                alpha=0.5) +
@@ -422,8 +340,8 @@ y0_plot <- ggplot(data=bias_N_y0_long, aes(fill=Sex, x=Scenario, y=Abundance)) +
   ylab("Relative error in abundance") +
   # coord_flip() +  # comment out for normal plot
   # scale_x_discrete(limits = rev(levels(est_N_10_long$Scenario))) +
-  coord_cartesian(ylim = c(-100, 500)) +
-  scale_fill_discrete(name = "") 
+  # coord_cartesian(ylim = c(-100, 500)) +
+  scale_fill_discrete(name = ""); y0_plot
 
 ## ----------------------------------------------------------
 ## The mean abundance over year 1 to 10 estimates violin plot
@@ -478,6 +396,7 @@ bias_N_10_long$Scenario <- as.factor(as.character(bias_N_10_long$Scenario))
 
 mean_y_10_plot <- ggplot(data=bias_N_10_long, aes(fill=Sex, x=Scenario, y=Abundance)) +
   geom_boxplot(position="dodge", 
+               outlier.alpha = 0.1,
                # draw_quantiles = c(0.5), # for violin plots
                coef = 5,   # for boxplots, how many times the IQR values are included (defaults to 1.5)
                alpha=0.5) +
@@ -490,8 +409,8 @@ mean_y_10_plot <- ggplot(data=bias_N_10_long, aes(fill=Sex, x=Scenario, y=Abunda
              alpha = 0.5)+
   # coord_flip() +  # comment out for normal plot
   # scale_x_discrete(limits = rev(levels(est_N_10_long$Scenario))) +
-  coord_cartesian(ylim = c(-100, 500)) +
-  scale_fill_discrete(name = "") 
+  # coord_cartesian(ylim = c(-100, 500)) +
+  scale_fill_discrete(name = ""); mean_y_10_plot
 
 
 ## --------------------------------
@@ -547,6 +466,7 @@ bias_r_long$Scenario <- as.factor(as.character(bias_r_long$Scenario))
 
 r_plot <- ggplot(data=bias_r_long, aes(fill=Sex, x=Scenario, y=Growth)) +
   geom_boxplot(position="dodge", 
+               outlier.alpha = 0.1,
                # draw_quantiles = c(0.5), # for violin plots
                coef = 5,   # for boxplots, how many times the IQR values are included (defaults to 1.5)
                alpha=0.5) +
@@ -560,228 +480,7 @@ r_plot <- ggplot(data=bias_r_long, aes(fill=Sex, x=Scenario, y=Growth)) +
   ylab("Relative error in growth rate") +
   # coord_flip() +  # comment out for normal plot
   # scale_x_discrete(limits = rev(levels(est_N_10_long$Scenario))) +
-  scale_fill_discrete(name = "") 
-## -------------------------------
-## Combine all plots into one plot
-## -------------------------------
-
-library(gridExtra)
-# library(svglite)
-p <- grid.arrange(y0_plot + 
-                    theme(legend.position = "none") +
-                    ylab("Abundance in 2014") +
-                    xlab(element_blank()) +
-                    coord_cartesian(ylim=c(0, 3000)), # truncate at 3000 without removing values outside
-                  mean_y_10_plot + 
-                    theme(legend.position = "none") +
-                    ylab("Mean abundance (2005-2014)") +
-                    xlab(element_blank()) +
-                    coord_cartesian(ylim=c(0, 3000)), # truncate at 3000 without removing values outside
-                  r_plot + 
-                    ylab("Yearly growth rate"),
-                  nrow=3, ncol=1); p;
-# now export it with width 1000 and height 750
-
-
-## ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::: 
-## Below are the old estimate plots
-## :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-## -----------------------------------------
-## The abundance in y0 estimates violin plot
-## -----------------------------------------
-est_N_f_y0_long <- est_N_f_y0
-colnames(est_N_f_y0_long) <- paste0(rep(1:5, each = 5), "-", 1:5)
-est_N_f_y0_long <- reshape2::melt(est_N_f_y0_long,
-                                  # na.rm = TRUE
-                                  value.name = "Abundance")[, -1]
-
-est_N_f_y0_long$Measurment_scenario <- rep(c("-67% of true length measurement error (2.89)",
-                                             "-33% of true length measurement error (2.89)",
-                                             "The true length measurement error (2.89)",
-                                             "+33% of true length measurement error (2.89)",
-                                             "+67% of true length measurement error (2.89)"),
-                                           each = 5000)
-est_N_f_y0_long$VBGF_scenario <- rep(rep(c("Growth curve shifted vertically by -10%",
-                                           "Growth curve shifted vertically by -5%",
-                                           "The true growth curve",
-                                           "Growth curve shifted vertically by +5%",
-                                           "Growth curve shifted vertically by +10%"),
-                                         each = 1000), 
-                                     times = 5)
-est_N_f_y0_long$Sex = "Female"
-est_N_f_y0_long <- na.omit(est_N_f_y0_long)
-
-est_N_m_y0_long <- est_N_m_y0
-colnames(est_N_m_y0_long) <- paste0(rep(1:5, each = 5), "-", 1:5)
-est_N_m_y0_long <- reshape2::melt(est_N_m_y0_long,
-                                    value.name = "Abundance")[, -1]
-
-est_N_m_y0_long$Measurment_scenario <- rep(c("-67% of true length measurement error (2.89)",
-                                             "-33% of true length measurement error (2.89)",
-                                             "The true length measurement error (2.89)",
-                                             "+33% of true length measurement error (2.89)",
-                                             "+67% of true length measurement error (2.89)"),
-                                           each = 5000)
-est_N_m_y0_long$VBGF_scenario <- rep(rep(c("Growth curve shifted vertically by -10%",
-                                           "Growth curve shifted vertically by -5%",
-                                           "The true growth curve",
-                                           "Growth curve shifted vertically by +5%",
-                                           "Growth curve shifted vertically by +10%"),
-                                         each = 1000), 
-                                     times = 5)
-est_N_m_y0_long$Sex = "Male"
-est_N_m_y0_long <- na.omit(est_N_m_y0_long)
-
-est_N_y0_long <- rbind(est_N_m_y0_long[, c(1, 3, 4, 2, 5)], 
-                       est_N_f_y0_long[, c(1, 3, 4, 2, 5)])
-colnames(est_N_y0_long)[1] <- c("Scenario")
-est_N_y0_long$Scenario <- as.factor(as.character(est_N_y0_long$Scenario))
-
-y0_plot <- ggplot(data=est_N_y0_long, aes(fill=Sex, x=Scenario, y=Abundance)) +
-  geom_violin(position="dodge", alpha=0.5, draw_quantiles = c(0.5)) +
-  theme_minimal() +
-  theme(legend.position = "bottom") +
-  geom_hline(yintercept = true_N_f_y0, 
-             colour = scales::hue_pal()(2)[1], 
-             alpha = 0.5, linewidth = 1)+
-  geom_hline(yintercept = true_N_m_y0, 
-             colour = scales::hue_pal()(2)[2], 
-             alpha = 0.5, linewidth = 1)+
-  # coord_flip() +  # comment out for normal plot
-  # scale_x_discrete(limits = rev(levels(est_N_y0_long$Scenario))) +
-  scale_fill_discrete(name = "") 
-  # scale_fill_viridis(discrete=T, name="")
-
-## ----------------------------------------------------------
-## The mean abundance over year 1 to 10 estimates violin plot
-## ----------------------------------------------------------
-est_N_f_10_long <- est_N_f_10
-colnames(est_N_f_10_long) <- paste0(rep(1:5, each = 5), "-", 1:5)
-est_N_f_10_long <- reshape2::melt(est_N_f_10_long,
-                                  # na.rm = TRUE
-                                  value.name = "Abundance")[, -1]
-
-est_N_f_10_long$Measurment_scenario <- rep(c("-67% of true length measurement error (2.89)",
-                                             "-33% of true length measurement error (2.89)",
-                                             "The true length measurement error (2.89)",
-                                             "+33% of true length measurement error (2.89)",
-                                             "+67% of true length measurement error (2.89)"),
-                                           each = 5000)
-est_N_f_10_long$VBGF_scenario <- rep(rep(c("Growth curve shifted vertically by -10%",
-                                           "Growth curve shifted vertically by -5%",
-                                           "The true growth curve",
-                                           "Growth curve shifted vertically by +5%",
-                                           "Growth curve shifted vertically by +10%"),
-                                         each = 1000), 
-                                     times = 5)
-est_N_f_10_long$Sex = "Female"
-est_N_f_10_long <- na.omit(est_N_f_10_long)
-
-est_N_m_10_long <- est_N_m_10
-colnames(est_N_m_10_long) <- paste0(rep(1:5, each = 5), "-", 1:5)
-est_N_m_10_long <- reshape2::melt(est_N_m_10_long,
-                                  value.name = "Abundance")[, -1]
-
-est_N_m_10_long$Measurment_scenario <- rep(c("-67% of true length measurement error (2.89)",
-                                             "-33% of true length measurement error (2.89)",
-                                             "The true length measurement error (2.89)",
-                                             "+33% of true length measurement error (2.89)",
-                                             "+67% of true length measurement error (2.89)"),
-                                           each = 5000)
-est_N_m_10_long$VBGF_scenario <- rep(rep(c("Growth curve shifted vertically by -10%",
-                                           "Growth curve shifted vertically by -5%",
-                                           "The true growth curve",
-                                           "Growth curve shifted vertically by +5%",
-                                           "Growth curve shifted vertically by +10%"),
-                                         each = 1000), 
-                                     times = 5)
-est_N_m_10_long$Sex = "Male"
-est_N_m_10_long <- na.omit(est_N_m_10_long)
-
-est_N_10_long <- rbind(est_N_m_10_long[, c(1, 3, 4, 2, 5)], 
-                       est_N_f_10_long[, c(1, 3, 4, 2, 5)])
-colnames(est_N_10_long)[1] <- c("Scenario")
-est_N_10_long$Scenario <- as.factor(as.character(est_N_10_long$Scenario))
-
-mean_y_10_plot <- ggplot(data=est_N_10_long, aes(fill=Sex, x=Scenario, y=Abundance)) +
-  geom_violin(position="dodge", alpha=0.5, draw_quantiles = c(0.5)) +
-  theme_minimal() +
-  theme(legend.position = "bottom") +
-  geom_hline(yintercept = true_N_f_10, 
-             colour = scales::hue_pal()(2)[1], 
-             alpha = 0.5, linewidth = 1)+
-  geom_hline(yintercept = true_N_m_10, 
-             colour = scales::hue_pal()(2)[2], 
-             alpha = 0.5, linewidth = 1)+
-  # coord_flip() +  # comment out for normal plot
-  # scale_x_discrete(limits = rev(levels(est_N_10_long$Scenario))) +
-  ylim(c(0, 3000)) +
-  scale_fill_discrete(name = "") 
-
-## --------------------------------
-## The growth estimates violin plot
-## --------------------------------
-est_r_f_long <- est_r_f
-colnames(est_r_f_long) <- paste0(rep(1:5, each = 5), "-", 1:5)
-est_r_f_long <- reshape2::melt(est_r_f_long,
-                                  # na.rm = TRUE
-                                  value.name = "Growth")[, -1]
-
-est_r_f_long$Measurment_scenario <- rep(c("-67% of true length measurement error (2.89)",
-                                             "-33% of true length measurement error (2.89)",
-                                             "The true length measurement error (2.89)",
-                                             "+33% of true length measurement error (2.89)",
-                                             "+67% of true length measurement error (2.89)"),
-                                           each = 5000)
-est_r_f_long$VBGF_scenario <- rep(rep(c("Growth curve shifted vertically by -10%",
-                                           "Growth curve shifted vertically by -5%",
-                                           "The true growth curve",
-                                           "Growth curve shifted vertically by +5%",
-                                           "Growth curve shifted vertically by +10%"),
-                                         each = 1000), 
-                                     times = 5)
-est_r_f_long$Sex = "Female"
-est_r_f_long <- na.omit(est_r_f_long)
-
-est_r_m_long <- est_r_m
-colnames(est_r_m_long) <- paste0(rep(1:5, each = 5), "-", 1:5)
-est_r_m_long <- reshape2::melt(est_r_m_long,
-                                  value.name = "Growth")[, -1]
-
-est_r_m_long$Measurment_scenario <- rep(c("-67% of true length measurement error (2.89)",
-                                             "-33% of true length measurement error (2.89)",
-                                             "The true length measurement error (2.89)",
-                                             "+33% of true length measurement error (2.89)",
-                                             "+67% of true length measurement error (2.89)"),
-                                           each = 5000)
-est_r_m_long$VBGF_scenario <- rep(rep(c("Growth curve shifted vertically by -10%",
-                                           "Growth curve shifted vertically by -5%",
-                                           "The true growth curve",
-                                           "Growth curve shifted vertically by +5%",
-                                           "Growth curve shifted vertically by +10%"),
-                                         each = 1000), 
-                                     times = 5)
-est_r_m_long$Sex = "Male"
-est_r_m_long <- na.omit(est_r_m_long)
-
-est_r_long <- rbind(est_r_m_long[, c(1, 3, 4, 2, 5)], 
-                       est_r_f_long[, c(1, 3, 4, 2, 5)])
-colnames(est_r_long)[1] <- c("Scenario")
-est_r_long$Scenario <- as.factor(as.character(est_r_long$Scenario))
-
-r_plot <- ggplot(data=est_r_long, aes(fill=Sex, x=Scenario, y=Growth)) +
-  geom_violin(position="dodge", alpha=0.5, draw_quantiles = c(0.5)) +
-  theme_minimal() +
-  theme(legend.position = "bottom") +
-  geom_hline(yintercept = true_r_f, 
-             colour = scales::hue_pal()(2)[1], 
-             alpha = 0.5, linewidth = 1)+
-  geom_hline(yintercept = true_r_m, 
-             colour = scales::hue_pal()(2)[2], 
-             alpha = 0.5, linewidth = 1)+
-  # coord_flip() +  # comment out for normal plot, together with line below
-  # scale_x_discrete(limits = rev(levels(est_r_long$Scenario))) +
-  scale_fill_discrete(name = "") 
+  scale_fill_discrete(name = ""); r_plot
 
 ## -------------------------------
 ## Combine all plots into one plot
@@ -789,50 +488,96 @@ r_plot <- ggplot(data=est_r_long, aes(fill=Sex, x=Scenario, y=Growth)) +
 
 library(gridExtra)
 # library(svglite)
+lay <- rbind(c(1),
+             # c(1),
+             c(2),
+             # c(2),
+             c(3))
+
 p <- grid.arrange(y0_plot + 
-                    theme(legend.position = "none") +
-                    ylab("Abundance in 2014") +
+                    theme(legend.position = "none",
+                          axis.text.x = element_blank()) +
+                    ylab("Relative error\nabundance (2014)") +
                     xlab(element_blank()) +
-                    coord_cartesian(ylim=c(0, 3000)), # truncate at 3000 without removing values outside
-                  mean_y_10_plot + 
-                    theme(legend.position = "none") +
-                    ylab("Mean abundance (2005-2014)") +
+                    coord_cartesian(ylim=c(-100, 500)), # truncate without removing values outside
+                  mean_y_10_plot +
+                    theme(legend.position = "none",
+                          axis.text.x = element_blank()) +
+                    ylab("Relative error\nmean abundance (2009-2014)") +
                     xlab(element_blank()) +
-                    coord_cartesian(ylim=c(0, 3000)), # truncate at 3000 without removing values outside
+                    coord_cartesian(ylim=c(-100, 500)), # truncate  without removing values outside
                   r_plot + 
-                    ylab("Yearly growth rate"),
-                  nrow=3, ncol=1); p;
-# now export it with width 1000 and height 750
+                    # coord_cartesian(ylim=c(-100, 100))+ # for vanilla
+                    coord_cartesian(ylim=c(-50, 50))+ # for complex
+                    ylab("Relative error\nyearly growth rate"),
+                  layout_matrix = lay); p
+
+## now export it with width 1000 and height 750
 
 
 ## :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-## Now  the errors [currently commented out]
-## ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+## Create a big table with all the results for the supplementary materials
+## :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
-# error_N_f_y0_long <- error_N_f_y0[, scenarios_to_keep]
-# colnames(error_N_f_y0_long) <- paste0(rep(1:5, each = 5), "-", 1:5)
-# error_N_f_y0_long <- reshape2::melt(error_N_f_y0_long,
-#                                     value.name = "Abundance", 
-#                                     na.rm = TRUE)[, -1] # Removes NA scenarios
-# error_N_f_y0_long$Sex = "Female"
-# 
-# error_N_m_y0_long <- error_N_m_y0[, scenarios_to_keep]
-# colnames(error_N_m_y0_long) <- paste0(rep(1:5, each = 5), "-", 1:5)
-# error_N_m_y0_long <- reshape2::melt(error_N_m_y0_long,
-#                                     value.name = "Abundance", 
-#                                     na.rm = TRUE)[, -1]
-# error_N_m_y0_long$Sex = "Male"
-# 
-# error_N_y0_long <- rbind(error_N_m_y0_long, error_N_f_y0_long)
-# colnames(error_N_y0_long) <- c("Scenario", "Abundance", "Sex")
-# error_N_y0_long$Scenario <- as.factor(as.character(error_N_y0_long$Scenario))
-# 
-# ggplot(data=error_N_y0_long, aes(fill=Sex, x=Scenario, y=Abundance)) +
-#   geom_violin(position="dodge", alpha=0.5, draw_quantiles = c(0.5)) +
-#   theme_minimal() +
-#   geom_hline(yintercept = 0, colour = "red", alpha = 0.5)+
-#   scale_x_discrete(limits = rev(levels(error_N_y0_long$Scenario))) +
-#   scale_fill_viridis(discrete=T, name="") +
-#   coord_flip()
+summarise_performance_metrics <- function(column, truth) {
+  df <- data.frame(
+    # true = truth, 
+    # median_est = median_est[, column],
+    # mean_est = mean_est[, column],
+    # std_dev = std_dev[, column],
+    # coeff_var = coeff_var[, column],
+    median_rel_error = median_bias[, column],
+    mean_rel_error = mean_bias[, column],
+    median_error = median_error[, column], 
+    mean_error = mean_error[, column], 
+    mean_abs_error = mean_abs_error[, column], 
+    root_mean_sqrd_error = sqrt(mean_sqrd_error[, column]))
+    # error_std_dev = std_dev_error[, column])
 
+  df$scenario <- paste0(rep(1:5, each = 5), "-", 1:5)
+  df <- na.omit(df[, c(ncol(df), 1:(ncol(df)-1))])
+  return(df)
+}
 
+summary_N_f_y0 <- summarise_performance_metrics("N_f_y0", true_N_f_y0)
+
+summary_N_m_y0 <- summarise_performance_metrics("N_m_y0", true_N_m_y0)
+
+summary_N_f_10 <- summarise_performance_metrics("N_f_10", true_N_f_10)
+
+summary_N_m_10 <- summarise_performance_metrics("N_m_10", true_N_m_10)
+
+summary_r_f <- summarise_performance_metrics("r_f", true_r_f)
+
+summary_r_m <- summarise_performance_metrics("r_m", true_r_m)
+
+labels <- c("Scen.", 
+            # "Mdn. Est.", 
+            # "Mean Est.", 
+            # "Std. Dev.", 
+            # "CV", 
+            "Mnd. Rel. Err",
+            "Mean Rel. Err.",
+            "Mdn. Err.", 
+            "Mean Err.", 
+            "MAE", 
+            "RMSE")
+
+caption <- "Various performance metrics for the parameter [quantity], extracted from 100 simulations of the gestating shark population. The columns are, from left to right: scenario, median estimate, mean estimate, standard deviation, coefficient of variation (\\%), median error, mean error, mean absolute error, and mean squared error. Scenarios 1-1, 1-2, 1-3, 2-1, 2-2, and 3-1 were not included as (most of) the simulations did not fit successfully. Scenario 3-3 uses the correct measurement error (2.89) and growth curve specification."
+kable(summary_N_f_y0, booktabs = T, format = "latex", digits = 2,
+      col.names = labels, row.names = F, linesep = "", caption = caption)
+
+kable(summary_N_m_y0, booktabs = T, format = "latex", digits = 2,
+      col.names = labels, row.names = F, linesep = "", caption = caption)
+
+kable(summary_N_f_10, booktabs = T, format = "latex", digits = 2,
+      col.names = labels, row.names = F, linesep = "", caption = caption)
+
+kable(summary_N_m_10, booktabs = T, format = "latex", digits = 2,
+      col.names = labels, row.names = F, linesep = "", caption = caption)
+
+kable(summary_r_f, booktabs = T, format = "latex", digits = 3,
+      col.names = labels, row.names = F, linesep = "", caption = caption)
+
+kable(summary_r_m, booktabs = T, format = "latex", digits = 3,
+      col.names = labels, row.names = F, linesep = "", caption = caption)

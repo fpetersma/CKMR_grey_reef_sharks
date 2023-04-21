@@ -11,7 +11,7 @@
 
 library(pbapply)
 library(parallel)
-data_folder <- "data/simulation_study/complex/"
+data_folder <- "data/simulation_study/vanilla/"
 load(paste0(data_folder, 
             "1000_schemes_dfs_suff_unique_combos_sim=all.RData"))
 
@@ -58,7 +58,8 @@ n <- 1000
 ## Fit all models
 ## :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
-scenario_fits <- lapply(1:nrow(pars), function(i) {
+# scenario_fits <- lapply(1:nrow(pars), function(i) {
+scenario_fits <- lapply(13, function(i) {
   cat("Fitting the CKMR model in scenario:" , i, "\n")
   
   a0 <- pars[i, "a_0"]
@@ -74,22 +75,22 @@ scenario_fits <- lapply(1:nrow(pars), function(i) {
       # r = log(1.000),                             # same r for both sexes
       r_f = log(1.000),                             # female growth rate
       r_m = log(1.000),                             # male growth rate
-      # phi = boot::logit(0.87), # same as plogis(0.9) -- boot::inv.logit() is qlogis()
+      phi = boot::logit(0.85), # same as plogis(0.9) -- boot::inv.logit() is qlogis()
       N_t0_m = log(500),                            # number of reproductive males
       # sigma_l = log(0.01),
-      # phi = boot::logit(1 - 0.153),
+      # phi = boot::logit(1 - 0.1535),
       N_t0_f = log(500))                            # number of reproductive females
     
     ## Take a subset of the data if required
     df_select <- df[, ]
     
     ## Create the data object for nlminb()
-    dat <- list(alpha_m = 17,                         # maturity age for males (van=10, ges=17)
-                alpha_f = 19,                         # maturity age for females (van=10, ges=19)
+    dat <- list(alpha_m = 17,                 # maturity age for males (van=10, ges=17)
+                alpha_f = 19,                 # maturity age for females (van=10, ges=19)
                 
                 # r = log(1.0000),                      # the population growth rate
                 sigma_l = log(sigma_l),               # the measurement error on length
-                phi = boot::logit(1 - 0.1113),        # phi is the survival rate (van=0.1535, ges=0.1113)
+                # phi = boot::logit(1 - 0.1535),        # phi is the survival rate (van=0.1535, ges=0.1113)
                 
                 ESTIMATE_R = 2,                       # is r fixed (0), estimated (1), 
                                                       # or sex specific (2)?
@@ -116,7 +117,7 @@ scenario_fits <- lapply(1:nrow(pars), function(i) {
     ##                         are correct)
     # system.time({
     res <- nlminb(start = par, 
-                  objective = CKMRcpp::nllPOPCKMRcppAgeUnknownGestation, 
+                  objective = CKMRcpp::nllPOPCKMRcppAgeUnknown, 
                   dat = dat, 
                   control = list(trace = 1, rel.tol = 1e-7))
     # })

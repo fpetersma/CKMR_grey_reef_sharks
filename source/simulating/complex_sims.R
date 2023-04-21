@@ -47,7 +47,7 @@ no_gestation <- FALSE
 years <- 1915:2014             # number of years to run simulation
 
 ## Store simulated sets
-n_cores <- 50
+n_cores <- 30
 cl <- makeCluster(n_cores)
 # rm(simulated_data_sets)
 clusterExport(cl, c(ls()))

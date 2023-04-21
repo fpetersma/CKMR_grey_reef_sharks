@@ -39,7 +39,7 @@ no_gestation <- TRUE
 years <- 1915:2014             # number of years to run simulation
 
 ## Store simdata sets
-n_cores <- 50
+n_cores <- 30
 cl <- makeCluster(n_cores)
 # rm(simulated_data_sets)
 clusterExport(cl, c(ls()))
@@ -93,7 +93,7 @@ simulated_data_sets <- pblapply(1:1000, function(i) {
       femaleCurve = female_curve,
       no_gestation = no_gestation
     )
-    indiv_g <- indiv
+    
     ## 2. Survival
     indiv <- fishSim::mort(
       indiv = indiv, 

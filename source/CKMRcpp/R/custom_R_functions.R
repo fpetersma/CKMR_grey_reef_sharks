@@ -411,6 +411,25 @@ mateOrBirth <- function (indiv,
                          femaleCurve,
                          no_gestation = TRUE,
                          quiet = TRUE) {
+  ## START FOR DEBUGGING <<<------------
+  # indiv = indiv
+  # batchSize = batch_size
+  # fecundityDist = fecundity_dist # uniform is custom
+  # osr = sex_ratio
+  # year = year
+  # firstBreedFemale = first_breed_female
+  # firstBreedMale = first_breed_male
+  # firstLitter = first_litter # firstLitter is custom
+  # type = mate_type
+  # maxClutch = max_clutch
+  # singlePaternity = single_paternity 
+  # maleCurve = male_curve
+  # femaleCurve = female_curve
+  # no_gestation = no_gestation
+  # singlePaternity = TRUE 
+  # exhaustFathers = FALSE
+  ## END FOR DEBUGGING <<<-------------
+  
   if (!(type %in% c("flat", "age", "ageSex"))) {
     stop("'type' must be one of 'flat', 'age', or 'ageSex'.")
   }
@@ -421,19 +440,23 @@ mateOrBirth <- function (indiv,
   
   if (no_gestation) {
     ## Subset the birthing females
-    mothers <- subset(indiv, indiv[, 2] == 1 &   # are they female
-                        indiv[, 8] >= firstBreedFemale & # are they old enough to breed
-                        is.na(indiv[, 6]))       # are they alive
+    # mothers <- subset(indiv, indiv[, 2] == 1 &   # are they female
+    #                     indiv[, 8] >= firstBreedFemale & # are they old enough to breed
+    #                     is.na(indiv[, 6]))       # are they alive
+    mothers <- CKMRcpp::extractTheLiving(indiv, year = year, start_of_year = T, 
+                                         min_age = firstBreedFemale, sex = "female")
     if (nrow(mothers) == 0) {
       warning("There are no carrying females in the population")
     }
     ## Subset potential fathers
-    fathers <- subset(indiv, indiv[, 2] == 0 & 
-                        indiv[, 8] >= firstBreedMale & # only include males that were mature a year ago
-                        is.na(indiv[, 6])) # either alive 
+    # fathers <- subset(indiv, indiv[, 2] == 0 & 
+    #                     indiv[, 8] >= firstBreedMale & # only include males that were mature a year ago
+    #                     is.na(indiv[, 6])) # either alive 
+    fathers <- CKMRcpp::extractTheLiving(indiv, year = year, start_of_year = T, 
+                                         min_age = firstBreedMale, sex = "male")
     
     if (nrow(fathers) == 0) {
-      warning("There were no mature males in the population one year ago.")
+      warning("There were no mature males in the population.")
     }
   } else {
     ## Subset the birthing females
