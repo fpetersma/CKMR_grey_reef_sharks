@@ -1,0 +1,287 @@
+---
+title: "Effects on geometric distribution when there is growth/decline"
+author: "Felix T Petersma"
+date: "2023-06-19"
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, eval = TRUE)
+```
+
+## Introduction
+
+As the CKMR model currently stands, it contains a contradiction: yearly survival
+is the same for all age categories and denoted $\phi$. When a population is 
+in constant growth or decline, the age distribution is stable and geometric, 
+solely explained by $\phi$. However, even though our simulations all start at
+a stable age distribution with growth expectation approximately zero (i.e., 
+constant population size), our population dynamics are \emph{stochastic}. This
+means that the sex assignments are random with a 50:50 sex ratio; survival is a
+Bernoulli trial with survival probability $\phi$; and that, for the complex 
+species, fecundity $\beta$ is a random draw from the set \{3, 4, 5, 6\}, i.e., 
+$\mathbb{E}[\beta] = 4.5$. This randomness resulted in the majority of our 1000 
+realised population histories to be pretty much the same over the years, but 
+some showing decline or growth. To accommodate this, we also model yearly growth
+rate parameter $r$. At same time, we model the age distribution $f(a;\phi)$ 
+assuming a stable age structure, which, if there is any growth or decline, is
+not valid. In statistics we often make assumptions that oversimplify reality
+(in fact, this is the whole point of a model). The issue at hand is that we 
+have a contradiction \emph{within} the model, i.e., we assume a stable age 
+structure but also allow the model to fit growth or decline. 
+
+Ideally, one would find a way to come up with an age distribution that 
+accommodates this growth or decline. We believe that this is possible \emph{if}
+the observed growth or decline is a consequence of a deterministic process, 
+e.g., that reproduction 'outperforms' death. That is not the case here; our 
+realised growth or decline follows from random processes, chance so to say. 
+Maybe there were just a few years that many females were born, resulting in an
+abundance of mothers several years later. Or the Bernoulli trials for survival
+happened to let many individuals live. Maybe these events are more accurately 
+describe as 'shocks'. Either way, a model tries to capture the deterministic 
+processes, not random fluctuations. Therefore we see no way to incorporate
+the process that drive growth/decline in the age distribution, without 
+completely rethinking the way the distribution is determined and estimated 
+(e.g., with great white shark study by Richard Hillary et al. from 2018 in 
+Nature). Our assumed distribution $f(a)$ is correct in expectation, and thus
+we here explore the consequences of keeping it that way when stochastic 
+processes lead to growth or decline.
+
+For this, we construct a deterministic Leslie matrix for the simple species.
+This species has the following population history traits that are important:
++ Males and females both mature at age 10, and maturity is knife-edge;
++ Mature females produce two pups every year with a 50:50 sex ratio;
++ Females mate every year;
++ Males can father multiple litters, but there is only one father to any litter;
++ Survival is the same for all age categories, irrespective of sex;
++ The maximum age is 19, which means that no shark will every reach the age of 20.
+
+We only model the female side of the population, as females exclusively 
+determine total reproduction, given that that at least one mature male exists in
+the population. This means in effect that every mature female produces one 
+female offspring every year. 
+
+## Construction the Leslie matrix
+
+We now present the construction of the Leslie matrix through embedded \texttt{R} 
+code. Subsequently, we will do an eigenanalysis to extract the growth rate 
+(the dominant eigenvalue) and the asymptotic age distribution (the dominant
+eigenvector). In the section after that, we will experiment with stochastic 
+shocks to the system and their consequence to the growth rate and age 
+distribution. 
+
+```{r simple_leslie}
+## DEFINING THE LESLIE MATRIX
+## =============================
+
+survival <- 0.8465        # yearly survival for all age categories
+exp_fecun <- 2            # expected fecundity
+alpha <- 10               # age of maturity (knife-edge)
+max_age <- 19             # the maximum age
+
+## Initiate the matrix with zeros
+Leslie_simple <- matrix(0, nrow = max_age + 1, ncol = max_age + 1)
+
+## Define the first fecundity row, and only keep fecundity for mature categories
+fecun_row <- rep(exp_fecun / 2, times = max_age + 1)
+fecun_row[0:(max_age) < alpha] <- 0
+
+Leslie_simple[1, ] <- fecun_row
+
+## Create matrix with survival on the diagonal and zeros elsewhere, for survival
+surv_mat <- matrix(0, nrow = max_age, ncol = max_age)
+diag(surv_mat) <- survival
+
+Leslie_simple[2:(max_age + 1), 1:max_age] <- surv_mat
+```
+We now extract the dominant eigenvalue and eigenvector. Sometimes, these
+values and vector can be complex, which complicates things a bit. Luckily, our
+dominant ones are real, and we extract them below. We capture the real part 
+of a complex number using \texttt{Re()}.
+
+```{r simple_eigen_analysis}
+## Extract dominant eigenvalue and eigenvector
+orig_dom_value <- Re(eigen(Leslie_simple, symmetric=F)$values[1])    
+orig_dom_value    # close to 1, which is the expected growth rate 
+
+orig_dom_vector <- Re(eigen(Leslie_simple, symmetric=F)$vectors[, 1])
+
+## Create a plot to show the dominant distribution as a dashed line
+plot(y = orig_dom_vector / sum(orig_dom_vector), # divide by sum to be a pdf
+     x = 0:19, type = "l", ylab = "Probability density", xlab = "Age", 
+     lty = "dashed") 
+                                                   
+## Now add the 'true' geometric distribution as a solid line
+lines(x = 0:19, y = dgeom(0:19,  1 - survival))
+```
+
+The expected asymptotic age distribution is near-identical to the assumed 
+distribution. We now evaluate what happens when we start adding noise.
+
+## Fecundity is noisy, but unbiased
+
+We now add some random noise to the fecundity. Instead of fecundity being 2, it 
+is now $\mathcal{N}(2, 0.2^2)$, so the standard deviation is 10\% of 
+the expectation. This did visually nothing of importance, however, that is not 
+unexpected as our stochastic is small and has no pattern. The dominant 
+eigenvalue remained virtually unchanged (i.e. no growth or decline). 
+
+```{r}
+## Create a new fecundity row
+set.seed(707707)
+fecun_row <- (rep(exp_fecun, times = max_age + 1) + rnorm(20, 0, 0.2)) / 2
+fecun_row[0:(max_age) < alpha] <- 0
+
+Leslie_simple[1, ] <- fecun_row
+
+## Re extract the eigen value and vector, and plot
+dom_value <- Re(eigen(Leslie_simple, symmetric=F)$values[1])  
+dom_value
+
+dom_vector <- Re(eigen(Leslie_simple, symmetric=F)$vectors[, 1])
+
+## Recreate the old plot
+plot(y = orig_dom_vector / sum(orig_dom_vector), # divide by sum to be a pdf
+     x = 0:19, type = "l", ylab = "Probability density", xlab = "Age", 
+     lty = "dashed") 
+lines(x = 0:19, y = dgeom(0:19,  1 - survival))
+
+## Add the new stuff
+lines(x = 0:19, y = dom_vector / sum(dom_vector), col = "red")
+```
+
+## More or less female offspring
+
+We now explore the effects of a positive bias in the number of offspring of 20\%. 
+As total number of offspring per female is fixed at 2, this 20\% increase could 
+be the consequence of more females being produced than males. 
+
+```{r}
+fecun_row <- rep(exp_fecun / 2, times = max_age + 1) + 0.2 # 20% increase
+fecun_row[0:(max_age) < alpha] <- 0
+
+Leslie_simple[1, ] <- fecun_row
+
+## Re extract the eigen value and vector, and plot
+dom_value <- Re(eigen(Leslie_simple, symmetric=F)$values[1])  
+dom_value
+
+dom_vector <- Re(eigen(Leslie_simple, symmetric=F)$vectors[, 1])
+
+## Recreate the old plot
+plot(y = orig_dom_vector / sum(orig_dom_vector), # divide by sum to be a pdf
+     x = 0:19, type = "l", ylab = "Probability density", xlab = "Age", 
+     lty = "dashed", 
+     main = paste0("Yearly growth rate: ", round(dom_value - 1, 3) * 100, "%")) 
+lines(x = 0:19, y = dgeom(0:19,  1 - survival))
+
+## Add the new stuff
+lines(x = 0:19, y = dom_vector / sum(dom_vector), col = "red")
+
+```
+
+and what if more males are being born than females, resulting in a decline in 
+female offspring of 20\%?
+
+```{r}
+fecun_row <- rep(exp_fecun / 2, times = max_age + 1) - 0.2 # 20% increase
+fecun_row[0:(max_age) < alpha] <- 0
+
+Leslie_simple[1, ] <- fecun_row
+
+## Re extract the eigen value and vector, and plot
+dom_value <- Re(eigen(Leslie_simple, symmetric=F)$values[1])  
+dom_value
+
+dom_vector <- Re(eigen(Leslie_simple, symmetric=F)$vectors[, 1])
+
+## Recreate the old plot
+plot(y = orig_dom_vector / sum(orig_dom_vector), # divide by sum to be a pdf
+     x = 0:19, type = "l", ylab = "Probability density", xlab = "Age", 
+     lty = "dashed", 
+     main = paste0("Yearly growth rate: ", round(dom_value - 1, 3) * 100, "%")) 
+lines(x = 0:19, y = dgeom(0:19,  1 - survival))
+
+## Add the new stuff
+lines(x = 0:19, y = dom_vector / sum(dom_vector), col = "red")
+
+```
+
+## Survival is higher than
+
+Now we explore the case where, due to randomness, survival is higher than 
+expected. 
+
+```{r}
+## Set fecundity to original
+fecun_row <- rep(exp_fecun / 2, times = max_age + 1) 
+fecun_row[0:(max_age) < alpha] <- 0
+
+Leslie_simple[1, ] <- fecun_row
+
+## Now change the survival part
+surv_mat <- matrix(0, nrow = max_age, ncol = max_age)
+diag(surv_mat) <- survival * 1.1        # 10% increase
+
+Leslie_simple[2:(max_age + 1), 1:max_age] <- surv_mat
+
+## Re extract the eigen value and vector, and plot
+dom_value <- Re(eigen(Leslie_simple, symmetric=F)$values[1])  
+dom_value
+
+dom_vector <- Re(eigen(Leslie_simple, symmetric=F)$vectors[, 1])
+
+## Recreate the old plot
+plot(y = orig_dom_vector / sum(orig_dom_vector), # divide by sum to be a pdf
+     x = 0:19, type = "l", ylab = "Probability density", xlab = "Age", 
+     lty = "dashed", 
+     main = paste0("Yearly growth rate: ", round(dom_value - 1, 3) * 100, "%")) 
+lines(x = 0:19, y = dgeom(0:19,  1 - survival))
+
+## Add the new stuff
+lines(x = 0:19, y = dom_vector / sum(dom_vector), col = "red")
+
+```
+
+Of course, increasing overall survival does nothing to the distribution. Still, 
+it is nice to see the empirical confirmation of this. We could change the 
+survival for only some categories, but then the age distribution is just going 
+to follow that distribution. Let's add some noise to the distribution with a 
+small bias in it.
+
+```{r}
+## Set fecundity to original
+fecun_row <- rep(exp_fecun / 2, times = max_age + 1) 
+fecun_row[0:(max_age) < alpha] <- 0
+
+Leslie_simple[1, ] <- fecun_row
+
+## Now change the survival part
+surv_mat <- matrix(0, nrow = max_age, ncol = max_age)
+diag(surv_mat) <- rep(survival, 19) + rnorm(19, 0.02, 0.1)  # 2% increase, sd=0.1
+
+Leslie_simple[2:(max_age + 1), 1:max_age] <- surv_mat
+
+## Re extract the eigen value and vector, and plot
+dom_value <- Re(eigen(Leslie_simple, symmetric=F)$values[1])  
+dom_value
+
+dom_vector <- Re(eigen(Leslie_simple, symmetric=F)$vectors[, 1])
+
+## Recreate the old plot
+plot(y = orig_dom_vector / sum(orig_dom_vector), # divide by sum to be a pdf
+     x = 0:19, type = "l", ylab = "Probability density", xlab = "Age", 
+     lty = "dashed", 
+     main = paste0("Yearly growth rate: ", round(dom_value - 1, 3) * 100, "%")) 
+lines(x = 0:19, y = dgeom(0:19,  1 - survival))
+
+## Add the new stuff
+lines(x = 0:19, y = dom_vector / sum(dom_vector), col = "red")
+```
+
+This looks a little funky, but still, it is not bad, and already associated with
+a pretty high yearly growth rate. I am not very unhappy with the approximation
+of not assuming this 
