@@ -48,7 +48,9 @@ completely rethinking the way the distribution is determined and estimated
 (e.g., with great white shark study by Richard Hillary et al. from 2018 in 
 Nature). Our assumed distribution $f(a)$ is correct in expectation, and thus
 we here explore the consequences of keeping it that way when stochastic 
-processes lead to growth or decline.
+processes lead to growth or decline. It should be noted that, even though the
+randomness led to growth or decline, this yearly decline or growth was always
+contained in the interval $\pm 0.3\%$. 
 
 For this, we construct a deterministic Leslie matrix for the simple species.
 This species has the following population history traits that are important:
@@ -63,6 +65,7 @@ We only model the female side of the population, as females exclusively
 determine total reproduction, given that that at least one mature male exists in
 the population. This means in effect that every mature female produces one 
 female offspring every year. 
+
 
 ## Construction the Leslie matrix
 
@@ -112,10 +115,10 @@ orig_dom_vector <- Re(eigen(Leslie_simple, symmetric=F)$vectors[, 1])
 ## Create a plot to show the dominant distribution as a dashed line
 plot(y = orig_dom_vector / sum(orig_dom_vector), # divide by sum to be a pdf
      x = 0:19, type = "l", ylab = "Probability density", xlab = "Age", 
-     lty = "dashed") 
+     lty = "dashed", lwd = 1.5) 
                                                    
 ## Now add the 'true' geometric distribution as a solid line
-lines(x = 0:19, y = dgeom(0:19,  1 - survival))
+lines(x = 0:19, y = dgeom(0:19,  1 - survival) / pgeom(19, 1 - survival))
 ```
 
 The expected asymptotic age distribution is near-identical to the assumed 
@@ -146,11 +149,11 @@ dom_vector <- Re(eigen(Leslie_simple, symmetric=F)$vectors[, 1])
 ## Recreate the old plot
 plot(y = orig_dom_vector / sum(orig_dom_vector), # divide by sum to be a pdf
      x = 0:19, type = "l", ylab = "Probability density", xlab = "Age", 
-     lty = "dashed") 
-lines(x = 0:19, y = dgeom(0:19,  1 - survival))
-
+     lty = "dashed", lwd = 1.5) 
+lines(x = 0:19, y = dgeom(0:19,  1 - (survival / dom_value)) / 
+  pgeom(19, prob = 1 - (survival / dom_value)))
 ## Add the new stuff
-lines(x = 0:19, y = dom_vector / sum(dom_vector), col = "red")
+lines(x = 0:19, y = dom_vector / sum(dom_vector), col = "red", lty = "dashed")
 ```
 
 ## More or less female offspring
@@ -174,12 +177,12 @@ dom_vector <- Re(eigen(Leslie_simple, symmetric=F)$vectors[, 1])
 ## Recreate the old plot
 plot(y = orig_dom_vector / sum(orig_dom_vector), # divide by sum to be a pdf
      x = 0:19, type = "l", ylab = "Probability density", xlab = "Age", 
-     lty = "dashed", 
+     lty = "dashed", lwd = 1.5, 
      main = paste0("Yearly growth rate: ", round(dom_value - 1, 3) * 100, "%")) 
-lines(x = 0:19, y = dgeom(0:19,  1 - survival))
-
+lines(x = 0:19, y = dgeom(0:19,  1 - (survival / dom_value)) / 
+  pgeom(19, prob = 1 - (survival / dom_value)))
 ## Add the new stuff
-lines(x = 0:19, y = dom_vector / sum(dom_vector), col = "red")
+lines(x = 0:19, y = dom_vector / sum(dom_vector), col = "red", lty = "dashed")
 
 ```
 
@@ -201,18 +204,19 @@ dom_vector <- Re(eigen(Leslie_simple, symmetric=F)$vectors[, 1])
 ## Recreate the old plot
 plot(y = orig_dom_vector / sum(orig_dom_vector), # divide by sum to be a pdf
      x = 0:19, type = "l", ylab = "Probability density", xlab = "Age", 
-     lty = "dashed", 
+     lty = "dashed", lwd = 1.5, 
      main = paste0("Yearly growth rate: ", round(dom_value - 1, 3) * 100, "%")) 
-lines(x = 0:19, y = dgeom(0:19,  1 - survival))
+lines(x = 0:19, y = dgeom(0:19,  1 - (survival / dom_value)) / 
+  pgeom(19, prob = 1 - (survival / dom_value)))
 
 ## Add the new stuff
-lines(x = 0:19, y = dom_vector / sum(dom_vector), col = "red")
+lines(x = 0:19, y = dom_vector / sum(dom_vector), col = "red", lty = "dashed")
 
 ```
 
 ## Survival is higher than
 
-Now we explore the case where, due to randomness, survival is higher than 
+Now we explore the case where, due to randomness, survival is lower than 
 expected. 
 
 ```{r}
@@ -224,7 +228,7 @@ Leslie_simple[1, ] <- fecun_row
 
 ## Now change the survival part
 surv_mat <- matrix(0, nrow = max_age, ncol = max_age)
-diag(surv_mat) <- survival * 1.1        # 10% increase
+diag(surv_mat) <- survival * 0.7    # 30% decrease
 
 Leslie_simple[2:(max_age + 1), 1:max_age] <- surv_mat
 
@@ -237,12 +241,13 @@ dom_vector <- Re(eigen(Leslie_simple, symmetric=F)$vectors[, 1])
 ## Recreate the old plot
 plot(y = orig_dom_vector / sum(orig_dom_vector), # divide by sum to be a pdf
      x = 0:19, type = "l", ylab = "Probability density", xlab = "Age", 
-     lty = "dashed", 
+     lty = "dashed", lwd = 1.5, 
      main = paste0("Yearly growth rate: ", round(dom_value - 1, 3) * 100, "%")) 
-lines(x = 0:19, y = dgeom(0:19,  1 - survival))
-
-## Add the new stuff
-lines(x = 0:19, y = dom_vector / sum(dom_vector), col = "red")
+# lines(x = 0:19, y = dgeom(0:19,  1 - survival * 0.5) / pgeom(19, prob = 1 - survival * 0.5))
+lines(x = 0:19, y = dgeom(0:19,  1 - (survival * 0.7 / dom_value)) / 
+  pgeom(19, prob = 1 - (survival * 0.7 / dom_value)))
+## Add the new stuff in red
+lines(x = 0:19, y = dom_vector / sum(dom_vector), col = "red", lty = "dashed")
 
 ```
 
@@ -274,14 +279,142 @@ dom_vector <- Re(eigen(Leslie_simple, symmetric=F)$vectors[, 1])
 ## Recreate the old plot
 plot(y = orig_dom_vector / sum(orig_dom_vector), # divide by sum to be a pdf
      x = 0:19, type = "l", ylab = "Probability density", xlab = "Age", 
-     lty = "dashed", 
+     lty = "dashed", lwd = 1.5, 
      main = paste0("Yearly growth rate: ", round(dom_value - 1, 3) * 100, "%")) 
-lines(x = 0:19, y = dgeom(0:19,  1 - survival))
+lines(x = 0:19, y = dgeom(0:19,  1 - survival) / pgeom(19, prob = 1 - survival))
 
 ## Add the new stuff
-lines(x = 0:19, y = dom_vector / sum(dom_vector), col = "red")
+lines(x = 0:19, y = dom_vector / sum(dom_vector), col = "red", lty = "dashed")
 ```
 
 This looks a little funky, but still, it is not bad, and already associated with
-a pretty high yearly growth rate. I am not very unhappy with the approximation
-of not assuming this 
+a pretty high yearly growth rate. I guess a question remains is whether the 
+age distribution concerns the true age distribution in the population, or the 
+sample age distribution. As sampling is random, these two should be the same,
+intuitively, but it is worth a discussion. 
+
+In other words, the assumption, in my view, is valid to match the truth. However,
+for a given model, we fix survival and we allow for growth. If it then turns out
+that the model finds 15\% growth per year, for example, that can only come from
+higher fecundity, either through large litters (for the complex) or through the
+sex assignment (for simple and complex). 
+
+
+```{r}
+fecun_row <- rep(exp_fecun / 2, times = max_age + 1) + 0.5 # 50% increase
+fecun_row[0:(max_age) < alpha] <- 0
+
+Leslie_simple[1, ] <- fecun_row
+
+## Reset the survival part
+surv_mat <- matrix(0, nrow = max_age, ncol = max_age)
+diag(surv_mat) <- rep(survival, 19) 
+
+Leslie_simple[2:(max_age + 1), 1:max_age] <- surv_mat
+
+## Re extract the eigen value and vector, and plot
+dom_value <- Re(eigen(Leslie_simple, symmetric=F)$values[1])  
+dom_value
+
+dom_vector <- Re(eigen(Leslie_simple, symmetric=F)$vectors[, 1])
+
+## Recreate the old plot
+plot(y = orig_dom_vector / sum(orig_dom_vector), # divide by sum to be a pdf
+     x = 0:19, type = "l", ylab = "Probability density", xlab = "Age", 
+     lty = "dashed", lwd = 1.5, 
+     main = paste0("Yearly growth rate: ", round(dom_value - 1, 3) * 100, "%")) 
+lines(x = 0:19, y = dgeom(0:19,  1 - (survival / dom_value)) / 
+  pgeom(19, prob = 1 - (survival / dom_value)))
+
+## Add the new stuff
+lines(x = 0:19, y = dom_vector / sum(dom_vector), col = "red", lty = "dashed")
+
+```
+
+I think I now finally and truly understand what is the problem here. Basically, 
+the model has a fixed survival parameter $\phi$. Since the distribution on age
+$f(a; \phi)$ is parameterised only by $phi$, that means that $f(a)$ is fixed
+and given, too. This is fine, even when there is population growth or decline.
+But the survival parameter was chosen in a way that ensures, for this system
+of sharks with a given reproduction, that it the expected growth is zero. If we
+then find growth, and survival is still fixed and known, then this growth can 
+\emph{only} follow from an increase in female abundance through reproduction. 
+This means that the distribution in ages is no longer determined by the 
+parameter $phi$ exclusively, but also in some way by growth rate, which is 
+a function of the increased fecundity. 
+
+We build on the previous figures and experiment to get the following. It seems 
+that the distribution on ages is still geometric but the growth parameter is now
+equal to survival divided by growth rate. 
+
+```{r}
+## Recreate the old plot
+plot(y = orig_dom_vector / sum(orig_dom_vector), # divide by sum to be a pdf
+     x = 0:19, type = "l", ylab = "Probability density", xlab = "Age", 
+     lty = "dashed", lwd = 1.5, 
+     main = paste0("Yearly growth rate: ", round(dom_value - 1, 3) * 100, "%")) 
+lines(x = 0:19, y = dgeom(0:19,  1 - (survival / dom_value)) / 
+  pgeom(19, prob = 1 - (survival / dom_value)))
+
+## Add the new stuff
+lines(x = 0:19, y = dom_vector / sum(dom_vector), col = "red", lty = "dashed")
+```
+
+We now test it again, with a massive decline.
+
+```{r}
+fecun_row <- rep(exp_fecun / 2, times = max_age + 1) - 0.7 # 70% increase
+fecun_row[0:(max_age) < alpha] <- 0
+
+Leslie_simple[1, ] <- fecun_row
+
+## Reset the survival part
+surv_mat <- matrix(0, nrow = max_age, ncol = max_age)
+diag(surv_mat) <- rep(survival, 19) 
+
+Leslie_simple[2:(max_age + 1), 1:max_age] <- surv_mat
+
+## Re extract the eigen value and vector, and plot
+dom_value <- Re(eigen(Leslie_simple, symmetric=F)$values[1])  
+dom_value
+
+dom_vector <- Re(eigen(Leslie_simple, symmetric=F)$vectors[, 1])
+
+## Recreate the old plot
+plot(y = orig_dom_vector / sum(orig_dom_vector), # divide by sum to be a pdf
+     x = 0:19, type = "l", ylab = "Probability density", xlab = "Age", 
+     lty = "dashed", lwd = 1.5, 
+     main = paste0("Yearly growth rate: ", round(dom_value - 1, 3) * 100, "%")) 
+lines(x = 0:19, y = dgeom(0:19,  1 - (survival / dom_value)) / 
+  pgeom(19, prob = 1 - (survival / dom_value)))
+
+## Add the new stuff
+lines(x = 0:19, y = dom_vector / sum(dom_vector), col = "red", lty = "dashed")
+
+```
+
+It is the same! This is the way to think: imagine that our fecundity in the 
+simulation was not 2 but 3. In order to get a population that had zero growth,
+we would have to reduce survival. This would make the geometric age distribution
+more bendy away from the diagonal, as it meant that fewer animals survived to
+the subsequent year. If my model finds growth, and my survival is fixed, then this 
+means that the fecundity is higher than two and thus the age distribution should 
+be more bendy away from the diagonal. This means that the shape of the age
+distribution is the same as if we had no growth with higher fecundity, and thus 
+the parameter drive the age distribution should be smaller than survival. In fact,
+it turns out that it is survival divided by growth rate, where a  growth rate of
+1 means no growth. I think that is exactly what Mark said, which was that the 
+log-number-at-age, which is the log of the geometric age distribution, is not
+determined by survival but survival minor growth rate, on the log scale. Which 
+seems to be the same as what I am finding here. Amazing. 
+
+## Some thoughts the next morning
+
+Okay, what I think is important to know is that the distribuiton that I am now
+finding, the one that is adjusted for growth, is the \emph{asymptotic} 
+distribution, and not the current true distribution. This is because, if the
+population is in a stable age distribution and then changes, it will approximate
+the new stable age distribution but will never reach it.
+
+Also, I still haven't figured out why exactly it is, for any given $\phi$, that
+the asymptotic age distribution is geometric with parameter $\phi / r$. 
