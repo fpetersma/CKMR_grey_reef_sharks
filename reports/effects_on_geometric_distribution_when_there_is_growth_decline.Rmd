@@ -410,7 +410,7 @@ seems to be the same as what I am finding here. Amazing.
 
 ## Some thoughts the next morning
 
-Okay, what I think is important to know is that the distribuiton that I am now
+Okay, what I think is important to know is that the distribution that I am now
 finding, the one that is adjusted for growth, is the \emph{asymptotic} 
 distribution, and not the current true distribution. This is because, if the
 population is in a stable age distribution and then changes, it will approximate
