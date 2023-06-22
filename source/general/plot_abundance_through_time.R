@@ -5,11 +5,11 @@ library(tidyverse)
 library(Rfast)
 library(ggplot2)
 
-# load("data/simulation_study/complex/simulation_1000_schemes_all_scenarios_fit_results_sim=all.RData")
-# load("data/simulation_study/complex/1000_schemes_combined_data_with_N_hist_sim=all.RData")
+# load("data/simulation_study/simple/simulation_1000_schemes_all_scenarios_fit_results_sim=all.RData")
+# load("data/simulation_study/simple/1000_schemes_combined_data_with_N_hist_sim=all.RData")
 
-load("data/simulation_study/vanilla/simulation_1000_schemes_all_scenarios_fit_results_sim=all.RData")
-load("data/simulation_study/vanilla/1000_schemes_combined_data_with_N_hist_sim=all.RData")
+load("data/simulation_study/complex/simulation_1000_schemes_all_scenarios_fit_results_sim=all.RData")
+load("data/simulation_study/complex/1000_schemes_combined_data_with_N_hist_sim=all.RData")
 
 ## =============================================================================
 ## 2. CREATE THE MASTER DATA FRAME
@@ -18,7 +18,7 @@ load("data/simulation_study/vanilla/1000_schemes_combined_data_with_N_hist_sim=a
 ## Set constants
 year_lim <- c(-19, 0)
 n_years <- year_lim[2] - year_lim[1] + 1
-y0 <- 2014
+y0 <- 100
 max_y_axis <- 1000
 
 ## -----------------------
@@ -148,6 +148,7 @@ p_m
 p_f
 
 ## Save the plots as svg with dimensions 1100x700 [manually]
+## name: "[sex]_error_trend_[species].svg" (eg "female_error_trend_simple.svg")
 
 hist(sapply(scenario_fits[[13]], function(fit) fit$par[,3]))
 

@@ -32,8 +32,8 @@ true_N_f <- t(sapply(combined_data_vanilla, function(x) return(x$N_hist[, "N_f"]
 N_male_2014 <- true_N_m[, 100]
 N_female_2014 <- true_N_f[, 100]
 
-r_male <- (true_N_m[, 100] / true_N_m[, 1]) ^ (1 / 99)
-r_female <- (true_N_f[, 100] / true_N_m[, 1]) ^ (1 / 99)
+r_male <- (true_N_m[, 100] / true_N_m[, 1]) ^ (1 / 99) + 1
+r_female <- (true_N_f[, 100] / true_N_m[, 1]) ^ (1 / 99) + 1
 
 summary(n_POPs) # 25-76
 summary(n_selfs) # 4-25
@@ -57,8 +57,8 @@ true_N_f <- t(sapply(combined_data_complex, function(x) return(x$N_hist[, "N_f"]
 N_male_2014 <- true_N_m[, 100]
 N_female_2014 <- true_N_f[, 100]
 
-r_male <- (true_N_m[, 100] / true_N_m[, 1]) ^ (1 / 99)
-r_female <- (true_N_f[, 100] / true_N_m[, 1]) ^ (1 / 99)
+r_male <- (true_N_m[, 100] / true_N_m[, 1]) ^ (1 / 99) + 1
+r_female <- (true_N_f[, 100] / true_N_m[, 1]) ^ (1 / 99) + 1
 
 summary(n_POPs) # 25-76
 summary(n_selfs) # 4-25
@@ -66,3 +66,4 @@ summary(N_male_2014) # 600-1019
 summary(N_female_2014) # 630-992
 summary(r_male) - 1 # -0.3% to +0.3%
 summary(r_female) - 1 #-0.3% to +0.3%
+  

@@ -9,7 +9,7 @@
 ##      + mean absolute error
 ##      + mean square error
 ##      + coefficient of variation
-##    These metrics will be derived for male and female abundance in y0 = 2014,
+##    These metrics will be derived for male and female abundance in y0 = 100,
 ##    the growth rates, and any other parameters of interest. This information 
 ##    will be stored in a big data.frame, which can be used to create tables 
 ##    for the manuscript.
@@ -22,8 +22,8 @@ library(tidyverse)
 library(Rfast)
 library(kableExtra)
 
-load("data/simulation_study/vanilla/simulation_1000_schemes_all_scenarios_fit_results_sim=all.RData")
-load("data/simulation_study/vanilla/1000_schemes_combined_data_with_N_hist_sim=all.RData")
+load("data/simulation_study/simple/simulation_1000_schemes_all_scenarios_fit_results_sim=all.RData")
+load("data/simulation_study/simple/1000_schemes_combined_data_with_N_hist_sim=all.RData")
 
 # load("data/simulation_study/complex/simulation_1000_schemes_all_scenarios_fit_results_sim=all.RData")
 # load("data/simulation_study/complex/1000_schemes_combined_data_with_N_hist_sim=all.RData")
@@ -253,6 +253,8 @@ coeff_var <- data.frame(N_f_y0 = apply(est_N_f_y0, 2, raster::cv),
                  N_m_10 = apply(est_N_m_10, 2, raster::cv), 
                  r_f = apply(est_r_f, 2, raster::cv), 
                  r_m = apply(est_r_m, 2, raster::cv))
+
+coeff_var <- std_dev_error / mean_est * 100
 
 ## =============================================================================
 ## 3. CREATE FIGURES AND TABLES FOR MANUSCRIPT
@@ -497,13 +499,13 @@ lay <- rbind(c(1),
 p <- grid.arrange(y0_plot + 
                     theme(legend.position = "none",
                           axis.text.x = element_blank()) +
-                    ylab("Relative error\nabundance (2014)") +
+                    ylab("Relative error\nabundance (100)") +
                     xlab(element_blank()) +
                     coord_cartesian(ylim=c(-100, 500)), # truncate without removing values outside
                   mean_y_10_plot +
                     theme(legend.position = "none",
                           axis.text.x = element_blank()) +
-                    ylab("Relative error\nmean abundance (2009-2014)") +
+                    ylab("Relative error\nmean abundance (96-100)") +
                     xlab(element_blank()) +
                     coord_cartesian(ylim=c(-100, 500)), # truncate  without removing values outside
                   r_plot + 
@@ -556,7 +558,7 @@ labels <- c("Scen.",
             # "Mean Est.", 
             # "Std. Dev.", 
             # "CV", 
-            "Mnd. Rel. Err",
+            "Mnd. Rel. Err.",
             "Mean Rel. Err.",
             "Mdn. Err.", 
             "Mean Err.", 
@@ -581,3 +583,60 @@ kable(summary_r_f, booktabs = T, format = "latex", digits = 3,
 
 kable(summary_r_m, booktabs = T, format = "latex", digits = 3,
       col.names = labels, row.names = F, linesep = "", caption = caption)
+
+
+## =============================================================================
+## 4. CREATE STANDARD DEVIATION AND CV TABLES FOR APPENDIX D
+## =============================================================================
+
+## Create tables for CV and SD similar to "estimate_variance_mle.R" 
+
+## Run section 1 and 2 above first for vanilla, then run lines below
+sd_vanilla <- std_dev_error[conv, c(6, 5, 2, 1)]
+cv_vanilla <- coeff_var[conv, c(6, 5, 2, 1)]
+
+## Now run section 1 and 2 for the complex species, then run lines below
+sd_complex <- std_dev_error[conv, c(6, 5, 2, 1)]
+cv_complex <- coeff_var[conv, c(6, 5, 2, 1)]
+
+## Now create tables using lines below
+sd_df <- cbind(data.frame(paste0(rep(1:5, each=5), "-", rep(1:5, rep=5))[conv]), 
+               sd_vanilla, sd_complex)
+cv_df <- cbind(data.frame(paste0(rep(1:5, each=5), "-", rep(1:5, rep=5))[conv]),  
+               cv_vanilla, cv_complex)
+
+colnames(sd_df) <- c("scenario", 
+                     "simple_r_m", "simple_r_f" , "simple_N_y0_m" , "simple_N_y0_f",
+                     "complex_r_m", "complex_r_f" , "complex_N_y0_m" , "complex_N_y0_f")
+colnames(cv_df) <- c("scenario", 
+                     "simple_r_m", "simple_r_f" , "simple_N_y0_m" , "simple_N_y0_f",
+                     "complex_r_m", "complex_r_f" , "complex_N_y0_m" , "complex_N_y0_f") 
+
+## Create tables for latex
+library(kableExtra)
+
+labels <- c("Scenario", 
+            "$r_{male}$", 
+            "$r_{female}$", 
+            "$N^A_{male, 2014}$", 
+            "$N^A_{female, 2014}$", 
+            "$r_{male}$", 
+            "$r_{female}$",
+            "$N^A_{male, 2014}$", 
+            "$N^A_{female, 2014}$")
+
+caption <- "" 
+kable(sd_df, booktabs = T, 
+      format = "latex", 
+      digits = 2,
+      col.names = labels, 
+      row.names = F, linesep = "", caption = caption) %>%
+  add_header_above( c(" " = 1, "Vanilla species" = 4, "Complex species" = 4))
+
+caption <- "" 
+kable(cv_df, booktabs = T, 
+      format = "latex", 
+      digits = 2,
+      col.names = labels, 
+      row.names = F, linesep = "", caption = caption) %>% 
+  add_header_above( c(" " = 1, "Vanilla species" = 4, "Complex species" = 4))
