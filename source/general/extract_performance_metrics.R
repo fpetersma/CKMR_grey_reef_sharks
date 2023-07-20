@@ -206,11 +206,11 @@ variance <- std_dev ^ 2
 ## Coefficient of variation (works as the support for these estimates is 
 ## strictly positive)
 coeff_var <- data.frame(N_f_y0 = apply(est_N_f_y0, 2, raster::cv),
-                 N_m_y0 = apply(est_N_m_y0, 2, raster::cv), 
-                 N_f_10 = apply(est_N_f_10, 2, raster::cv),
-                 N_m_10 = apply(est_N_m_10, 2, raster::cv), 
-                 r_f = apply(est_r_f, 2, raster::cv), 
-                 r_m = apply(est_r_m, 2, raster::cv))
+               N_m_y0 = apply(est_N_m_y0, 2, raster::cv), 
+               N_f_10 = apply(est_N_f_10, 2, raster::cv),
+               N_m_10 = apply(est_N_m_10, 2, raster::cv), 
+               r_f = apply(est_r_f, 2, raster::cv), 
+               r_m = apply(est_r_m, 2, raster::cv))
 
 ## =============================================================================
 ## 3. CREATE FIGURES AND TABLES FOR MANUSCRIPT

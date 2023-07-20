@@ -163,7 +163,7 @@ As total number of offspring per female is fixed at 2, this 20\% increase could
 be the consequence of more females being produced than males. 
 
 ```{r}
-fecun_row <- rep(exp_fecun / 2, times = max_age + 1) + 0.2 # 20% increase
+fecun_row <- rep(exp_fecun / 2, times = max_age + 1) * 1.2 # 20% increase
 fecun_row[0:(max_age) < alpha] <- 0
 
 Leslie_simple[1, ] <- fecun_row
@@ -190,7 +190,7 @@ and what if more males are being born than females, resulting in a decline in
 female offspring of 20\%?
 
 ```{r}
-fecun_row <- rep(exp_fecun / 2, times = max_age + 1) - 0.2 # 20% increase
+fecun_row <- rep(exp_fecun / 2, times = max_age + 1) - 0.2 # 20% decrease
 fecun_row[0:(max_age) < alpha] <- 0
 
 Leslie_simple[1, ] <- fecun_row
@@ -418,3 +418,18 @@ the new stable age distribution but will never reach it.
 
 Also, I still haven't figured out why exactly it is, for any given $\phi$, that
 the asymptotic age distribution is geometric with parameter $\phi / r$. 
+
+<!-- ## A potential solution -->
+
+<!-- So, I had a thought about population size, and the information we know.  -->
+<!-- Population growth is defined by the function $N_{t}= N_{t_0} \times r ^ {t - t_0}$. -->
+<!-- Here, $r$ is a combination of reproductive rate and mortality rate. If there is  -->
+<!-- no reproduction, $N_{t+1} = \bar{\phi} N_t = \phi N_t $, since survival is the  -->
+<!-- same for all age categories. If not, there would have been some averaging here.  -->
+<!-- If there were no survival, then $N_{t+1} = \bar{\beta}N_t$, where  -->
+<!-- total reproductive output equal average fecundity rate $\bar{\beta}}$  -->
+<!-- multiplied by $N_t$, which is valid only if the age distribution is stable.  -->
+<!-- The combination of these two determines $N_t$ is there is fecundity *and*  -->
+<!-- mortality, i.e., $N_{t+1} = (\bar{\beta} + \phi )N_t$. If we generalise to more -->
+<!-- than one time step, this becomes $N_{t} = (\bar{\beta} + \phi)^{t- t_0}N_{t_0}$. -->
+<!-- So, $r = \bar{\beta} + \phi$ -->
