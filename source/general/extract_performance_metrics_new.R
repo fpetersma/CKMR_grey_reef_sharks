@@ -22,10 +22,12 @@ library(tidyverse)
 library(Rfast)
 library(kableExtra)
 
-load("data/simulation_study/simple/simulation_1000_schemes_all_scenarios_fit_results_sim=all.RData")
+NO_GROWTH <- TRUE
+
+load("data/simulation_study/simple/simulation_1000_schemes_all_scenarios_fit_results_sim=all_no_growth.RData")
 load("data/simulation_study/simple/1000_schemes_combined_data_with_N_hist_sim=all.RData")
 
-# load("data/simulation_study/complex/simulation_1000_schemes_all_scenarios_fit_results_sim=all.RData")
+# load("data/simulation_study/complex/simulation_1000_schemes_all_scenarios_fit_results_sim=all_no_growth.RData")
 # load("data/simulation_study/complex/1000_schemes_combined_data_with_N_hist_sim=all.RData")
 
 ## =============================================================================
@@ -34,7 +36,9 @@ load("data/simulation_study/simple/1000_schemes_combined_data_with_N_hist_sim=al
 
 ## Extract failed fit scenarios
 conv <- sapply(scenario_fits, function(scen) {
-  all(sapply(scen, function(fit) fit$message) == "relative convergence (4)")
+  # all(sapply(scen, function(fit) fit$message) == "relative convergence (3)")
+  # all(sapply(scen, function(fit) fit$convergence == 0))
+  all(sapply(scen, function(fit) !is.infinite(fit$objective)))
 })
 names(conv) <- 1:25
 
@@ -45,8 +49,8 @@ true_N_f <- t(sapply(combined_data, function(dat) return(dat$N_hist[, "N_f"]))) 
 true_N_m_y0 <- true_N_m[, 100]
 true_N_f_y0 <- true_N_f[, 100]
 
-true_N_m_10 <- rowMeans(true_N_m[, 96:100]) # for 5
-true_N_f_10 <- rowMeans(true_N_f[, 96:100]) # for 5
+true_N_m_5 <- rowMeans(true_N_m[, 96:100]) # for 5
+true_N_f_5 <- rowMeans(true_N_f[, 96:100]) # for 5
 
 true_r_m <- (true_N_m_y0 / true_N_m[, 1]) ^ (1 / 99)
 true_r_f <- (true_N_f_y0 / true_N_f[, 1]) ^ (1 / 99)
@@ -73,32 +77,31 @@ est_r_f <- sapply(scenario_fits, function(scen) { # mature female growth rate
 }) 
 est_r_f[, !conv] <- NA # set failed convergence estimates to NA
 
-
-
-
 ## ------------------------------------------------------
-## Calculate the abundance averages for the past 10 years 
+## Calculate the abundance averages for the past 5 years 
 ## ------------------------------------------------------
 ## The male abundance
-est_N_m_10 <- sapply(scenario_fits, function(scen) { # mature female abundance
+est_N_m_5 <- sapply(scenario_fits, function(scen) { # mature female abundance
   vec <- sapply(scen, function(fit) {
     N_y0 <- exp(fit$par["N_t0_m"])
-    r_10 <- exp(fit$par["r_m"]) ^ (-4:0) # actually 5 years now
-    N_10 <- N_y0 * r_10
-    return(mean(N_10))
+    r_5 <- exp(fit$par["r_m"]) ^ (-4:0) # actually 5 years now
+    N_5 <- N_y0 * r_5
+    return(mean(N_5))
   })
   ## set to NA if there was failed convergence
-  if (!all(sapply(scen, function(fit) fit$message) == "relative convergence (4)")) {
-    vec <- matrix(NA, nrow = 1, ncol = 1000)
+  # if (!all(sapply(scen, function(fit) fit$message) == "relative convergence (4)")) {
+  if (any(is.infinite(sapply(scen, function(fit) fit$objective)))) {
+    # vec <- matrix(NA, nrow = 1, ncol = 1000)
+    vec <- rep(NA, 1000)
   }
   return(vec)
 }, simplify = "array") 
 
-error_N_m_10 <- est_N_m_10 - matrix(true_N_m_10, ncol = 25, nrow = 1000)
+error_N_m_5 <- est_N_m_5 - matrix(true_N_m_5, ncol = ncol(est_N_m_5), nrow = 1000)
 
-bias_N_m_10 <- error_N_m_10 / matrix(true_N_m_10, ncol = 25, nrow = 1000) * 100
+bias_N_m_5 <- error_N_m_5 / matrix(true_N_m_5, ncol = ncol(error_N_m_5), nrow = 1000) * 100
 
-# error_N_m_10 <- sapply(scenario_fits, function(scen) { # mature female abundance
+# error_N_m_5 <- sapply(scenario_fits, function(scen) { # mature female abundance
 #   ## set to NA if there was failed convergence
 #   if (!all(sapply(scen, function(fit) fit$message) == "relative convergence (4)")) {
 #     mat <- rep(NA, 1000)
@@ -106,17 +109,17 @@ bias_N_m_10 <- error_N_m_10 / matrix(true_N_m_10, ncol = 25, nrow = 1000) * 100
 #     mat <- sapply(1:1000, function(i) {
 #       fit <- scen[[i]]
 #       N_y0 <- exp(fit$par["N_t0_m"])
-#       r_10 <- exp(fit$par["r_m"]) ^ (-9:0)
-#       N_10 <- N_y0 * r_10
+#       r_5 <- exp(fit$par["r_m"]) ^ (-9:0)
+#       N_5 <- N_y0 * r_5
 #       
-#       N_10_diff <- mean(N_10) - mean(true_N_m[i, 91:100])
-#       return(N_10_diff)
+#       N_5_diff <- mean(N_5) - mean(true_N_m[i, 91:100])
+#       return(N_5_diff)
 #     })
 #   }
 #   return(mat)
 # })  
 # 
-# bias_N_m_10 <- sapply(scenario_fits, function(scen) { # mature female abundance
+# bias_N_m_5 <- sapply(scenario_fits, function(scen) { # mature female abundance
 #   ## set to NA if there was failed convergence
 #   if (!all(sapply(scen, function(fit) fit$message) == "relative convergence (4)")) {
 #     mat <- rep(NA, 1000)
@@ -124,74 +127,75 @@ bias_N_m_10 <- error_N_m_10 / matrix(true_N_m_10, ncol = 25, nrow = 1000) * 100
 #     mat <- sapply(1:1000, function(i) {
 #       fit <- scen[[i]]
 #       N_y0 <- exp(fit$par["N_t0_m"])
-#       r_10 <- exp(fit$par["r_m"]) ^ (-9:0)
-#       N_10 <- N_y0 * r_10
-#       # cat("N_10:", N_10, "\n")
+#       r_5 <- exp(fit$par["r_m"]) ^ (-9:0)
+#       N_5 <- N_y0 * r_5
+#       # cat("N_5:", N_5, "\n")
 #       
-#       N_10_bias <- (mean(N_10) - mean(true_N_m[i, 91:100])) / mean(true_N_m[i, 91:100]) * 100
-#       return(N_10_bias)
+#       N_5_bias <- (mean(N_5) - mean(true_N_m[i, 91:100])) / mean(true_N_m[i, 91:100]) * 100
+#       return(N_5_bias)
 #     })
 #   }
 #   return(mat)
 # }) 
 
 ## The female abundance
-est_N_f_10 <- sapply(scenario_fits, function(scen) { # mature female abundance
+est_N_f_5 <- sapply(scenario_fits, function(scen) { # mature female abundance
   vec <- sapply(scen, function(fit) {
     N_y0 <- exp(fit$par["N_t0_f"])
-    r_10 <- exp(fit$par["r_f"]) ^ (-4:0) # actually 5 years now
-    N_10 <- N_y0 * r_10
-    return(mean(N_10))
+    r_5 <- exp(fit$par["r_f"]) ^ (-4:0) # actually 5 years now
+    N_5 <- N_y0 * r_5
+    return(mean(N_5))
   })
   ## set to NA if there was failed convergence
-  if (!all(sapply(scen, function(fit) fit$message) == "relative convergence (4)")) {
-    vec <- matrix(NA, nrow = 1, ncol = 1000)
+  # if (!all(sapply(scen, function(fit) fit$message) == "relative convergence (4)")) {
+  if (any(is.infinite(sapply(scen, function(fit) fit$objective)))) {
+    vec <- rep(NA, 1000)
   }
   return(vec)
 }, simplify = "array")
 
-error_N_f_10 <- est_N_f_10 - matrix(true_N_f_10, ncol = 25, nrow = 1000)
+error_N_f_5 <- est_N_f_5 - matrix(true_N_f_5, ncol = ncol(est_N_f_5), nrow = 1000)
 
-bias_N_f_10 <- error_N_f_10 / matrix(true_N_f_10, ncol = 25, nrow = 1000) * 100
+bias_N_f_5 <- error_N_f_5 / matrix(true_N_f_5, ncol = ncol(error_N_f_5), nrow = 1000) * 100
 
 
 ## Mean error
-error_N_m_y0 <- est_N_m_y0 - matrix(true_N_m_y0, nrow = 1000, ncol = 25, byrow = F) 
-error_N_f_y0 <- est_N_f_y0 - matrix(true_N_f_y0, nrow = 1000, ncol = 25, byrow = F) 
-error_r_m <- est_r_m - matrix(true_r_m, nrow = 1000, ncol = 25, byrow = F) 
-error_r_f <- est_r_f - matrix(true_r_f, nrow = 1000, ncol = 25, byrow = F) 
+error_N_m_y0 <- est_N_m_y0 - matrix(true_N_m_y0, nrow = 1000, ncol = ncol(est_N_m_y0), byrow = F) 
+error_N_f_y0 <- est_N_f_y0 - matrix(true_N_f_y0, nrow = 1000, ncol = ncol(est_N_f_y0), byrow = F) 
+error_r_m <- est_r_m - matrix(true_r_m, nrow = 1000, ncol = ncol(est_r_m), byrow = F) 
+error_r_f <- est_r_f - matrix(true_r_f, nrow = 1000, ncol = ncol(est_r_f), byrow = F) 
 # new: bias
-bias_N_m_y0 <- error_N_m_y0 / matrix(true_N_m_y0, nrow = 1000, ncol = 25, byrow = F) * 100
-bias_N_f_y0 <- error_N_f_y0 / matrix(true_N_f_y0, nrow = 1000, ncol = 25, byrow = F) * 100
-bias_r_m <- error_r_m / matrix(true_r_m, nrow = 1000, ncol = 25, byrow = F) * 100
-bias_r_f <- error_r_f / matrix(true_r_f, nrow = 1000, ncol = 25, byrow = F) * 100
+bias_N_m_y0 <- error_N_m_y0 / matrix(true_N_m_y0, nrow = 1000, ncol = ncol(est_N_m_y0), byrow = F) * 100
+bias_N_f_y0 <- error_N_f_y0 / matrix(true_N_f_y0, nrow = 1000, ncol = ncol(est_N_f_y0), byrow = F) * 100
+bias_r_m <- error_r_m / matrix(true_r_m, nrow = 1000, ncol = ncol(error_r_m), byrow = F) * 100
+bias_r_f <- error_r_f / matrix(true_r_f, nrow = 1000, ncol = ncol(error_r_f), byrow = F) * 100
 
 ## Mean estimates
 median_est <- data.frame(N_f_y0 = colMedians(est_N_f_y0), 
                              N_m_y0 = colMedians(est_N_m_y0),
-                             N_f_10 = colMedians(est_N_f_10),
-                             N_m_10 = colMedians(est_N_m_10),
+                             N_f_5 = colMedians(est_N_f_5),
+                             N_m_5 = colMedians(est_N_m_5),
                              r_f = colMedians(est_r_f),
                              r_m = colMedians(est_r_m))
 mean_est <- data.frame(N_f_y0 = colmeans(est_N_f_y0), 
                          N_m_y0 = colmeans(est_N_m_y0),
-                         N_f_10 = colmeans(est_N_f_10),
-                         N_m_10 = colmeans(est_N_m_10),
+                         N_f_5 = colmeans(est_N_f_5),
+                         N_m_5 = colmeans(est_N_m_5),
                          r_f = colmeans(est_r_f),
                          r_m = colmeans(est_r_m))
 
 ## Average error
 median_error <- data.frame(N_f_y0 = colMedians(error_N_f_y0), 
                            N_m_y0 = colMedians(error_N_m_y0),
-                           N_f_10 = colMedians(error_N_f_10),
-                           N_m_10 = colMedians(error_N_m_10),
+                           N_f_5 = colMedians(error_N_f_5),
+                           N_m_5 = colMedians(error_N_m_5),
                            r_f = colMedians(error_r_f),
                            r_m = colMedians(error_r_m))
 
 mean_error <- data.frame(N_f_y0 = colmeans(error_N_f_y0), 
                          N_m_y0 = colmeans(error_N_m_y0),
-                         N_f_10 = colmeans(error_N_f_10),
-                         N_m_10 = colmeans(error_N_m_10),
+                         N_f_5 = colmeans(error_N_f_5),
+                         N_m_5 = colmeans(error_N_m_5),
                          r_f = colmeans(error_r_f),
                          r_m = colmeans(error_r_m))
 
@@ -199,39 +203,39 @@ mean_error <- data.frame(N_f_y0 = colmeans(error_N_f_y0),
 ## Average bias
 median_bias <- data.frame(N_f_y0 = colMedians(bias_N_f_y0), 
                            N_m_y0 = colMedians(bias_N_m_y0),
-                           N_f_10 = colMedians(bias_N_f_10),
-                           N_m_10 = colMedians(bias_N_m_10),
+                           N_f_5 = colMedians(bias_N_f_5),
+                           N_m_5 = colMedians(bias_N_m_5),
                            r_f = colMedians(bias_r_f),
                            r_m = colMedians(bias_r_m))
 
 mean_bias <- data.frame(N_f_y0 = colmeans(bias_N_f_y0), 
                          N_m_y0 = colmeans(bias_N_m_y0),
-                         N_f_10 = colmeans(bias_N_f_10),
-                         N_m_10 = colmeans(bias_N_m_10),
+                         N_f_5 = colmeans(bias_N_f_5),
+                         N_m_5 = colmeans(bias_N_m_5),
                          r_f = colmeans(bias_r_f),
                          r_m = colmeans(bias_r_m))
 
 ## Mean absolute error
 mean_abs_error <- data.frame(N_f_y0 = colmeans(abs(error_N_f_y0)), 
                                N_m_y0 = colmeans(abs(error_N_m_y0)),
-                               N_f_10 = colmeans(abs(error_N_f_10)), 
-                               N_m_10 = colmeans(abs(error_N_m_10)),
+                               N_f_5 = colmeans(abs(error_N_f_5)), 
+                               N_m_5 = colmeans(abs(error_N_m_5)),
                                r_f = colmeans(abs(error_r_f)),
                                r_m = colmeans(abs(error_r_m)))
 
 ## Mean squared error
 mean_sqrd_error <- data.frame(N_f_y0 = colmeans((error_N_f_y0) ^ 2), 
                                 N_m_y0 = colmeans((error_N_m_y0) ^ 2),
-                                N_f_10 = colmeans((error_N_f_10) ^ 2), 
-                                N_m_10 = colmeans((error_N_m_10) ^ 2),
+                                N_f_5 = colmeans((error_N_f_5) ^ 2), 
+                                N_m_5 = colmeans((error_N_m_5) ^ 2),
                                 r_f = colmeans((error_r_f) ^ 2),
                                 r_m = colmeans((error_r_m) ^ 2))
 
 ## standard deviation and variance of estimates
 std_dev <- data.frame(N_f_y0 = apply(est_N_f_y0, 2, sd),
                  N_m_y0 = apply(est_N_m_y0, 2, sd), 
-                 N_f_10 = apply(est_N_f_10, 2, sd),
-                 N_m_10 = apply(est_N_m_10, 2, sd),
+                 N_f_5 = apply(est_N_f_5, 2, sd),
+                 N_m_5 = apply(est_N_m_5, 2, sd),
                  r_f = apply(est_r_f, 2, sd), 
                  r_m = apply(est_r_m, 2, sd))
 variance <- std_dev ^ 2
@@ -239,8 +243,8 @@ variance <- std_dev ^ 2
 ## standard deviation and variance of error
 std_dev_error <- data.frame(N_f_y0 = apply(error_N_f_y0, 2, sd),
                       N_m_y0 = apply(error_N_m_y0, 2, sd), 
-                      N_f_10 = apply(error_N_f_10, 2, sd),
-                      N_m_10 = apply(error_N_m_10, 2, sd),
+                      N_f_5 = apply(error_N_f_5, 2, sd),
+                      N_m_5 = apply(error_N_m_5, 2, sd),
                       r_f = apply(error_r_f, 2, sd), 
                       r_m = apply(error_r_m, 2, sd))
 variance_error <- std_dev_error ^ 2
@@ -249,8 +253,8 @@ variance_error <- std_dev_error ^ 2
 ## strictly positive)
 coeff_var <- data.frame(N_f_y0 = apply(est_N_f_y0, 2, raster::cv),
                  N_m_y0 = apply(est_N_m_y0, 2, raster::cv), 
-                 N_f_10 = apply(est_N_f_10, 2, raster::cv),
-                 N_m_10 = apply(est_N_m_10, 2, raster::cv), 
+                 N_f_5 = apply(est_N_f_5, 2, raster::cv),
+                 N_m_5 = apply(est_N_m_5, 2, raster::cv), 
                  r_f = apply(est_r_f, 2, raster::cv), 
                  r_m = apply(est_r_m, 2, raster::cv))
 
@@ -259,9 +263,6 @@ coeff_var <- std_dev_error / mean_est * 100
 ## =============================================================================
 ## 3. CREATE FIGURES AND TABLES FOR MANUSCRIPT
 ## =============================================================================
-
-
-
 
 ## :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 ## Boxplots for the main manuscript 
@@ -341,62 +342,62 @@ y0_plot <- ggplot(data=bias_N_y0_long, aes(fill=Sex, x=Scenario, y=Abundance)) +
              alpha = 0.5)+
   ylab("Relative error in abundance") +
   # coord_flip() +  # comment out for normal plot
-  # scale_x_discrete(limits = rev(levels(est_N_10_long$Scenario))) +
+  # scale_x_discrete(limits = rev(levels(est_N_5_long$Scenario))) +
   # coord_cartesian(ylim = c(-100, 500)) +
   scale_fill_discrete(name = ""); y0_plot
 
 ## ----------------------------------------------------------
 ## The mean abundance over year 1 to 10 estimates violin plot
 ## ----------------------------------------------------------
-bias_N_f_10_long <- bias_N_f_10
-colnames(bias_N_f_10_long) <- paste0(rep(1:5, each = 5), "-", 1:5)
-bias_N_f_10_long <- reshape2::melt(bias_N_f_10_long,
+bias_N_f_5_long <- bias_N_f_5
+colnames(bias_N_f_5_long) <- paste0(rep(1:5, each = 5), "-", 1:5)
+bias_N_f_5_long <- reshape2::melt(bias_N_f_5_long,
                                   # na.rm = TRUE
                                   value.name = "Abundance")[, -1]
 
-bias_N_f_10_long$Measurment_scenario <- rep(c("-67% of true length measurement error (2.89)",
+bias_N_f_5_long$Measurment_scenario <- rep(c("-67% of true length measurement error (2.89)",
                                              "-33% of true length measurement error (2.89)",
                                              "The true length measurement error (2.89)",
                                              "+33% of true length measurement error (2.89)",
                                              "+67% of true length measurement error (2.89)"),
                                            each = 5000)
-bias_N_f_10_long$VBGF_scenario <- rep(rep(c("Growth curve shifted vertically by -10%",
+bias_N_f_5_long$VBGF_scenario <- rep(rep(c("Growth curve shifted vertically by -10%",
                                            "Growth curve shifted vertically by -5%",
                                            "The true growth curve",
                                            "Growth curve shifted vertically by +5%",
                                            "Growth curve shifted vertically by +10%"),
                                          each = 1000), 
                                      times = 5)
-bias_N_f_10_long$Sex = "Female"
-bias_N_f_10_long <- na.omit(bias_N_f_10_long)
+bias_N_f_5_long$Sex = "Female"
+bias_N_f_5_long <- na.omit(bias_N_f_5_long)
 
-bias_N_m_10_long <- bias_N_m_10
-colnames(bias_N_m_10_long) <- paste0(rep(1:5, each = 5), "-", 1:5)
-bias_N_m_10_long <- reshape2::melt(bias_N_m_10_long,
+bias_N_m_5_long <- bias_N_m_5
+colnames(bias_N_m_5_long) <- paste0(rep(1:5, each = 5), "-", 1:5)
+bias_N_m_5_long <- reshape2::melt(bias_N_m_5_long,
                                   value.name = "Abundance")[, -1]
 
-bias_N_m_10_long$Measurment_scenario <- rep(c("-67% of true length measurement error (2.89)",
+bias_N_m_5_long$Measurment_scenario <- rep(c("-67% of true length measurement error (2.89)",
                                              "-33% of true length measurement error (2.89)",
                                              "The true length measurement error (2.89)",
                                              "+33% of true length measurement error (2.89)",
                                              "+67% of true length measurement error (2.89)"),
                                            each = 5000)
-bias_N_m_10_long$VBGF_scenario <- rep(rep(c("Growth curve shifted vertically by -10%",
+bias_N_m_5_long$VBGF_scenario <- rep(rep(c("Growth curve shifted vertically by -10%",
                                            "Growth curve shifted vertically by -5%",
                                            "The true growth curve",
                                            "Growth curve shifted vertically by +5%",
                                            "Growth curve shifted vertically by +10%"),
                                          each = 1000), 
                                      times = 5)
-bias_N_m_10_long$Sex = "Male"
-bias_N_m_10_long <- na.omit(bias_N_m_10_long)
+bias_N_m_5_long$Sex = "Male"
+bias_N_m_5_long <- na.omit(bias_N_m_5_long)
 
-bias_N_10_long <- rbind(bias_N_m_10_long[, c(1, 3, 4, 2, 5)], 
-                       bias_N_f_10_long[, c(1, 3, 4, 2, 5)])
-colnames(bias_N_10_long)[1] <- c("Scenario")
-bias_N_10_long$Scenario <- as.factor(as.character(bias_N_10_long$Scenario))
+bias_N_5_long <- rbind(bias_N_m_5_long[, c(1, 3, 4, 2, 5)], 
+                       bias_N_f_5_long[, c(1, 3, 4, 2, 5)])
+colnames(bias_N_5_long)[1] <- c("Scenario")
+bias_N_5_long$Scenario <- as.factor(as.character(bias_N_5_long$Scenario))
 
-mean_y_10_plot <- ggplot(data=bias_N_10_long, aes(fill=Sex, x=Scenario, y=Abundance)) +
+mean_y_5_plot <- ggplot(data=bias_N_5_long, aes(fill=Sex, x=Scenario, y=Abundance)) +
   geom_boxplot(position="dodge", 
                outlier.alpha = 0.1,
                # draw_quantiles = c(0.5), # for violin plots
@@ -410,9 +411,9 @@ mean_y_10_plot <- ggplot(data=bias_N_10_long, aes(fill=Sex, x=Scenario, y=Abunda
              colour = "black", 
              alpha = 0.5)+
   # coord_flip() +  # comment out for normal plot
-  # scale_x_discrete(limits = rev(levels(est_N_10_long$Scenario))) +
+  # scale_x_discrete(limits = rev(levels(est_N_5_long$Scenario))) +
   # coord_cartesian(ylim = c(-100, 500)) +
-  scale_fill_discrete(name = ""); mean_y_10_plot
+  scale_fill_discrete(name = ""); mean_y_5_plot
 
 
 ## --------------------------------
@@ -481,7 +482,7 @@ r_plot <- ggplot(data=bias_r_long, aes(fill=Sex, x=Scenario, y=Growth)) +
              alpha = 0.5)+
   ylab("Relative error in growth rate") +
   # coord_flip() +  # comment out for normal plot
-  # scale_x_discrete(limits = rev(levels(est_N_10_long$Scenario))) +
+  # scale_x_discrete(limits = rev(levels(est_N_5_long$Scenario))) +
   scale_fill_discrete(name = ""); r_plot
 
 ## -------------------------------
@@ -502,19 +503,50 @@ p <- grid.arrange(y0_plot +
                     ylab("Relative error\nabundance (100)") +
                     xlab(element_blank()) +
                     coord_cartesian(ylim=c(-100, 500)), # truncate without removing values outside
-                  mean_y_10_plot +
+                  mean_y_5_plot +
                     theme(legend.position = "none",
                           axis.text.x = element_blank()) +
                     ylab("Relative error\nmean abundance (96-100)") +
                     xlab(element_blank()) +
                     coord_cartesian(ylim=c(-100, 500)), # truncate  without removing values outside
                   r_plot + 
-                    # coord_cartesian(ylim=c(-100, 100))+ # for vanilla
+                    # coord_cartesian(ylim=c(-100, 100))+ # for simple
                     coord_cartesian(ylim=c(-50, 50))+ # for complex
                     ylab("Relative error\nyearly growth rate"),
                   layout_matrix = lay); p
 
 ## now export it with width 1000 and height 750
+
+## Alternative for the no growth version:
+lay <- rbind(c(1))
+
+p <- grid.arrange(y0_plot + 
+                    # theme(legend.position = "none",
+                    #       axis.text.x = element_blank()) +
+                    ylab("Relative error\nabundance (100)") +
+                    # xlab(element_blank()) +
+                    coord_cartesian(ylim=c(-100, 500)),
+                  layout_matrix = lay); p
+
+## now export it with width 1000 and height 500
+
+## Some custom code to combine the two plots, as there is no need to keep them
+## separate when only N is estimated
+lay <- rbind(c(1), c(2))
+
+p <- grid.arrange(y0_plot_simple + 
+                    theme(legend.position = "none",
+                          axis.text.x = element_blank()) +
+                    ylab("Simple species") +
+                    xlab(element_blank()) +
+                    coord_cartesian(ylim=c(-100, 500)),
+                  y0_plot_complex + 
+                    # theme(legend.position = "none",
+                    #       axis.text.x = element_blank()) +
+                    ylab("Complex species") +
+                    coord_cartesian(ylim=c(-100, 500)),
+                  layout_matrix = lay, 
+                  left = "Relative error in adult abundance estimate"); p
 
 
 ## :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
@@ -545,9 +577,9 @@ summary_N_f_y0 <- summarise_performance_metrics("N_f_y0", true_N_f_y0)
 
 summary_N_m_y0 <- summarise_performance_metrics("N_m_y0", true_N_m_y0)
 
-summary_N_f_10 <- summarise_performance_metrics("N_f_10", true_N_f_10)
+summary_N_f_5 <- summarise_performance_metrics("N_f_5", true_N_f_5)
 
-summary_N_m_10 <- summarise_performance_metrics("N_m_10", true_N_m_10)
+summary_N_m_5 <- summarise_performance_metrics("N_m_5", true_N_m_5)
 
 summary_r_f <- summarise_performance_metrics("r_f", true_r_f)
 
@@ -565,17 +597,17 @@ labels <- c("Scen.",
             "MAE", 
             "RMSE")
 
-caption <- "Various performance metrics for the parameter [quantity], extracted from 100 simulations of the gestating shark population. The columns are, from left to right: scenario, median estimate, mean estimate, standard deviation, coefficient of variation (\\%), median error, mean error, mean absolute error, and mean squared error. Scenarios 1-1, 1-2, 1-3, 2-1, 2-2, and 3-1 were not included as (most of) the simulations did not fit successfully. Scenario 3-3 uses the correct measurement error (2.89) and growth curve specification."
+caption <- "Various performance metrics for the parameter [quantity], extracted from 1000 simulations of the [species] shark population. The columns are, from left to right: scenario, median estimate, mean estimate, standard deviation, coefficient of variation (\\%), median error, mean error, mean absolute error, and mean squared error. Scenarios 1-1, 1-2, 1-3, 2-1, 2-2, and 3-1 were not included as (most of) the simulations did not fit successfully. Scenario 3-3 uses the correct measurement error (2.89) and growth curve specification."
 kable(summary_N_f_y0, booktabs = T, format = "latex", digits = 2,
       col.names = labels, row.names = F, linesep = "", caption = caption)
 
 kable(summary_N_m_y0, booktabs = T, format = "latex", digits = 2,
       col.names = labels, row.names = F, linesep = "", caption = caption)
 
-kable(summary_N_f_10, booktabs = T, format = "latex", digits = 2,
+kable(summary_N_f_5, booktabs = T, format = "latex", digits = 2,
       col.names = labels, row.names = F, linesep = "", caption = caption)
 
-kable(summary_N_m_10, booktabs = T, format = "latex", digits = 2,
+kable(summary_N_m_5, booktabs = T, format = "latex", digits = 2,
       col.names = labels, row.names = F, linesep = "", caption = caption)
 
 kable(summary_r_f, booktabs = T, format = "latex", digits = 3,
@@ -591,52 +623,100 @@ kable(summary_r_m, booktabs = T, format = "latex", digits = 3,
 
 ## Create tables for CV and SD similar to "estimate_variance_mle.R" 
 
-## Run section 1 and 2 above first for vanilla, then run lines below
-sd_vanilla <- std_dev_error[conv, c(6, 5, 2, 1)]
-cv_vanilla <- coeff_var[conv, c(6, 5, 2, 1)]
-
-## Now run section 1 and 2 for the complex species, then run lines below
-sd_complex <- std_dev_error[conv, c(6, 5, 2, 1)]
-cv_complex <- coeff_var[conv, c(6, 5, 2, 1)]
-
-## Now create tables using lines below
-sd_df <- cbind(data.frame(paste0(rep(1:5, each=5), "-", rep(1:5, rep=5))[conv]), 
-               sd_vanilla, sd_complex)
-cv_df <- cbind(data.frame(paste0(rep(1:5, each=5), "-", rep(1:5, rep=5))[conv]),  
-               cv_vanilla, cv_complex)
-
-colnames(sd_df) <- c("scenario", 
-                     "simple_r_m", "simple_r_f" , "simple_N_y0_m" , "simple_N_y0_f",
-                     "complex_r_m", "complex_r_f" , "complex_N_y0_m" , "complex_N_y0_f")
-colnames(cv_df) <- c("scenario", 
-                     "simple_r_m", "simple_r_f" , "simple_N_y0_m" , "simple_N_y0_f",
-                     "complex_r_m", "complex_r_f" , "complex_N_y0_m" , "complex_N_y0_f") 
-
-## Create tables for latex
-library(kableExtra)
-
-labels <- c("Scenario", 
-            "$r_{male}$", 
-            "$r_{female}$", 
-            "$N^A_{male, 2014}$", 
-            "$N^A_{female, 2014}$", 
-            "$r_{male}$", 
-            "$r_{female}$",
-            "$N^A_{male, 2014}$", 
-            "$N^A_{female, 2014}$")
-
-caption <- "" 
-kable(sd_df, booktabs = T, 
-      format = "latex", 
-      digits = 2,
-      col.names = labels, 
-      row.names = F, linesep = "", caption = caption) %>%
-  add_header_above( c(" " = 1, "Vanilla species" = 4, "Complex species" = 4))
-
-caption <- "" 
-kable(cv_df, booktabs = T, 
-      format = "latex", 
-      digits = 2,
-      col.names = labels, 
-      row.names = F, linesep = "", caption = caption) %>% 
-  add_header_above( c(" " = 1, "Vanilla species" = 4, "Complex species" = 4))
+if (NO_GROWTH) {
+  ## Run section 1 and 2 above first for simple, then run lines below
+  sd_simple <- std_dev_error[conv, c(2, 1)]
+  cv_simple <- coeff_var[conv, c(2, 1)]
+  
+  ## Now run section 1 and 2 for the complex species, then run lines below
+  sd_complex <- std_dev_error[conv, c(2, 1)]
+  cv_complex <- coeff_var[conv, c(2, 1)]
+  
+  ## Now create tables using lines below
+  sd_df <- cbind(data.frame(paste0(rep(1:5, each=5), "-", rep(1:5, rep=5))[conv]), 
+                 sd_simple, sd_complex)
+  cv_df <- cbind(data.frame(paste0(rep(1:5, each=5), "-", rep(1:5, rep=5))[conv]),  
+                 cv_simple, cv_complex)
+  
+  colnames(sd_df) <- c("scenario", 
+                       "simple_N_y0_m" , "simple_N_y0_f",
+                       "complex_N_y0_m" , "complex_N_y0_f")
+  colnames(cv_df) <- c("scenario", 
+                       "simple_N_y0_m" , "simple_N_y0_f",
+                       "complex_N_y0_m" , "complex_N_y0_f") 
+  
+  ## Create tables for latex
+  library(kableExtra)
+  
+  labels <- c("Scenario", 
+              "$N^A_{male, 100}$", 
+              "$N^A_{female, 100}$", 
+              "$N^A_{male, 100}$", 
+              "$N^A_{female, 100}$")
+  
+  caption <- "" 
+  kable(sd_df, booktabs = T, 
+        format = "latex", 
+        digits = 2,
+        col.names = labels, 
+        row.names = F, linesep = "", caption = caption) %>%
+    add_header_above( c(" " = 1, "simple species" = 4, "Complex species" = 4))
+  
+  caption <- "" 
+  kable(cv_df, booktabs = T, 
+        format = "latex", 
+        digits = 2,
+        col.names = labels, 
+        row.names = F, linesep = "", caption = caption) %>% 
+    add_header_above( c(" " = 1, "simple species" = 4, "Complex species" = 4))
+} else {
+  ## Run section 1 and 2 above first for simple, then run lines below
+  sd_simple <- std_dev_error[conv, c(6, 5, 2, 1)]
+  cv_simple <- coeff_var[conv, c(6, 5, 2, 1)]
+  
+  ## Now run section 1 and 2 for the complex species, then run lines below
+  sd_complex <- std_dev_error[conv, c(6, 5, 2, 1)]
+  cv_complex <- coeff_var[conv, c(6, 5, 2, 1)]
+  
+  ## Now create tables using lines below
+  sd_df <- cbind(data.frame(paste0(rep(1:5, each=5), "-", rep(1:5, rep=5))[conv]), 
+                 sd_simple, sd_complex)
+  cv_df <- cbind(data.frame(paste0(rep(1:5, each=5), "-", rep(1:5, rep=5))[conv]),  
+                 cv_simple, cv_complex)
+  
+  colnames(sd_df) <- c("scenario", 
+                       "simple_r_m", "simple_r_f" , "simple_N_y0_m" , "simple_N_y0_f",
+                       "complex_r_m", "complex_r_f" , "complex_N_y0_m" , "complex_N_y0_f")
+  colnames(cv_df) <- c("scenario", 
+                       "simple_r_m", "simple_r_f" , "simple_N_y0_m" , "simple_N_y0_f",
+                       "complex_r_m", "complex_r_f" , "complex_N_y0_m" , "complex_N_y0_f") 
+  
+  ## Create tables for latex
+  library(kableExtra)
+  
+  labels <- c("Scenario", 
+              "$r_{male}$", 
+              "$r_{female}$", 
+              "$N^A_{male, 2014}$", 
+              "$N^A_{female, 2014}$", 
+              "$r_{male}$", 
+              "$r_{female}$",
+              "$N^A_{male, 2014}$", 
+              "$N^A_{female, 2014}$")
+  
+  caption <- "" 
+  kable(sd_df, booktabs = T, 
+        format = "latex", 
+        digits = 2,
+        col.names = labels, 
+        row.names = F, linesep = "", caption = caption) %>%
+    add_header_above( c(" " = 1, "simple species" = 4, "Complex species" = 4))
+  
+  caption <- "" 
+  kable(cv_df, booktabs = T, 
+        format = "latex", 
+        digits = 2,
+        col.names = labels, 
+        row.names = F, linesep = "", caption = caption) %>% 
+    add_header_above( c(" " = 1, "simple species" = 4, "Complex species" = 4))
+}

@@ -190,20 +190,47 @@ double nllPOPCKMRcppAgeUnknownGestation(List dat, List par) {
   // ===========================================================================
   // DO SOME THINGS TO OPTIMISE THE CODE
   // ---------------------------------------------------------------------------
-  // Derive fSampledAge() for all possible ages
-  NumericVector probs_sampled_ages (max_age + 1);
+  // // Derive fSampledAge() for all possible ages, first male then female OLD!
+  // NumericVector probs_sampled_ages_male (max_age + 1);
+  // for (int a = 0; a <= max_age; a++) {
+  //   probs_sampled_ages_male[a] = fSampledAge(a, 1 - phi, max_age);
+  // }
+  // 
+  // NumericVector probs_sampled_ages_female = probs_sampled_ages_male;
+  
+  // Derive fSampledAge() for all possible ages, first male then female NEW!
+  NumericVector probs_sampled_ages_male (max_age + 1);
   for (int a = 0; a <= max_age; a++) {
-    probs_sampled_ages[a] = fSampledAge(a, 1 - phi, max_age);
+    probs_sampled_ages_male[a] = fSampledAge(a, 1 - (phi / r[0]), max_age);
+  }
+
+  NumericVector probs_sampled_ages_female (max_age + 1);
+  for (int a = 0; a <= max_age; a++) {
+    probs_sampled_ages_female[a] = fSampledAge(a, 1 - (phi / r[1]), max_age);
   }
   
-  // Derive fAgeGivenLength for all age-length combos
-  NumericMatrix age_length_prob_matrix ((max_age + 1), (max_length + 1));
+  // Derive fAgeGivenLength for all age-length combos, first male then female
+  NumericMatrix age_length_prob_matrix_male ((max_age + 1), (max_length + 1));
   for (int age = 0; age <= max_age; age++) {
     for (int length = 0; length <= max_length; length++) {
-      age_length_prob_matrix(age, length) = fAgeGivenLengthFast(age, 
+      age_length_prob_matrix_male(age, length) = fAgeGivenLengthFast(age, 
                              length, 
                              sigma_l,
-                             probs_sampled_ages, 
+                             probs_sampled_ages_male, 
+                             max_age,
+                             vbgf_l_inf, 
+                             vbgf_k, 
+                             vbgf_a0);
+    }
+  }
+  
+  NumericMatrix age_length_prob_matrix_female ((max_age + 1), (max_length + 1));
+  for (int age = 0; age <= max_age; age++) {
+    for (int length = 0; length <= max_length; length++) {
+      age_length_prob_matrix_female(age, length) = fAgeGivenLengthFast(age, 
+                             length, 
+                             sigma_l,
+                             probs_sampled_ages_female, 
                              max_age,
                              vbgf_l_inf, 
                              vbgf_k, 
@@ -418,7 +445,11 @@ double nllPOPCKMRcppAgeUnknownGestation(List dat, List par) {
         }
         // std::cout << "prob12_2 for a1=" << a1 << " and a2=" << a2 << " is: " << prob12_2 << std::endl;
         // Look up table-version
-        prob_ij_1 += prob_ij_2 * age_length_prob_matrix(a_j, l_j[index]);
+        if (s_j[index] == 0) {
+          prob_ij_1 += prob_ij_2 * age_length_prob_matrix_male(a_j, l_j[index]);
+        } else {
+          prob_ij_1 += prob_ij_2 * age_length_prob_matrix_female(a_j, l_j[index]);
+        }
         // // Fast version
         // prob12_1 += prob12_2 * fAgeGivenLengthFast(a2, l2[index], sigma_l,
         //                                            probs_sampled_ages, max_age,
@@ -430,7 +461,11 @@ double nllPOPCKMRcppAgeUnknownGestation(List dat, List par) {
       }
       // std::cout << "prob12_1 for a1=" << a1 << " is: " << prob12_1 << std::endl;
       // Look up table-version
-      prob += prob_ij_1 * age_length_prob_matrix(a_i, l_i[index]);
+      if (s_i[index] == 0) {
+        prob += prob_ij_1 * age_length_prob_matrix_male(a_i, l_i[index]);
+      } else {
+        prob += prob_ij_1 * age_length_prob_matrix_female(a_i, l_i[index]);
+      }
       // // Fast version
       // prob += prob12_1 * fAgeGivenLengthFast(a1, l1[index], sigma_l,
       //                                        probs_sampled_ages, max_age,
@@ -595,7 +630,11 @@ double nllPOPCKMRcppAgeUnknownGestation(List dat, List par) {
           // prob_ji_2 /= phi;       // mother has to survive for 1 year
         }
         // Look up table version
-        prob_ji_1 += prob_ji_2 * age_length_prob_matrix(a_i, l_i[index]);
+        if (s_i[index] == 0) {
+          prob_ji_1 += prob_ji_2 * age_length_prob_matrix_male(a_i, l_i[index]);
+        } else {
+          prob_ji_1 += prob_ji_2 * age_length_prob_matrix_female(a_i, l_i[index]);
+        }
         // // Fast version
         // prob21_1 += prob21_2 * fAgeGivenLengthFast(a1, l1[index], sigma_l,
         //                                            probs_sampled_ages, max_age,
@@ -605,7 +644,11 @@ double nllPOPCKMRcppAgeUnknownGestation(List dat, List par) {
         //                                                                                vbgf_l_inf, vbgf_k, vbgf_a0) << std::endl;
       }
       // Look up table version
-      prob += prob_ji_1 * age_length_prob_matrix(a_j, l_j[index]);
+      if (s_j[index] == 0) {
+        prob += prob_ji_1 * age_length_prob_matrix_male(a_j, l_j[index]);
+      } else {
+        prob += prob_ji_1 * age_length_prob_matrix_female(a_j, l_j[index]);
+      }
       // // Fast version
       // prob += prob21_1 * fAgeGivenLengthFast(a2, l2[index], sigma_l,
       //                                        probs_sampled_ages, max_age,
@@ -712,20 +755,47 @@ double nllPOPCKMRcppAgeUnknown(List dat, List par) {
   // ===========================================================================
   // DO SOME THINGS TO OPTIMISE THE CODE
   // ---------------------------------------------------------------------------
-  // Derive fSampledAge() for all possible ages
-  NumericVector probs_sampled_ages (max_age + 1);
+  // // Derive fSampledAge() for all possible ages, first male then female OLD!
+  // NumericVector probs_sampled_ages_male (max_age + 1);
+  // for (int a = 0; a <= max_age; a++) {
+  //   probs_sampled_ages_male[a] = fSampledAge(a, 1 - phi, max_age);
+  // }
+  // 
+  // NumericVector probs_sampled_ages_female = probs_sampled_ages_male;
+  
+  // Derive fSampledAge() for all possible ages, first male then female NEW!
+  NumericVector probs_sampled_ages_male (max_age + 1);
   for (int a = 0; a <= max_age; a++) {
-    probs_sampled_ages[a] = fSampledAge(a, 1 - phi, max_age);
+    probs_sampled_ages_male[a] = fSampledAge(a, 1 - (phi / r[0]), max_age);
+  }
+
+  NumericVector probs_sampled_ages_female (max_age + 1);
+  for (int a = 0; a <= max_age; a++) {
+    probs_sampled_ages_female[a] = fSampledAge(a, 1 - (phi / r[1]), max_age);
   }
   
-  // Derive fAgeGivenLength for all age-length combos
-  NumericMatrix age_length_prob_matrix ((max_age + 1), (max_length + 1));
+  // Derive fAgeGivenLength for all age-length combos, first male then female
+  NumericMatrix age_length_prob_matrix_male ((max_age + 1), (max_length + 1));
   for (int age = 0; age <= max_age; age++) {
     for (int length = 0; length <= max_length; length++) {
-      age_length_prob_matrix(age, length) = fAgeGivenLengthFast(age, 
+      age_length_prob_matrix_male(age, length) = fAgeGivenLengthFast(age, 
                              length, 
                              sigma_l,
-                             probs_sampled_ages, 
+                             probs_sampled_ages_male, 
+                             max_age,
+                             vbgf_l_inf, 
+                             vbgf_k, 
+                             vbgf_a0);
+    }
+  }
+  
+  NumericMatrix age_length_prob_matrix_female ((max_age + 1), (max_length + 1));
+  for (int age = 0; age <= max_age; age++) {
+    for (int length = 0; length <= max_length; length++) {
+      age_length_prob_matrix_female(age, length) = fAgeGivenLengthFast(age, 
+                             length, 
+                             sigma_l,
+                             probs_sampled_ages_female, 
                              max_age,
                              vbgf_l_inf, 
                              vbgf_k, 
@@ -918,7 +988,11 @@ double nllPOPCKMRcppAgeUnknown(List dat, List par) {
         }
         // std::cout << "prob12_2 for a1=" << a1 << " and a2=" << a2 << " is: " << prob12_2 << std::endl;
         // Look up table-version
-        prob12_1 += prob12_2 * age_length_prob_matrix(a2, l2[index]);
+        if (s2[index] == 0) {
+          prob12_1 += prob12_2 * age_length_prob_matrix_male(a2, l2[index]);
+        } else {
+          prob12_1 += prob12_2 * age_length_prob_matrix_female(a2, l2[index]);
+        }
         // // Fast version
         // prob12_1 += prob12_2 * fAgeGivenLengthFast(a2, l2[index], sigma_l,
         //                                            probs_sampled_ages, max_age,
@@ -930,7 +1004,12 @@ double nllPOPCKMRcppAgeUnknown(List dat, List par) {
       }
       // std::cout << "prob12_1 for a1=" << a1 << " is: " << prob12_1 << std::endl;
       // Look up table-version
-      prob += prob12_1 * age_length_prob_matrix(a1, l1[index]);
+      if (s1[index] == 0) {
+        prob += prob12_1 * age_length_prob_matrix_male(a1, l1[index]);
+      } else {
+        prob += prob12_1 * age_length_prob_matrix_female(a1, l1[index]);
+      }
+      
       // // Fast version
       // prob += prob12_1 * fAgeGivenLengthFast(a1, l1[index], sigma_l,
       //                                        probs_sampled_ages, max_age,
@@ -1090,7 +1169,12 @@ double nllPOPCKMRcppAgeUnknown(List dat, List par) {
           }
         }
         // Look up table version
-        prob21_1 += prob21_2 * age_length_prob_matrix(a1, l1[index]);
+        if (s1[index] == 0) {
+          prob21_1 += prob21_2 * age_length_prob_matrix_male(a1, l1[index]);
+        } else {
+          prob21_1 += prob21_2 * age_length_prob_matrix_female(a1, l1[index]);
+        }
+        
         // // Fast version
         // prob21_1 += prob21_2 * fAgeGivenLengthFast(a1, l1[index], sigma_l,
         //                                            probs_sampled_ages, max_age,
@@ -1100,7 +1184,11 @@ double nllPOPCKMRcppAgeUnknown(List dat, List par) {
         //                                                                                vbgf_l_inf, vbgf_k, vbgf_a0) << std::endl;
       }
       // Look up table version
-      prob += prob21_1 * age_length_prob_matrix(a2, l2[index]);
+      if (s2[index] == 0) {
+        prob += prob21_1 * age_length_prob_matrix_male(a2, l2[index]);
+      } else {      
+        prob += prob21_1 * age_length_prob_matrix_female(a2, l2[index]);
+      }
       // // Fast version
       // prob += prob21_1 * fAgeGivenLengthFast(a2, l2[index], sigma_l,
       //                                        probs_sampled_ages, max_age,

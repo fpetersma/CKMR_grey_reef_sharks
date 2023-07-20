@@ -15,10 +15,12 @@
 library(pbapply)
 library(parallel)
 
+NO_GROWTH <- TRUE
+
 ## Data
-load("data/simulation_study/vanilla/simulation_1000_schemes_all_scenarios_fit_results_sim=all.RData")
-vanilla_fits <- scenario_fits
-load("data/simulation_study/complex/simulation_1000_schemes_all_scenarios_fit_results_sim=all.RData")
+load("data/simulation_study/simple/simulation_1000_schemes_all_scenarios_fit_results_sim=all_no_growth.RData")
+simple_fits <- scenario_fits
+load("data/simulation_study/complex/simulation_1000_schemes_all_scenarios_fit_results_sim=all_no_growth.RData")
 complex_fits <- scenario_fits
 rm(scenario_fits)
 
@@ -27,38 +29,44 @@ rm(scenario_fits)
 ## -----------------------------------------------------------------------------
 
 ## Extract failed fit scenarios
-conv <- sapply(vanilla_fits, function(scen) {
+conv <- sapply(simple_fits, function(scen) {
   all(sapply(scen, function(fit) fit$message) == "relative convergence (4)")
 })
 
 scenarios_to_keep <- (1:25)[conv] # convert TRUE/FALSE to indices
 
 ## -----------------------------------------
-## Create data frame for the vanilla species
+## Create data frame for the simple species
 ## -----------------------------------------
-sd_vanilla <- matrix(NA, nrow = length(scenarios_to_keep), ncol = 4)
-cv_vanilla <- matrix(NA, nrow = length(scenarios_to_keep), ncol = 4)
+if (NO_GROWTH) {
+  sd_simple <- matrix(NA, nrow = length(scenarios_to_keep), ncol = 2)
+  cv_simple <- matrix(NA, nrow = length(scenarios_to_keep), ncol = 2)
+} else {
+  sd_simple <- matrix(NA, nrow = length(scenarios_to_keep), ncol = 4)
+  cv_simple <- matrix(NA, nrow = length(scenarios_to_keep), ncol = 4)
+}
+
 for (i in seq_along(scenarios_to_keep)) {
-  sd_vanilla[i, ] <- rowMeans(sapply(1:1000, function(j) {
+  sd_simple[i, ] <- rowMeans(sapply(1:1000, function(j) {
     
-    hess <- vanilla_fits[[scenarios_to_keep[i]]][[j]]$hess
-    par <- exp(vanilla_fits[[scenarios_to_keep[i]]][[j]]$par)
+    hess <- simple_fits[[scenarios_to_keep[i]]][[j]]$hess
+    par <- exp(simple_fits[[scenarios_to_keep[i]]][[j]]$par)
     var <- diag(solve(hess))
-    var_real <- par^2 * (exp(var) - 1) # if X=logY, then var(Y)=E(Y)^2(e^Var(X)-1)
+    var_real <- par ^ 2 * (exp(var) - 1) # if X=logY, then var(Y)=E(Y)^2(e^Var(X)-1)
     ## There is one fit that resulted that did not have positive definite hessina (and thus negative variance). this one was ignored (i=19 j = 1)
-    if (any(vanilla_fits[[scenarios_to_keep[i]]][[j]]$var < 0)) print(paste(" STOP", i, j))
+    if (any(simple_fits[[scenarios_to_keep[i]]][[j]]$var < 0)) print(paste(" STOP", i, j))
     
     return(sqrt(var_real))
   }), na.rm = TRUE)
   
-  cv_vanilla[i, ] <- rowMeans(sapply(1:1000, function(j) {
-    hess <- vanilla_fits[[scenarios_to_keep[i]]][[j]]$hess
-    par <- exp(vanilla_fits[[scenarios_to_keep[i]]][[j]]$par)
+  cv_simple[i, ] <- rowMeans(sapply(1:1000, function(j) {
+    hess <- simple_fits[[scenarios_to_keep[i]]][[j]]$hess
+    par <- exp(simple_fits[[scenarios_to_keep[i]]][[j]]$par)
     var <- diag(solve(hess))
     var_real <- par^2 * (exp(var) - 1) # if X=logY, then var(Y)=E(Y)^2(e^Var(X)-1)
     ## There is one fit that resulted that did not have positive definite hessina (and thus negative variance). this one was ignored (i=19 j = 1)
-    if (any(vanilla_fits[[scenarios_to_keep[i]]][[j]]$var < 0)) print(paste(" STOP", i, j))
-
+    if (any(simple_fits[[scenarios_to_keep[i]]][[j]]$var < 0)) print(paste(" STOP", i, j))
+    
     std_dev <- sqrt(var_real)
     
     return(std_dev / par * 100)
@@ -68,8 +76,13 @@ for (i in seq_along(scenarios_to_keep)) {
 ## -----------------------------------------
 ## Create data frame for the complex species
 ## -----------------------------------------
-sd_complex <- matrix(NA, nrow = length(scenarios_to_keep), ncol = 4)
-cv_complex <- matrix(NA, nrow = length(scenarios_to_keep), ncol = 4)
+if (NO_GROWTH) {
+  sd_complex <- matrix(NA, nrow = length(scenarios_to_keep), ncol = 2)
+  cv_complex <- matrix(NA, nrow = length(scenarios_to_keep), ncol = 2)
+} else {
+  sd_complex <- matrix(NA, nrow = length(scenarios_to_keep), ncol = 4)
+  cv_complex <- matrix(NA, nrow = length(scenarios_to_keep), ncol = 4)
+}
 for (i in seq_along(scenarios_to_keep)) {
   sd_complex[i, ] <- rowMeans(sapply(1:1000, function(j) {
     
@@ -88,7 +101,7 @@ for (i in seq_along(scenarios_to_keep)) {
     par <- exp(complex_fits[[scenarios_to_keep[i]]][[j]]$par)
     var <- diag(solve(hess))
     var_real <- par^2 * (exp(var) - 1) # if X=logY, then var(Y)=E(Y)^2(e^Var(X)-1)
-
+    
     if (any(complex_fits[[scenarios_to_keep[i]]][[j]]$var < 0)) print(paste(" STOP", i, j))
     
     std_dev <- sqrt(var_real)
@@ -99,30 +112,40 @@ for (i in seq_along(scenarios_to_keep)) {
 ## -----------------------------
 ## Combine into data frames
 ## -----------------------------
-sd_df <- cbind(data.frame(paste0(rep(1:5, each=5), "-", rep(1:5, rep=5))[scenarios_to_keep]), 
-               sd_vanilla[, c(2,1,3,4)], sd_complex[, c(2,1,3,4)])
-cv_df <- cbind(data.frame(paste0(rep(1:5, each=5), "-", rep(1:5, rep=5))[scenarios_to_keep]),  
-               cv_vanilla[, c(2,1,3,4)], cv_complex[, c(2,1,3,4)])
-
+if (NO_GROWTH) {
+  sd_df <- cbind(data.frame(paste0(rep(1:5, each=5), "-", rep(1:5, rep=5))[scenarios_to_keep]), 
+                 sd_simple[, c(2,1)], sd_complex[, c(2,1)])
+  cv_df <- cbind(data.frame(paste0(rep(1:5, each=5), "-", rep(1:5, rep=5))[scenarios_to_keep]),  
+                 cv_simple[, c(2,1)], cv_complex[, c(2,1)])
+} else {
+  sd_df <- cbind(data.frame(paste0(rep(1:5, each=5), "-", rep(1:5, rep=5))[scenarios_to_keep]), 
+                 sd_simple[, c(2,1,3,4)], sd_complex[, c(2,1,3,4)])
+  cv_df <- cbind(data.frame(paste0(rep(1:5, each=5), "-", rep(1:5, rep=5))[scenarios_to_keep]),  
+                 cv_simple[, c(2,1,3,4)], cv_complex[, c(2,1,3,4)])
+}
 colnames(sd_df) <- c("scenario", 
-                     "simple_r_m", "simple_r_f" , "simple_N_y0_m" , "simple_N_y0_f",
-                     "complex_r_m", "complex_r_f" , "complex_N_y0_m" , "complex_N_y0_f")
+                     # "simple_r_m", "simple_r_f" , 
+                     "simple_N_y0_m" , "simple_N_y0_f",
+                     # "complex_r_m", "complex_r_f" , 
+                     "complex_N_y0_m" , "complex_N_y0_f")
 colnames(cv_df) <- c("scenario", 
-                     "simple_r_m", "simple_r_f" , "simple_N_y0_m" , "simple_N_y0_f",
-                     "complex_r_m", "complex_r_f" , "complex_N_y0_m" , "complex_N_y0_f") 
+                     # "simple_r_m", "simple_r_f" , 
+                     "simple_N_y0_m" , "simple_N_y0_f",
+                     # "complex_r_m", "complex_r_f" , 
+                     "complex_N_y0_m" , "complex_N_y0_f") 
 
 ## Create tables for latex
 library(kableExtra)
 
 labels <- c("Scenario", 
-            "$r_{\male}$", 
-            "$r_{\female}$", 
-            "$N^A_{\male, 2014}$", 
-            "$N^A_{\female, 2014}$", 
-            "$r_{\male}$", 
-            "$r_{\female}$",
-            "$N^A_\{male, 2014}$", 
-            "$N^A_{\female, 2014}$")
+            # "$r_{\male}$", 
+            # "$r_{\female}$", 
+            "$N^A_{male, 100}$", 
+            "$N^A_{female, 100}$", 
+            # "$r_{\male}$", 
+            # "$r_{\female}$",
+            "$N^A_{male, 100}$", 
+            "$N^A_{female, 100}$")
 
 caption <- "" 
 kable(sd_df, booktabs = T, 
@@ -130,7 +153,7 @@ kable(sd_df, booktabs = T,
       digits = 2,
       col.names = labels, 
       row.names = F, linesep = "", caption = caption) %>%
-  add_header_above( c(" " = 1, "Vanilla species" = 4, "Complex species" = 4))
+  add_header_above( c(" " = 1, "Simple species" = 4, "Complex species" = 4))
 
 caption <- "" 
 kable(cv_df, booktabs = T, 
@@ -138,7 +161,7 @@ kable(cv_df, booktabs = T,
       digits = 2,
       col.names = labels, 
       row.names = F, linesep = "", caption = caption) %>% 
-  add_header_above( c(" " = 1, "Vanilla species" = 4, "Complex species" = 4))
+  add_header_above( c(" " = 1, "Simple species" = 4, "Complex species" = 4))
 
 
 # ## Add data to fit results
