@@ -194,7 +194,7 @@ mean_sqrd_error <- data.frame(N_f_y0 = colmeans((error_N_f_y0) ^ 2),
                                 r_f = colmeans((error_r_f) ^ 2),
                                 r_m = colmeans((error_r_m) ^ 2))
 
-## standard deviation and variance
+## standard deviation and variance USE ERRORS
 std_dev <- data.frame(N_f_y0 = apply(est_N_f_y0, 2, sd),
                  N_m_y0 = apply(est_N_m_y0, 2, sd), 
                  N_f_10 = apply(est_N_f_10, 2, sd),
