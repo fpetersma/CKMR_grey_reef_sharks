@@ -24,6 +24,11 @@ library(kableExtra)
 
 NO_GROWTH <- TRUE
 
+scen_names <- paste0(rep(paste0(rep("ME", 5), c("-67", "-33", "+0", "+33", "+67")), 
+                         each = 5), ":",
+                     rep(paste0(rep("GC", 5), c("-10", "-5", "+0", "+5", "+10")), 
+                         times = 5))
+
 load("data/simulation_study/simple/simulation_1000_schemes_all_scenarios_fit_results_sim=all_no_growth.RData")
 load("data/simulation_study/simple/1000_schemes_combined_data_with_N_hist_sim=all.RData")
 
@@ -232,12 +237,12 @@ mean_sqrd_error <- data.frame(N_f_y0 = colmeans((error_N_f_y0) ^ 2),
                                 r_m = colmeans((error_r_m) ^ 2))
 
 ## standard deviation and variance of estimates
-std_dev <- data.frame(N_f_y0 = apply(est_N_f_y0, 2, sd),
-                 N_m_y0 = apply(est_N_m_y0, 2, sd), 
-                 N_f_5 = apply(est_N_f_5, 2, sd),
-                 N_m_5 = apply(est_N_m_5, 2, sd),
-                 r_f = apply(est_r_f, 2, sd), 
-                 r_m = apply(est_r_m, 2, sd))
+std_dev <- data.frame(N_f_y0 = apply(error_N_f_y0, 2, sd),
+                 N_m_y0 = apply(error_N_m_y0, 2, sd), 
+                 N_f_5 = apply(error_N_f_5, 2, sd),
+                 N_m_5 = apply(error_N_m_5, 2, sd),
+                 r_f = apply(error_r_f, 2, sd), 
+                 r_m = apply(error_r_m, 2, sd))
 variance <- std_dev ^ 2
 
 ## standard deviation and variance of error
@@ -251,13 +256,19 @@ variance_error <- std_dev_error ^ 2
 
 ## Coefficient of variation (works as the support for these estimates is 
 ## strictly positive)
-coeff_var <- data.frame(N_f_y0 = apply(est_N_f_y0, 2, raster::cv),
-                 N_m_y0 = apply(est_N_m_y0, 2, raster::cv), 
-                 N_f_5 = apply(est_N_f_5, 2, raster::cv),
-                 N_m_5 = apply(est_N_m_5, 2, raster::cv), 
-                 r_f = apply(est_r_f, 2, raster::cv), 
-                 r_m = apply(est_r_m, 2, raster::cv))
+custom_cv <- function(data) {
+  return(sd(data) / mean(data))
+}
 
+coeff_var_custom <- data.frame(N_f_y0 = apply(est_N_f_y0, 2, custom_cv),
+                        N_m_y0 = apply(est_N_m_y0, 2, custom_cv), 
+                        N_f_5 = apply(est_N_f_5, 2, custom_cv),
+                        N_m_5 = apply(est_N_m_5, 2, custom_cv), 
+                        r_f = apply(est_r_f, 2, custom_cv), 
+                        r_m = apply(est_r_m, 2, custom_cv))
+
+## This one is the correct one: std_dev_error comes from the error, mean_est 
+## will standardise it
 coeff_var <- std_dev_error / mean_est * 100
 
 ## =============================================================================
@@ -279,7 +290,7 @@ coeff_var <- std_dev_error / mean_est * 100
 ## The error in y0 estimates violin plot
 ## -----------------------------------------
 bias_N_f_y0_long <- bias_N_f_y0
-colnames(bias_N_f_y0_long) <- paste0(rep(1:5, each = 5), "-", 1:5)
+colnames(bias_N_f_y0_long) <- scen_names
 bias_N_f_y0_long <- reshape2::melt(bias_N_f_y0_long,
                                   # na.rm = TRUE
                                   value.name = "Abundance")[, -1]
@@ -301,7 +312,7 @@ bias_N_f_y0_long$Sex = "Female"
 bias_N_f_y0_long <- na.omit(bias_N_f_y0_long)
 
 bias_N_m_y0_long <- bias_N_m_y0
-colnames(bias_N_m_y0_long) <- paste0(rep(1:5, each = 5), "-", 1:5)
+colnames(bias_N_m_y0_long) <- scen_names
 bias_N_m_y0_long <- reshape2::melt(bias_N_m_y0_long,
                                   value.name = "Abundance")[, -1]
 
@@ -350,7 +361,7 @@ y0_plot <- ggplot(data=bias_N_y0_long, aes(fill=Sex, x=Scenario, y=Abundance)) +
 ## The mean abundance over year 1 to 10 estimates violin plot
 ## ----------------------------------------------------------
 bias_N_f_5_long <- bias_N_f_5
-colnames(bias_N_f_5_long) <- paste0(rep(1:5, each = 5), "-", 1:5)
+colnames(bias_N_f_5_long) <- scen_names
 bias_N_f_5_long <- reshape2::melt(bias_N_f_5_long,
                                   # na.rm = TRUE
                                   value.name = "Abundance")[, -1]
@@ -372,7 +383,7 @@ bias_N_f_5_long$Sex = "Female"
 bias_N_f_5_long <- na.omit(bias_N_f_5_long)
 
 bias_N_m_5_long <- bias_N_m_5
-colnames(bias_N_m_5_long) <- paste0(rep(1:5, each = 5), "-", 1:5)
+colnames(bias_N_m_5_long) <- scen_names
 bias_N_m_5_long <- reshape2::melt(bias_N_m_5_long,
                                   value.name = "Abundance")[, -1]
 
@@ -420,7 +431,7 @@ mean_y_5_plot <- ggplot(data=bias_N_5_long, aes(fill=Sex, x=Scenario, y=Abundanc
 ## The growth estimates violin plot
 ## --------------------------------
 bias_r_f_long <- bias_r_f
-colnames(bias_r_f_long) <- paste0(rep(1:5, each = 5), "-", 1:5)
+colnames(bias_r_f_long) <- scen_names
 bias_r_f_long <- reshape2::melt(bias_r_f_long,
                                # na.rm = TRUE
                                value.name = "Growth")[, -1]
@@ -442,7 +453,7 @@ bias_r_f_long$Sex = "Female"
 bias_r_f_long <- na.omit(bias_r_f_long)
 
 bias_r_m_long <- bias_r_m
-colnames(bias_r_m_long) <- paste0(rep(1:5, each = 5), "-", 1:5)
+colnames(bias_r_m_long) <- scen_names
 bias_r_m_long <- reshape2::melt(bias_r_m_long,
                                value.name = "Growth")[, -1]
 
@@ -568,7 +579,7 @@ summarise_performance_metrics <- function(column, truth) {
     root_mean_sqrd_error = sqrt(mean_sqrd_error[, column]))
     # error_std_dev = std_dev_error[, column])
 
-  df$scenario <- paste0(rep(1:5, each = 5), "-", 1:5)
+  df$scenario <- scen_names
   df <- na.omit(df[, c(ncol(df), 1:(ncol(df)-1))])
   return(df)
 }
@@ -633,10 +644,8 @@ if (NO_GROWTH) {
   cv_complex <- coeff_var[conv, c(2, 1)]
   
   ## Now create tables using lines below
-  sd_df <- cbind(data.frame(paste0(rep(1:5, each=5), "-", rep(1:5, rep=5))[conv]), 
-                 sd_simple, sd_complex)
-  cv_df <- cbind(data.frame(paste0(rep(1:5, each=5), "-", rep(1:5, rep=5))[conv]),  
-                 cv_simple, cv_complex)
+  sd_df <- cbind(data.frame(scen_names[conv]), sd_simple, sd_complex)
+  cv_df <- cbind(data.frame(scen_names[conv]), cv_simple, cv_complex)
   
   colnames(sd_df) <- c("scenario", 
                        "simple_N_y0_m" , "simple_N_y0_f",
@@ -679,10 +688,8 @@ if (NO_GROWTH) {
   cv_complex <- coeff_var[conv, c(6, 5, 2, 1)]
   
   ## Now create tables using lines below
-  sd_df <- cbind(data.frame(paste0(rep(1:5, each=5), "-", rep(1:5, rep=5))[conv]), 
-                 sd_simple, sd_complex)
-  cv_df <- cbind(data.frame(paste0(rep(1:5, each=5), "-", rep(1:5, rep=5))[conv]),  
-                 cv_simple, cv_complex)
+  sd_df <- cbind(data.frame(scen_names[conv]), sd_simple, sd_complex)
+  cv_df <- cbind(data.frame(scen_names[conv]), cv_simple, cv_complex)
   
   colnames(sd_df) <- c("scenario", 
                        "simple_r_m", "simple_r_f" , "simple_N_y0_m" , "simple_N_y0_f",
