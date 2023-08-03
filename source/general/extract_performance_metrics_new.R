@@ -29,11 +29,11 @@ scen_names <- paste0(rep(paste0(rep("ME", 5), c("-67", "-33", "+0", "+33", "+67"
                      rep(paste0(rep("GC", 5), c("-10", "-5", "+0", "+5", "+10")), 
                          times = 5))
 
-load("data/simulation_study/simple/simulation_1000_schemes_all_scenarios_fit_results_sim=all_no_growth.RData")
-load("data/simulation_study/simple/1000_schemes_combined_data_with_N_hist_sim=all.RData")
+# load("data/simulation_study/simple/simulation_1000_schemes_all_scenarios_fit_results_sim=all_no_growth.RData")
+# load("data/simulation_study/simple/1000_schemes_combined_data_with_N_hist_sim=all.RData")
 
-# load("data/simulation_study/complex/simulation_1000_schemes_all_scenarios_fit_results_sim=all_no_growth.RData")
-# load("data/simulation_study/complex/1000_schemes_combined_data_with_N_hist_sim=all.RData")
+load("data/simulation_study/complex/simulation_1000_schemes_all_scenarios_fit_results_sim=all_no_growth.RData")
+load("data/simulation_study/complex/1000_schemes_combined_data_with_N_hist_sim=all.RData")
 
 ## =============================================================================
 ## 2. CREATE THE MASTER DATA FRAME
@@ -330,14 +330,36 @@ bias_N_m_y0_long$VBGF_scenario <- rep(rep(c("Growth curve shifted vertically by 
                                          each = 1000), 
                                      times = 5)
 bias_N_m_y0_long$Sex = "Male"
-bias_N_m_y0_long <- na.omit(bias_N_m_y0_long)
+# bias_N_m_y0_long <- na.omit(bias_N_m_y0_long)
 
 bias_N_y0_long <- rbind(bias_N_m_y0_long[, c(1, 3, 4, 2, 5)], 
                        bias_N_f_y0_long[, c(1, 3, 4, 2, 5)])
 colnames(bias_N_y0_long)[1] <- c("Scenario")
-bias_N_y0_long$Scenario <- as.factor(as.character(bias_N_y0_long$Scenario))
+bias_N_y0_long$Scenario <- factor(bias_N_y0_long$Scenario, levels = scen_names)
 
-y0_plot <- ggplot(data=bias_N_y0_long, aes(fill=Sex, x=Scenario, y=Abundance)) +
+## A SINGLE PLOT
+# y0_plot <- ggplot(data=bias_N_y0_long, aes(fill=Sex, x=Scenario, y=Abundance)) +
+#   geom_boxplot(position="dodge", 
+#                outlier.alpha = 0.1,
+#                # outlier.shape = NA,
+#                # draw_quantiles = c(0.5), # for violin plots
+#                coef = 5,   # for boxplots, how many times the IQR values are included (defaults to 1.5)
+#                alpha=0.5) +
+#   stat_summary(mapping = aes(fill=Sex), position=position_dodge(0.75),
+#                fun = mean, geom="point", shape=21, color="black") +
+#   theme_minimal() +
+#   theme(legend.position = "bottom") +
+#   geom_hline(yintercept = 0, 
+#              colour = "black", 
+#              alpha = 0.5)+
+#   ylab("Relative error in abundance") +
+#   # coord_flip() +  # comment out for normal plot
+#   # scale_x_discrete(limits = rev(levels(est_N_5_long$Scenario))) +
+#   # coord_cartesian(ylim = c(-100, 500)) +
+#   scale_fill_discrete(name = ""); y0_plot
+
+## A 5x5 PLOT
+y0_plot <- ggplot(data=bias_N_y0_long, aes(fill=Sex, x=1, y=Abundance)) +
   geom_boxplot(position="dodge", 
                outlier.alpha = 0.1,
                # outlier.shape = NA,
@@ -347,15 +369,20 @@ y0_plot <- ggplot(data=bias_N_y0_long, aes(fill=Sex, x=Scenario, y=Abundance)) +
   stat_summary(mapping = aes(fill=Sex), position=position_dodge(0.75),
                fun = mean, geom="point", shape=21, color="black") +
   theme_minimal() +
-  theme(legend.position = "bottom") +
+  theme(legend.position = "bottom", 
+        axis.title.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        axis.text.x = element_blank()) +
   geom_hline(yintercept = 0, 
              colour = "black", 
              alpha = 0.5)+
+  facet_wrap(~ Scenario , nrow = 5, labeller = label_parsed) +
   ylab("Relative error in abundance") +
   # coord_flip() +  # comment out for normal plot
   # scale_x_discrete(limits = rev(levels(est_N_5_long$Scenario))) +
   # coord_cartesian(ylim = c(-100, 500)) +
   scale_fill_discrete(name = ""); y0_plot
+# Export this plot in 1000x1000
 
 ## ----------------------------------------------------------
 ## The mean abundance over year 1 to 10 estimates violin plot
