@@ -21,6 +21,12 @@ n_years <- year_lim[2] - year_lim[1] + 1
 y0 <- 100
 max_y_axis <- 1000
 
+scen_names <- paste0(rep(paste0(rep("ME", 5), c("-67", "-33", "+0", "+33", "+67")), 
+                         each = 5), ":",
+                     rep(paste0(rep("GC", 5), c("-10", "-5", "+0", "+5", "+10")), 
+                         times = 5))
+
+
 ## -----------------------
 ## Create long format data
 ## -----------------------
@@ -97,7 +103,7 @@ error_long$N_error[error_long$conv == "failed"] <- NA
 dimension <- sqrt(max(error_long$sim_id))
 
 error_long$sim_id <- as.factor(error_long$sim_id)
-levels(error_long$sim_id) <- paste0(rep(1:5, each = 5), "-", 1:5)
+levels(error_long$sim_id) <- scen_names
 
 ## Add the scenario descriptions
 error_long$Measurment_scenario <- rep(c("-67% of true length measurement error (2.89)",

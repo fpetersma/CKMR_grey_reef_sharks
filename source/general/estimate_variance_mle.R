@@ -17,6 +17,11 @@ library(parallel)
 
 NO_GROWTH <- TRUE
 
+scen_names <- paste0(rep(paste0(rep("ME", 5), c("-67", "-33", "+0", "+33", "+67")), 
+                         each = 5), ":",
+                     rep(paste0(rep("GC", 5), c("-10", "-5", "+0", "+5", "+10")), 
+                         times = 5))
+
 ## Data
 load("data/simulation_study/simple/simulation_1000_schemes_all_scenarios_fit_results_sim=all_no_growth.RData")
 simple_fits <- scenario_fits
@@ -113,14 +118,14 @@ for (i in seq_along(scenarios_to_keep)) {
 ## Combine into data frames
 ## -----------------------------
 if (NO_GROWTH) {
-  sd_df <- cbind(data.frame(paste0(rep(1:5, each=5), "-", rep(1:5, rep=5))[scenarios_to_keep]), 
+  sd_df <- cbind(data.frame(scen_names[scenarios_to_keep]), 
                  sd_simple[, c(2,1)], sd_complex[, c(2,1)])
-  cv_df <- cbind(data.frame(paste0(rep(1:5, each=5), "-", rep(1:5, rep=5))[scenarios_to_keep]),  
+  cv_df <- cbind(data.frame(scen_names[scenarios_to_keep]),  
                  cv_simple[, c(2,1)], cv_complex[, c(2,1)])
 } else {
-  sd_df <- cbind(data.frame(paste0(rep(1:5, each=5), "-", rep(1:5, rep=5))[scenarios_to_keep]), 
+  sd_df <- cbind(data.frame(scen_names[scenarios_to_keep]), 
                  sd_simple[, c(2,1,3,4)], sd_complex[, c(2,1,3,4)])
-  cv_df <- cbind(data.frame(paste0(rep(1:5, each=5), "-", rep(1:5, rep=5))[scenarios_to_keep]),  
+  cv_df <- cbind(data.frame(scen_names[scenarios_to_keep]),  
                  cv_simple[, c(2,1,3,4)], cv_complex[, c(2,1,3,4)])
 }
 colnames(sd_df) <- c("scenario", 
