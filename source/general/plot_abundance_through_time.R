@@ -5,11 +5,11 @@ library(tidyverse)
 library(Rfast)
 library(ggplot2)
 
-load("data/simulation_study/simple/simulation_1000_schemes_all_scenarios_fit_results_sim=all.RData")
-load("data/simulation_study/simple/1000_schemes_combined_data_with_N_hist_sim=all.RData")
+# load("data/simulation_study/simple/simulation_1000_schemes_all_scenarios_fit_results_sim=all.RData")
+# load("data/simulation_study/simple/1000_schemes_combined_data_with_N_hist_sim=all.RData")
 
-# load("data/simulation_study/complex/simulation_1000_schemes_all_scenarios_fit_results_sim=all.RData")
-# load("data/simulation_study/complex/1000_schemes_combined_data_with_N_hist_sim=all.RData")
+load("data/simulation_study/complex/simulation_1000_schemes_all_scenarios_fit_results_sim=all.RData")
+load("data/simulation_study/complex/1000_schemes_combined_data_with_N_hist_sim=all.RData")
 
 ## =============================================================================
 ## 2. CREATE THE MASTER DATA FRAME
@@ -51,10 +51,10 @@ for (i in 1:length(scenario_fits)) {
   
   ## For every fit, derive the abundance for all years
   for (j in 1:length(fits)) {
-    est_N_f[j, ] <- exp(est[j, "N_t0_f"])
-    est_N_m[j, ] <- exp(est[j, "N_t0_m"]) 
-    # est_N_f[j, ] <- exp(est[j, "N_t0_f"]) * exp(est[j, "r_f"]) ^ years
-    # est_N_m[j, ] <- exp(est[j, "N_t0_m"]) * exp(est[j, "r_m"]) ^ years
+    # est_N_f[j, ] <- exp(est[j, "N_t0_f"])
+    # est_N_m[j, ] <- exp(est[j, "N_t0_m"]) 
+    est_N_f[j, ] <- exp(est[j, "N_t0_f"]) * exp(est[j, "r_f"]) ^ years
+    est_N_m[j, ] <- exp(est[j, "N_t0_m"]) * exp(est[j, "r_m"]) ^ years
   }
   
   ## Subtract the true abundances to get the error
