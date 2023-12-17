@@ -179,7 +179,7 @@ for (sim_i in 1) {
         fatal = lethal_sampling
       )
     }
-    cat(" Cycle completed!\n")
+    cat("Cycle completed!\n")
   }
   ## How many individuals are still alive in 'indiv'?
   indiv_alive_Hawaii[sim_i] <- nrow(indiv[is.na(indiv$DeathY), ])

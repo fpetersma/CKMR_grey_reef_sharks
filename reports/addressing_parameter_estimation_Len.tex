@@ -1,0 +1,229 @@
+% Options for packages loaded elsewhere
+\PassOptionsToPackage{unicode}{hyperref}
+\PassOptionsToPackage{hyphens}{url}
+%
+\documentclass[
+]{article}
+\usepackage{amsmath,amssymb}
+\usepackage{lmodern}
+\usepackage{iftex}
+\ifPDFTeX
+  \usepackage[T1]{fontenc}
+  \usepackage[utf8]{inputenc}
+  \usepackage{textcomp} % provide euro and other symbols
+\else % if luatex or xetex
+  \usepackage{unicode-math}
+  \defaultfontfeatures{Scale=MatchLowercase}
+  \defaultfontfeatures[\rmfamily]{Ligatures=TeX,Scale=1}
+\fi
+% Use upquote if available, for straight quotes in verbatim environments
+\IfFileExists{upquote.sty}{\usepackage{upquote}}{}
+\IfFileExists{microtype.sty}{% use microtype if available
+  \usepackage[]{microtype}
+  \UseMicrotypeSet[protrusion]{basicmath} % disable protrusion for tt fonts
+}{}
+\makeatletter
+\@ifundefined{KOMAClassName}{% if non-KOMA class
+  \IfFileExists{parskip.sty}{%
+    \usepackage{parskip}
+  }{% else
+    \setlength{\parindent}{0pt}
+    \setlength{\parskip}{6pt plus 2pt minus 1pt}}
+}{% if KOMA class
+  \KOMAoptions{parskip=half}}
+\makeatother
+\usepackage{xcolor}
+\usepackage[margin=1in]{geometry}
+\usepackage{color}
+\usepackage{fancyvrb}
+\newcommand{\VerbBar}{|}
+\newcommand{\VERB}{\Verb[commandchars=\\\{\}]}
+\DefineVerbatimEnvironment{Highlighting}{Verbatim}{commandchars=\\\{\}}
+% Add ',fontsize=\small' for more characters per line
+\usepackage{framed}
+\definecolor{shadecolor}{RGB}{248,248,248}
+\newenvironment{Shaded}{\begin{snugshade}}{\end{snugshade}}
+\newcommand{\AlertTok}[1]{\textcolor[rgb]{0.94,0.16,0.16}{#1}}
+\newcommand{\AnnotationTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\newcommand{\AttributeTok}[1]{\textcolor[rgb]{0.77,0.63,0.00}{#1}}
+\newcommand{\BaseNTok}[1]{\textcolor[rgb]{0.00,0.00,0.81}{#1}}
+\newcommand{\BuiltInTok}[1]{#1}
+\newcommand{\CharTok}[1]{\textcolor[rgb]{0.31,0.60,0.02}{#1}}
+\newcommand{\CommentTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textit{#1}}}
+\newcommand{\CommentVarTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\newcommand{\ConstantTok}[1]{\textcolor[rgb]{0.00,0.00,0.00}{#1}}
+\newcommand{\ControlFlowTok}[1]{\textcolor[rgb]{0.13,0.29,0.53}{\textbf{#1}}}
+\newcommand{\DataTypeTok}[1]{\textcolor[rgb]{0.13,0.29,0.53}{#1}}
+\newcommand{\DecValTok}[1]{\textcolor[rgb]{0.00,0.00,0.81}{#1}}
+\newcommand{\DocumentationTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\newcommand{\ErrorTok}[1]{\textcolor[rgb]{0.64,0.00,0.00}{\textbf{#1}}}
+\newcommand{\ExtensionTok}[1]{#1}
+\newcommand{\FloatTok}[1]{\textcolor[rgb]{0.00,0.00,0.81}{#1}}
+\newcommand{\FunctionTok}[1]{\textcolor[rgb]{0.00,0.00,0.00}{#1}}
+\newcommand{\ImportTok}[1]{#1}
+\newcommand{\InformationTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\newcommand{\KeywordTok}[1]{\textcolor[rgb]{0.13,0.29,0.53}{\textbf{#1}}}
+\newcommand{\NormalTok}[1]{#1}
+\newcommand{\OperatorTok}[1]{\textcolor[rgb]{0.81,0.36,0.00}{\textbf{#1}}}
+\newcommand{\OtherTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{#1}}
+\newcommand{\PreprocessorTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textit{#1}}}
+\newcommand{\RegionMarkerTok}[1]{#1}
+\newcommand{\SpecialCharTok}[1]{\textcolor[rgb]{0.00,0.00,0.00}{#1}}
+\newcommand{\SpecialStringTok}[1]{\textcolor[rgb]{0.31,0.60,0.02}{#1}}
+\newcommand{\StringTok}[1]{\textcolor[rgb]{0.31,0.60,0.02}{#1}}
+\newcommand{\VariableTok}[1]{\textcolor[rgb]{0.00,0.00,0.00}{#1}}
+\newcommand{\VerbatimStringTok}[1]{\textcolor[rgb]{0.31,0.60,0.02}{#1}}
+\newcommand{\WarningTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\usepackage{graphicx}
+\makeatletter
+\def\maxwidth{\ifdim\Gin@nat@width>\linewidth\linewidth\else\Gin@nat@width\fi}
+\def\maxheight{\ifdim\Gin@nat@height>\textheight\textheight\else\Gin@nat@height\fi}
+\makeatother
+% Scale images if necessary, so that they will not overflow the page
+% margins by default, and it is still possible to overwrite the defaults
+% using explicit options in \includegraphics[width, height, ...]{}
+\setkeys{Gin}{width=\maxwidth,height=\maxheight,keepaspectratio}
+% Set default figure placement to htbp
+\makeatletter
+\def\fps@figure{htbp}
+\makeatother
+\setlength{\emergencystretch}{3em} % prevent overfull lines
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+\setcounter{secnumdepth}{-\maxdimen} % remove section numbering
+\ifLuaTeX
+  \usepackage{selnolig}  % disable illegal ligatures
+\fi
+\IfFileExists{bookmark.sty}{\usepackage{bookmark}}{\usepackage{hyperref}}
+\IfFileExists{xurl.sty}{\usepackage{xurl}}{} % add URL line breaks if available
+\urlstyle{same} % disable monospaced font for URLs
+\hypersetup{
+  pdftitle={Addressing Len's parameter estimation question},
+  pdfauthor={Felix T Petersma},
+  hidelinks,
+  pdfcreator={LaTeX via pandoc}}
+
+\title{Addressing Len's parameter estimation question}
+\author{Felix T Petersma}
+\date{2023-03-13}
+
+\begin{document}
+\maketitle
+
+Try to fit more parameters than just the abundance related parameters I
+believe that this won't work as it is not informative on those
+parameters, which would mean that the parameters and not properly
+defined by the model, but I am not sure.
+
+This point was raised by Len in his initial feedback to the first draft
+of shark simulation paper.
+
+For this to run, it is easier not to run the cpp code from the CKMRcpp
+package, but instead compile the cpp code here and run as functions.
+This way it is easier to modify the functions so that other parameters
+are estimated.
+
+In this script, we use the complex species.
+
+\hypertarget{load-libraries-and-data}{%
+\subsection{Load libraries and data}\label{load-libraries-and-data}}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{library}\NormalTok{(pbapply)}
+\FunctionTok{library}\NormalTok{(parallel)}
+\FunctionTok{library}\NormalTok{(Rcpp)}
+\NormalTok{data\_folder }\OtherTok{\textless{}{-}} \StringTok{"../data/1\_population\_multiple\_sampling\_schemes/"}
+\FunctionTok{load}\NormalTok{(}\FunctionTok{paste0}\NormalTok{(data\_folder, }\StringTok{"complex/100\_schemes\_dfs\_suff\_unique\_combos\_sim=555.RData"}\NormalTok{))}
+
+\NormalTok{sigma\_l }\OtherTok{\textless{}{-}} \FloatTok{2.89}             \CommentTok{\# what is the true measurement error}
+
+\NormalTok{a\_0 }\OtherTok{\textless{}{-}} \SpecialCharTok{{-}}\FloatTok{8.27}                \CommentTok{\# theoretical age at length zero              }
+\NormalTok{k }\OtherTok{\textless{}{-}} \FloatTok{0.0554}                 \CommentTok{\# growth rate}
+\NormalTok{l\_inf }\OtherTok{\textless{}{-}} \DecValTok{163}                \CommentTok{\# asymptotic length}
+
+\NormalTok{n }\OtherTok{\textless{}{-}} \DecValTok{100}
+\end{Highlighting}
+\end{Shaded}
+
+\hypertarget{compile-cpp-into-r-functions}{%
+\subsection{Compile cpp into R
+functions}\label{compile-cpp-into-r-functions}}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{Rcpp}\SpecialCharTok{::}\FunctionTok{sourceCpp}\NormalTok{(}\StringTok{"D:/felix/CKMR\_grey\_reef\_sharks/source/fitting/estimating\_more\_parameters\_Rcpp.cpp"}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+\hypertarget{fit-the-oldskool-way-by-only-estimating-abundance-in-year-0-and-growth-rate-r}{%
+\subsection{Fit the oldskool way, by only estimating abundance in year 0
+and growth rate
+r}\label{fit-the-oldskool-way-by-only-estimating-abundance-in-year-0-and-growth-rate-r}}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{n\_cores }\OtherTok{\textless{}{-}} \DecValTok{25} \CommentTok{\# 2 fits per core}
+\NormalTok{cl }\OtherTok{\textless{}{-}} \FunctionTok{makeCluster}\NormalTok{(n\_cores)}
+\FunctionTok{clusterExport}\NormalTok{(}\AttributeTok{cl =}\NormalTok{ cl, }\FunctionTok{list}\NormalTok{(}\StringTok{"a0"}\NormalTok{, }\StringTok{"l\_inf"}\NormalTok{, }\StringTok{"sigma\_l"}\NormalTok{), }\AttributeTok{envir =} \FunctionTok{environment}\NormalTok{())}
+\NormalTok{results }\OtherTok{\textless{}{-}} \FunctionTok{pblapply}\NormalTok{(dfs\_suff[}\DecValTok{1}\SpecialCharTok{:}\NormalTok{n], }\ControlFlowTok{function}\NormalTok{(df) \{}
+  \DocumentationTok{\#\# Create parameter object for nlminb()}
+\NormalTok{  par }\OtherTok{\textless{}{-}} \FunctionTok{list}\NormalTok{(}
+    \CommentTok{\# r = log(1.000),                             \# same r for both sexes}
+    \AttributeTok{r\_f =} \FunctionTok{log}\NormalTok{(}\FloatTok{1.000}\NormalTok{),                             }\CommentTok{\# female growth rate}
+    \AttributeTok{r\_m =} \FunctionTok{log}\NormalTok{(}\FloatTok{1.000}\NormalTok{),                             }\CommentTok{\# male growth rate}
+    \AttributeTok{phi =}\NormalTok{ boot}\SpecialCharTok{::}\FunctionTok{logit}\NormalTok{(}\FloatTok{0.87}\NormalTok{), }\CommentTok{\# same as plogis(0.9) {-}{-} boot::inv.logit() is qlogis()}
+    \AttributeTok{N\_t0\_m =} \FunctionTok{log}\NormalTok{(}\DecValTok{500}\NormalTok{),                            }\CommentTok{\# number of reproductive males}
+    \CommentTok{\# sigma\_l = log(0.01),}
+    \CommentTok{\# phi = boot::logit(1 {-} 0.153),}
+    \AttributeTok{N\_t0\_f =} \FunctionTok{log}\NormalTok{(}\DecValTok{500}\NormalTok{))                            }\CommentTok{\# number of reproductive females}
+  
+  \DocumentationTok{\#\# Take a subset of the data if required}
+\NormalTok{  df\_select }\OtherTok{\textless{}{-}}\NormalTok{ df[, ]}
+  
+  \DocumentationTok{\#\# Create the data object for nlminb()}
+\NormalTok{  dat }\OtherTok{\textless{}{-}} \FunctionTok{list}\NormalTok{(}\AttributeTok{alpha\_m =} \DecValTok{17}\NormalTok{,                         }\CommentTok{\# maturity age for males (van=10, ges=17)}
+              \AttributeTok{alpha\_f =} \DecValTok{19}\NormalTok{,                         }\CommentTok{\# maturity age for females (van=10, ges=19)}
+              
+              \CommentTok{\# r = log(1.0000),                    \# the population growth rate}
+              \AttributeTok{sigma\_l =} \FunctionTok{log}\NormalTok{(sigma\_l),               }\CommentTok{\# the measurement error on length}
+              \AttributeTok{phi =}\NormalTok{ boot}\SpecialCharTok{::}\FunctionTok{logit}\NormalTok{(}\DecValTok{1} \SpecialCharTok{{-}} \FloatTok{0.1113}\NormalTok{),        }\CommentTok{\# phi is the survival rate (van=0.1535, ges=0.1113)}
+              
+              \AttributeTok{ESTIMATE\_R =} \DecValTok{2}\NormalTok{,                       }\CommentTok{\# is r fixed (0), estimated (1), }
+              \CommentTok{\# or sex specific (2)?}
+              
+              \AttributeTok{max\_age =} \DecValTok{63}\NormalTok{,                         }\CommentTok{\# the maximum age to be considered (van=19, ges=63)}
+              \AttributeTok{max\_length =} \DecValTok{200}\NormalTok{,                     }\CommentTok{\# at least the maximum length in the data}
+              \AttributeTok{t0 =} \DecValTok{2014}\NormalTok{,                            }\CommentTok{\# a reference year for the abundance estimation}
+              \AttributeTok{vbgf\_l\_inf =}\NormalTok{ l\_inf,                   }\CommentTok{\# asymptotic length for VBGF}
+              \AttributeTok{vbgf\_k =} \FloatTok{0.0554}\NormalTok{,                      }\CommentTok{\# growth coefficient for VBGF}
+              \AttributeTok{vbgf\_a0 =}\NormalTok{ a0,                         }\CommentTok{\# theoretical age at length 0 for vbgf}
+              \AttributeTok{s\_i =}\NormalTok{ df\_select}\SpecialCharTok{$}\NormalTok{indiv\_1\_sex,}
+              \AttributeTok{s\_j =}\NormalTok{ df\_select}\SpecialCharTok{$}\NormalTok{indiv\_2\_sex,}
+              \AttributeTok{c\_i =}\NormalTok{ df\_select}\SpecialCharTok{$}\NormalTok{indiv\_1\_capture\_year,}
+              \AttributeTok{c\_j =}\NormalTok{ df\_select}\SpecialCharTok{$}\NormalTok{indiv\_2\_capture\_year,}
+              \AttributeTok{a\_i =}\NormalTok{ df\_select}\SpecialCharTok{$}\NormalTok{indiv\_1\_capture\_age,}
+              \AttributeTok{a\_j =}\NormalTok{ df\_select}\SpecialCharTok{$}\NormalTok{indiv\_2\_capture\_age,}
+              \AttributeTok{l\_i =}\NormalTok{ df\_select}\SpecialCharTok{$}\NormalTok{indiv\_1\_length,}
+              \AttributeTok{l\_j =}\NormalTok{ df\_select}\SpecialCharTok{$}\NormalTok{indiv\_2\_length,}
+              \AttributeTok{kinship =}\NormalTok{ df\_select}\SpecialCharTok{$}\NormalTok{kinship,}
+              \AttributeTok{cov\_combo\_freq =}\NormalTok{ df\_select}\SpecialCharTok{$}\NormalTok{covariate\_combo\_freq,}
+              \AttributeTok{n =} \FunctionTok{nrow}\NormalTok{(df\_select))}
+  
+  \DocumentationTok{\#\# Start the optimisation (make sure the trace and relative tolerance values}
+  \DocumentationTok{\#\#                         are correct)}
+  \CommentTok{\# system.time(\{}
+\NormalTok{  res }\OtherTok{\textless{}{-}} \FunctionTok{nlminb}\NormalTok{(}\AttributeTok{start =}\NormalTok{ par, }
+                \AttributeTok{objective =}\NormalTok{ nllPOPCKMRcppAgeUnknownGestation, }
+                \AttributeTok{dat =}\NormalTok{ dat, }
+                \AttributeTok{control =} \FunctionTok{list}\NormalTok{(}\AttributeTok{trace =} \DecValTok{1}\NormalTok{, }\AttributeTok{rel.tol =} \FloatTok{1e{-}7}\NormalTok{))}
+  \CommentTok{\# \})}
+\NormalTok{  res}\SpecialCharTok{$}\NormalTok{dat }\OtherTok{\textless{}{-}}\NormalTok{ dat}
+  
+  \FunctionTok{return}\NormalTok{(res)}
+\NormalTok{\}, }\AttributeTok{cl =}\NormalTok{ cl); }\FunctionTok{stopCluster}\NormalTok{(cl) }\CommentTok{\# end of pblapply() in parallel}
+\end{Highlighting}
+\end{Shaded}
+
+
+\end{document}

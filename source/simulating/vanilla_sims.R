@@ -39,7 +39,7 @@ no_gestation <- TRUE
 years <- 1915:2014             # number of years to run simulation
 
 ## Store simdata sets
-n_cores <- 50
+n_cores <- 30
 cl <- makeCluster(n_cores)
 # rm(simulated_data_sets)
 clusterExport(cl, c(ls()))
@@ -93,7 +93,7 @@ simulated_data_sets <- pblapply(1:1000, function(i) {
       femaleCurve = female_curve,
       no_gestation = no_gestation
     )
-    indiv_g <- indiv
+    
     ## 2. Survival
     indiv <- fishSim::mort(
       indiv = indiv, 
@@ -132,10 +132,11 @@ summary(sapply(simulated_data_sets, function(x) {nrow(x[is.na(x$DeathY), ])}))
 # Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
 # 6542    8001    8406    8398    8798   10208 
 
-# Create 100 repeats
-simulated_populations <- simulated_data_sets
-## Choose from 1, 144, 333, 800, 
-simulated_data_sets <- rep(simulated_populations[144], 100)
+# CODE BELOW WAS USED TO REPEAT THE SAME POP REALISATION 100 TIMES
+# # Create 100 repeats
+# simulated_populations <- simulated_data_sets
+# ## Choose from 1, 144, 333, 800, 
+# simulated_data_sets <- rep(simulated_populations[144], 100)
 
 ## :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 ## Run retrospecitve sampling
@@ -174,8 +175,7 @@ all(is.na(simulated_data_sets[[1]]$SampY))  # should be FALSE
 unique(simulated_data_sets[[1]]$SampY)      # check if this seems correct
 sum(!is.na(simulated_data_sets[[1]]$SampY)) # seem correct as well?
 
-
-# save(simulated_data_sets, file = "data/1_population_multiple_sampling_schemes/vanillus/1000_schemes_simulated_data_set.RData")
+# save(simulated_data_sets, file = "data/simulation_study/vanilla/1000_simulated_data_sets.RData")
 
 ## :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 ## Create summary statistics

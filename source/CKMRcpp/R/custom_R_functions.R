@@ -411,6 +411,25 @@ mateOrBirth <- function (indiv,
                          femaleCurve,
                          no_gestation = TRUE,
                          quiet = TRUE) {
+  ## START FOR DEBUGGING <<<------------
+  # indiv = indiv
+  # batchSize = batch_size
+  # fecundityDist = fecundity_dist # uniform is custom
+  # osr = sex_ratio
+  # year = year
+  # firstBreedFemale = first_breed_female
+  # firstBreedMale = first_breed_male
+  # firstLitter = first_litter # firstLitter is custom
+  # type = mate_type
+  # maxClutch = max_clutch
+  # singlePaternity = single_paternity 
+  # maleCurve = male_curve
+  # femaleCurve = female_curve
+  # no_gestation = no_gestation
+  # singlePaternity = TRUE 
+  # exhaustFathers = FALSE
+  ## END FOR DEBUGGING <<<-------------
+  
   if (!(type %in% c("flat", "age", "ageSex"))) {
     stop("'type' must be one of 'flat', 'age', or 'ageSex'.")
   }
@@ -421,19 +440,23 @@ mateOrBirth <- function (indiv,
   
   if (no_gestation) {
     ## Subset the birthing females
-    mothers <- subset(indiv, indiv[, 2] == 1 &   # are they female
-                        indiv[, 8] >= firstBreedFemale & # are they old enough to breed
-                        is.na(indiv[, 6]))       # are they alive
+    # mothers <- subset(indiv, indiv[, 2] == 1 &   # are they female
+    #                     indiv[, 8] >= firstBreedFemale & # are they old enough to breed
+    #                     is.na(indiv[, 6]))       # are they alive
+    mothers <- CKMRcpp::extractTheLiving(indiv, year = year, start_of_year = T, 
+                                         min_age = firstBreedFemale, sex = "female")
     if (nrow(mothers) == 0) {
       warning("There are no carrying females in the population")
     }
     ## Subset potential fathers
-    fathers <- subset(indiv, indiv[, 2] == 0 & 
-                        indiv[, 8] >= firstBreedMale & # only include males that were mature a year ago
-                        is.na(indiv[, 6])) # either alive 
+    # fathers <- subset(indiv, indiv[, 2] == 0 & 
+    #                     indiv[, 8] >= firstBreedMale & # only include males that were mature a year ago
+    #                     is.na(indiv[, 6])) # either alive 
+    fathers <- CKMRcpp::extractTheLiving(indiv, year = year, start_of_year = T, 
+                                         min_age = firstBreedMale, sex = "male")
     
     if (nrow(fathers) == 0) {
-      warning("There were no mature males in the population one year ago.")
+      warning("There were no mature males in the population.")
     }
   } else {
     ## Subset the birthing females
@@ -458,6 +481,7 @@ mateOrBirth <- function (indiv,
     ## COMPARE TO BIRTHYEAR
     fathers <- CKMRcpp::extractTheLiving(indiv, year = year - 1, start_of_year = T, 
                                          min_age = firstBreedMale, sex = "male")
+    # cat("number of fathers step 1:", nrow(fathers), "\n")
     # fathers <- subset(indiv, indiv[, 2] == 0 & 
     #                     year - indiv[, 5] - 1 >= firstBreedMale &  ## Using birthyear is important, instead of AgeLast, which stops counting after death
     #                     # indiv[, 8] - 1 >= firstBreedMale & # only include males that were mature a year ago
@@ -481,6 +505,8 @@ mateOrBirth <- function (indiv,
                                          femaleCurve[mating_females[, 8] + 1], , 
                                        drop = FALSE]
     }
+    # cat("number of fathers step 2:", nrow(fathers), "\n")
+    
     
     if (fecundityDist == "uniform") {
       if (length(batchSize) == 1) {
@@ -600,110 +626,6 @@ pDiscreteNorm <- function(x, mu, sigma) {
 }
 
 plotCKMRabundance <- function(
-    fits,           # A list of fits
-    # par_name,     # The name of the abundance parameter
-    year_lim,       # Number of years backward and forward from reference year
-    max_y_axis = 3000,
-    fixed_r = NULL, # 
-    y0 = 140,       # The reference year
-    med = F,     # TRUE for the median, else the mean
-    alpha = 0.1,    # Signifance level for confidence intervals
-    truth = NULL
-) {
-  
-  ## Extract estimates for selected parameter
-  est <- t(sapply(fits, function(x) x$par))
-  
-  ## Derive years and create matrices for abundance estimates
-  years <- year_lim[1]:year_lim[2]
-  abun_f <- matrix(NA, nrow = length(fits), ncol = length(years))
-  abun_m <- matrix(NA, nrow = length(fits), ncol = length(years))
-  
-  ## For every fit, derive the abundance for all years
-  if (is.null(fixed_r)) {
-    for (i in 1:length(fits)) {
-      abun_f[i, ] <- exp(est[i, "N_t0_f"]) * exp(est[i, "r_f"]) ^ years
-      abun_m[i, ] <- exp(est[i, "N_t0_m"]) * exp(est[i, "r_m"]) ^ years
-    }
-  } else {
-    for (i in 1:length(fits)) {
-      abun_f[i, ] <- exp(est[i, "N_t0_f"]) * fixed_r ^ years
-      abun_m[i, ] <- exp(est[i, "N_t0_m"]) * fixed_r ^ years
-    }
-  }
-  
-  ## Create matrices to store the median/mean abundance, and lower/upper bounds
-  stat_f <- matrix(NA, nrow = length(years), ncol = 3)
-  stat_m <- matrix(NA, nrow = length(years), ncol = 3)
-  
-  ## Extract mean/median, and CI
-  if (med) {
-    for (j in 1:length(years)) {
-      stat_f[j, ] <- c(median = median(abun_f[, j]), 
-                       lower = quantile(abun_f[, j], alpha / 2),
-                       upper = quantile(abun_f[, j], 1 - alpha / 2))
-      
-      stat_m[j, ] <- c(median = median(abun_m[, j]), 
-                       lower = quantile(abun_m[, j], alpha / 2),
-                       upper = quantile(abun_m[, j], 1 - alpha / 2))
-    }
-  } else {
-    for (j in 1:length(years)) {
-      stat_f[j, ] <- c(mean = mean(abun_f[, j]), 
-                       lower = quantile(abun_f[, j], alpha / 2),
-                       upper = quantile(abun_f[, j], 1 - alpha / 2))
-      
-      stat_m[j, ] <- c(mean = mean(abun_m[, j]), 
-                       lower = quantile(abun_m[, j], alpha / 2),
-                       upper = quantile(abun_m[, j], 1 - alpha / 2))
-    }
-  }
-  
-  ## Set parameters to allow for two plots in one figure
-  par(mfrow = c(1, 2));
-  
-  ## Create plot for the female adult population
-  p_f <- matplot(x = y0 + years, 
-                 y = stat_f, 
-                 type = "l",
-                 col = c("darkgreen"),
-                 lty = c(1, 3, 3),
-                 ylim = c(0, max_y_axis),
-                 ylab = "Female adult abudance")
-  ## If the true trend is provided, add it to the plot
-  # if (!is.null(truth)) {
-  #   lines(x = years + y0, 
-  #         y = truth$N_f * truth$r ^ years, 
-  #         col = "red", 
-  #         lty = 2)
-  # }
-  if (!is.null(truth)) {
-    lines(x = years + y0, 
-          y = truth[(nrow(truth)-length(years)+1):nrow(truth), 2])
-  }
-  
-  ## Create plot for the female adult population
-  p_m <- matplot(x = y0 + years, 
-                 y = stat_m, 
-                 type = "l",
-                 col = c("purple"),
-                 lty = c(1, 3, 3),
-                 ylim = c(0, max_y_axis),
-                 ylab = "Male adult abudance")
-  ## If the true trend is provided, add it to the plot
-  # if (!is.null(truth)) {
-  #   lines(x = years + y0, 
-  #         y = truth$N_m * truth$r ^ years, 
-  #         col = "red", 
-  #         lty = 2)
-  # }
-  if (!is.null(truth)) {
-    lines(x = years + y0, 
-          y = truth[(nrow(truth)-length(years)+1):nrow(truth), 1])
-  }
-}
-
-plotCKMRabundancePretty <- function(
     fits_list,           # A list of simulation objects 
     # par_name,     # The name of the abundance parameter
     year_lim,       # Number of years backward and forward from reference year
@@ -711,7 +633,8 @@ plotCKMRabundancePretty <- function(
     sex = "both",  # male, female, or both 
     y0 = 2014,       # The reference year
     truth = NULL,
-    y_axis = "Abundance"
+    y_axis = "Abundance",
+    share_r = FALSE # do males and females share the growth parameter, or not
 ) {
   ## load libraries
   library(tidyverse, quietly = T, warn.conflicts = F)
@@ -737,7 +660,135 @@ plotCKMRabundancePretty <- function(
     ## Turn the data in long format so ggplot2 knows what to do
     abun_f_df <- cbind(data.frame(year = y0 + years), 
                        t(abun_f),
+                       "101"= Rfast::colMedians(abun_f), #median
+                       "102" = truth[years + nrow(truth), 2]) #truth
+    abun_f_long <- reshape2::melt(abun_f_df, value.name = "N", id.vars = "year")
+    abun_f_long$sim_id <- i
+    abun_f_long$sex <- "F"
+    
+    ## Turn the data in long format so ggplot2 knows what to do
+    abun_m_df <- cbind(data.frame(year = y0 + years), 
+                       t(abun_m),
                        "101"= Rfast::colMedians(abun_m), #median
+                       "102" = truth[years + nrow(truth), 1]) #truth
+    abun_m_long <- reshape2::melt(abun_m_df, value.name = "N", id.vars = "year")
+    abun_m_long$sim_id <- i
+    abun_m_long$sex <- "M"
+    
+    if (any(conv != "relative convergence (4)")) {
+      abun_m_long$conv <- "failed"    
+      abun_f_long$conv <- "failed" 
+    } else {
+      abun_m_long$conv <- "successful"    
+      abun_f_long$conv <- "successful" 
+    }
+    
+    # Combine the male and datasets
+    # If it's the first simulation scenario, create abun_long; else, add to abun_long
+    if (i == 1) {
+      abun_long <- rbind(abun_f_long, abun_m_long)
+    } else {
+      abun_long <- rbind(abun_long, abun_f_long, abun_m_long)
+    }
+  }
+  ## Here starts the ggplot2 magic ----------------------------------------- <<<
+  
+  abun_long$N[abun_long$conv == "failed"] <- NA
+  
+  dimension <- sqrt(max(abun_long$sim_id))
+  
+  abun_long$sim_id <- as.factor(abun_long$sim_id)
+  levels(abun_long$sim_id) <- paste0(rep(1:5, each = 5), "-", 1:5)
+  
+  if (sex == "both") {
+    # Create the plot with 100 fitted abundances, and a mean line
+    p <- ggplot(abun_long) +
+      geom_line(
+        mapping = aes(x = year, y = N, colour = variable),
+        show.legend = F, linewidth = 1) +
+      scale_color_manual(values = c(rep(alpha("darkgrey", 0.2), 100),
+                                    alpha("black", 0.5),
+                                    alpha("red", 0.4))) +
+      theme_bw() +
+      ylab(y_axis ) +
+      xlab("Year") +
+      facet_wrap(~ sim_id + sex, nrow = dimension, labeller = label_parsed) + 
+      coord_cartesian(ylim=c(0, max_y_axis)) +
+      scale_x_continuous(breaks = seq(from = min(years) + y0, to = max(years) + y0, by = 5),
+                         labels = seq(from = min(years) + y0, to = max(years) + y0, by = 5))
+    
+  } else if (sex == "male") {
+    p <- ggplot(subset(abun_long, sex == "M")) +
+      geom_line(
+        mapping = aes(x = year, y = N, colour = variable),
+        show.legend = F, linewidth = 1) +
+      scale_color_manual(values = c(rep(alpha("darkgrey", 0.2), 100),
+                                    alpha("black", 0.5),
+                                    alpha("red", 0.4))) +
+      theme_bw() +
+      ylab(y_axis ) +
+      xlab("Year") +
+      facet_wrap(~ sim_id , nrow = dimension, labeller = label_parsed) + 
+      coord_cartesian(ylim=c(0,max_y_axis)) +
+      scale_x_continuous(breaks = seq(from = min(years) + y0, to = max(years) + y0, by = 5),
+                         labels = seq(from = min(years) + y0, to = max(years) + y0, by = 5))
+    
+  } else {
+    p <- ggplot(subset(abun_long, sex == "F")) +
+      geom_line(
+        mapping = aes(x = year, y = N, colour = variable),
+        show.legend = F, linewidth = 1) +
+      scale_color_manual(values = c(rep(alpha("darkgrey", 0.2), 100),
+                                    alpha("black", 0.5),
+                                    alpha("red", 0.4))) +
+      theme_bw() +
+      ylab(y_axis ) +
+      xlab("Year") +
+      facet_wrap(~ sim_id , nrow = dimension, labeller = label_parsed) + 
+      coord_cartesian(ylim=c(0,max_y_axis)) +
+      scale_x_continuous(breaks = seq(from = min(years) + y0, to = max(years) + y0, by = 5),
+                         labels = seq(from = min(years) + y0, to = max(years) + y0, by = 5))
+    
+  }
+  return(p)
+}
+
+plotCKMRabundanceOLD <- function(
+    fits_list,           # A list of simulation objects 
+    # par_name,     # The name of the abundance parameter
+    year_lim,       # Number of years backward and forward from reference year
+    max_y_axis = 3000,
+    sex = "both",  # male, female, or both 
+    y0 = 2014,       # The reference year
+    truth = NULL,
+    y_axis = "Abundance",
+    share_r = FALSE # do males and females share the growth parameter, or not
+) {
+  ## load libraries
+  library(tidyverse, quietly = T, warn.conflicts = F)
+  
+  for (i in 1:length(fits_list)) {
+    fits <- fits_list[[i]]
+    
+    ## Extract estimates for selected parameter
+    est <- t(sapply(fits, function(x) x$par))
+    conv <- sapply(fits, function(x) x$message)
+    
+    ## Derive years and create matrices for abundance estimates
+    years <- year_lim[1]:year_lim[2]
+    abun_f <- matrix(NA, nrow = length(fits), ncol = length(years))
+    abun_m <- matrix(NA, nrow = length(fits), ncol = length(years))
+    
+    ## For every fit, derive the abundance for all years
+    for (j in 1:length(fits)) {
+      abun_f[j, ] <- exp(est[j, "N_t0_f"]) * exp(est[j, "r_f"]) ^ years
+      abun_m[j, ] <- exp(est[j, "N_t0_m"]) * exp(est[j, "r_m"]) ^ years
+    }
+    
+    ## Turn the data in long format so ggplot2 knows what to do
+    abun_f_df <- cbind(data.frame(year = y0 + years), 
+                       t(abun_f),
+                       "101"= Rfast::colMedians(abun_f), #median
                        "102" = truth[years + nrow(truth), 2]) #truth
     abun_f_long <- reshape2::melt(abun_f_df, value.name = "N", id.vars = "year")
     abun_f_long$sim_id <- i
