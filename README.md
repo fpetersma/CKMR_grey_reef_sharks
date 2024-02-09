@@ -15,4 +15,5 @@ This repository contains several folders, only some of which are relevant for th
 + images_with_growth: a folder containing images associated with the results from fitting a model with population growth.
 + reports: a folder containing intermediate analyses and reports as part of the research process.
 + source: 
-++ 
+	+ a
+	+ b
