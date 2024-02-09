@@ -9,9 +9,10 @@ The study is collaborative effort with Len Thomas, Danielle Harris, Darcy Bradle
 ## Overview
 
 This repository contains several folders, only some of which are relevant for the formal analysis. I describe those folders below:
-+ data
-+ images_no_growth
-+ images_old_years
-+ images_with_growth
-+ reports
-+ source
++ data: this data contains 
++ images_no_growth: a folder containing images associated with the results from fitting a model without population growth.
++ images_old_years: a folder with images using an old year structure that is no longer relevant
++ images_with_growth: a folder containing images associated with the results from fitting a model with population growth.
++ reports: a folder containing intermediate analyses and reports as part of the research process.
++ source: 
+++ 
