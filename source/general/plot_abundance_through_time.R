@@ -5,9 +5,11 @@ library(tidyverse)
 library(Rfast)
 library(ggplot2)
 
+## Run 2 lines below for simple species
 # load("data/simulation_study/simple/simulation_1000_schemes_all_scenarios_fit_results_sim=all.RData")
 # load("data/simulation_study/simple/1000_schemes_combined_data_with_N_hist_sim=all.RData")
 
+## Run 2 lines below for complex species
 load("data/simulation_study/complex/simulation_1000_schemes_all_scenarios_fit_results_sim=all.RData")
 load("data/simulation_study/complex/1000_schemes_combined_data_with_N_hist_sim=all.RData")
 

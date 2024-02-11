@@ -3,7 +3,7 @@
 ##  on the many cores of the bluewhale server.                                ##
 ##                                                                            ##
 ##  Note: when rerunning this, it might suffice to load some preprocessed     ##
-##  Rdata files. This will safe a lot of time. I repeat, a *lot*.             ##
+##  Rdata files. This will save a lot of time. I repeat, a *lot*.             ##
 ################################################################################
 
 ## Load packages and source custom functions ===================================
@@ -317,7 +317,7 @@ dfs_suff <- pblapply(dfs, function(x) {
 # save(list = c("dfs"), file = "data/test_data_dfs.RData")
 # save(list = c("dfs_suff"), file = "data/test_data_dfs_suff.RData")
 
-save(list = c("dfs_suff"), file = paste0(data_folder, "100_schemes_dfs_suff_unique_combos_sim=", sim_i, ".RData"))
+save(list = c("dfs_suff"), file = paste0(data_folder, "1000_schemes_dfs_suff_unique_combos_sim=", sim_i, ".RData"))
 
 # ## Looking up relationship between captured pairs
 # pairs <- findRelativesPar(indiv = indiv,

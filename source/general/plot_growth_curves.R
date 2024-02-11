@@ -1,8 +1,8 @@
 ## ========================================================================== ##
 ##  Name: plot_growth_curves.R                                                ##
 ##                                                                            ##
-##  Description: In this script we plot the growth curves for the vanillus    ##
-##    and gestatii population. It is a combination of the scripts             ##
+##  Description: In this script we plot the growth curves for the simple      ##
+##    and complex population. It is a combination of the scripts              ##
 ##    fit_and_visualise_scenarios.R and explore_vbgf_bias_uncertainty.R.      ##
 ## ========================================================================== ##
 
@@ -124,3 +124,4 @@ p <- grid.arrange(growth_curve_plot,
                   nrow=1, ncol=2); p
 
 ## Save as svg with width 1000 and height 400
+

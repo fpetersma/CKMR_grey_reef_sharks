@@ -22,11 +22,13 @@ library(tidyverse)
 library(Rfast)
 library(kableExtra)
 
-load("data/simulation_study/vanilla/simulation_1000_schemes_all_scenarios_fit_results_sim=all.RData")
-load("data/simulation_study/vanilla/1000_schemes_combined_data_with_N_hist_sim=all.RData")
+## Load two lines below for the simple species
+# load("data/simulation_study/simple/simulation_1000_schemes_all_scenarios_fit_results_sim=all_no_growth.RData")
+# load("data/simulation_study/simple/1000_schemes_combined_data_with_N_hist_sim=all.RData")
 
-# load("data/simulation_study/complex/simulation_1000_schemes_all_scenarios_fit_results_sim=all.RData")
-# load("data/simulation_study/complex/1000_schemes_combined_data_with_N_hist_sim=all.RData")
+## Load the two lines below for the complex species
+load("data/simulation_study/complex/simulation_1000_schemes_all_scenarios_fit_results_sim=all_no_growth.RData")
+load("data/simulation_study/complex/1000_schemes_combined_data_with_N_hist_sim=all.RData")
 
 ## =============================================================================
 ## 2. CREATE THE MASTER DATA FRAME

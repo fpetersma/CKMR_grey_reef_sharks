@@ -29,9 +29,11 @@ scen_names <- paste0(rep(paste0(rep("ME", 5), c("-67", "-33", "+0", "+33", "+67"
                      rep(paste0(rep("GC", 5), c("-10", "-5", "+0", "+5", "+10")), 
                          times = 5))
 
+## Load two lines below for the simple species
 # load("data/simulation_study/simple/simulation_1000_schemes_all_scenarios_fit_results_sim=all_no_growth.RData")
 # load("data/simulation_study/simple/1000_schemes_combined_data_with_N_hist_sim=all.RData")
 
+## Load the two lines below for the complex species
 load("data/simulation_study/complex/simulation_1000_schemes_all_scenarios_fit_results_sim=all_no_growth.RData")
 load("data/simulation_study/complex/1000_schemes_combined_data_with_N_hist_sim=all.RData")
 

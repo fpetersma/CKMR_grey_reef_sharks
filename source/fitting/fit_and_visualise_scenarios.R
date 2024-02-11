@@ -138,6 +138,12 @@ scenario_fits <- lapply(1:nrow(pars), function(i) {
 save(list = c("scenario_fits"),
      file = paste0(data_folder, "simulation_1000_schemes_all_scenarios_fit_results_sim=all_no_growth.RData"))
 
+
+################################################################################
+## LINES BELOW WERE  USED TO VISUALISE RESULTS THROUGH TIME, BUT WERE REPLACED
+## BY general/plot_abundance_through_time.R. 
+################################################################################
+
 ## :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 ## Visualise the results.
 ## 

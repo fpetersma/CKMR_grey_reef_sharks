@@ -19,7 +19,7 @@ library(kableExtra)
 library(CKMRcpp)
 
 ## Vanilla
-load("D:/felix/CKMR_grey_reef_sharks/data/simulation_study/vanilla/1000_schemes_combined_data_with_N_hist_sim=all.RData")
+load("D:/felix/CKMR_grey_reef_sharks/data/simulation_study/simple/1000_schemes_combined_data_with_N_hist_sim=all.RData")
 combined_data_vanilla <- combined_data
 
 n_POPs <- sapply(combined_data_vanilla, function(x) nrow(x$POPs))

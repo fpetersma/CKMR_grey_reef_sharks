@@ -1,7 +1,7 @@
 ## ========================================================================== ##
-## vanilla_sims.R
+## simple_sims.R
 ## 
-## In this script I will simulate the vanilla population data using a mix of 
+## In this script I will simulate the simple population data using a mix of 
 ## information on life  history trait estimates from the GBR, Hawaii and Palmyra 
 ## study. This is a very basic population and details can be found in the 
 ## Overleaf document.
