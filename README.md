@@ -19,6 +19,7 @@ This repository contains several folders, only some of which are relevant for th
 	+ functions: old functions that were replaced by CKMRcpp.
 	+ general: general functionality not contained in CKMRcpp.
 	+ simulating: functionality for running the simulation using CKMRcpp underpinning the analysis.
++ result_summaries: Rdata files that contain data created in steps 4--6 below. 
 
 ## Simulation procedure
 
@@ -30,10 +31,9 @@ The simulation procedure is as follows:
 1. Data was simulated using "simulating/simple_sims.R" for the simple population and "simulating/complex_sims.R" for the complex population. The seeds were hardcoded in (see l.49 in "simple_sims.R" and l.57 in "complex_sims.R"). 
 2. The script "simulating/finding_pairs_bluewhale.R" was used to extract the kin pairs from the data simulated in step 1. This script was written to run in parallel (similar to the previous two scripts) on a server with 30+ cores. 
 3. Next, the script "fitting/fit_and_visualise_scenarios.R" is used to fit the CKMR models to the simulated data. 
-4. Descriptive statistics were extracted using the functions "general/extract_descriptives.R"
+4. Descriptive statistics were extracted using the functions "general/extract_descriptives.R" and "general/some_simulation_descriptives.R".
 5. An overview of maximum likelihood variance estimates was created using "general/estimate_variance_mle.R"
-6. The performance metrics were derived and an overview was created in "general/extract_performance_metrics_new.R". 
-7. 
+6. The performance metrics were derived and overviews/tables were created in "general/extract_performance_metrics_new.R". 
 
 ## Visualisations
 
