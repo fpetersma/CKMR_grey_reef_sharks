@@ -15,11 +15,13 @@ This repository contains several folders, only some of which are relevant for th
 + reports: a folder containing intermediate analyses and reports as part of the research process.
 + source: 
 	+ CKMRcpp: an R package that includes functionality for fitting of a CKMR model using R and C++.
-	+ fitting: 
+	+ fitting: scripts associated with the fitting of models.
 	+ functions: old functions that were replaced by CKMRcpp.
 	+ general: general functionality not contained in CKMRcpp.
 	+ simulating: functionality for running the simulation using CKMRcpp underpinning the analysis.
 + result_summaries: Rdata files that contain data created in steps 4--6 below. 
+
+Some folders also contain a subfolder called "extra". This folder mostly contains scripts that have become redundant but have not been removed yet. The contents of these folders can be ignored, unless indicated otherwise. 
 
 ## Simulation procedure
 
