@@ -37,7 +37,7 @@ The simulation procedure was as follows:
 3. Next, the script "fitting/fit_and_visualise_scenarios.R" is used to fit the CKMR models to the simulated data. 
 4. Descriptive statistics were extracted using the functions "general/extract_descriptives.R" and "general/some_simulation_descriptives.R".
 5. An overview of maximum likelihood variance estimates was created using "general/estimate_variance_mle.R"
-6. The performance metrics were derived and overviews/tables were created in "general/extract_performance_metrics_new.R". 
+6. The performance metrics were derived and overviews/tables were created in "general/extract_performance_metrics_new.R", as well as the relative error boxplots.
 
 ## Visualisations
 
