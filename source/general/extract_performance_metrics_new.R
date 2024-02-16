@@ -1,5 +1,5 @@
 ## =============================================================================
-##  Name: extract_performance_metrics.R
+##  Name: extract_performance_metrics_new.R
 ##
 ##  Description: This script extracts a variety of performance metrics from a
 ##    set of fitted models. The metrics include at least: 
