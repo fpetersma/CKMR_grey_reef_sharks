@@ -14,6 +14,8 @@
 # library(CKMRcpp)
 library(pbapply)
 library(parallel)
+library(dplyr)
+library(kableExtra)
 
 NO_GROWTH <- TRUE
 
@@ -22,12 +24,20 @@ scen_names <- paste0(rep(paste0(rep("ME", 5), c("-67", "-33", "+0", "+33", "+67"
                      rep(paste0(rep("GC", 5), c("-10", "-5", "+0", "+5", "+10")), 
                          times = 5))
 
-## Data
+## Load simulation data and fit results for simple species
 load("data/simulation_study/simple/simulation_1000_schemes_all_scenarios_fit_results_sim=all_no_growth.RData")
+load("data/simulation_study/simple/1000_schemes_combined_data_with_N_hist_sim=all.RData")
 simple_fits <- scenario_fits
+simple_sims <- combined_data
+
+## Load simulation data and fit results for complex species
 load("data/simulation_study/complex/simulation_1000_schemes_all_scenarios_fit_results_sim=all_no_growth.RData")
+load("data/simulation_study/complex/1000_schemes_combined_data_with_N_hist_sim=all.RData")
 complex_fits <- scenario_fits
-rm(scenario_fits)
+complex_sims <- combined_data
+
+## Clean environment
+rm(scenario_fits, combined_data)
 
 ## -----------------------------------------------------------------------------
 ## Extract the variances
@@ -140,7 +150,6 @@ colnames(cv_df) <- c("scenario",
                      "complex_N_y0_m" , "complex_N_y0_f") 
 
 ## Create tables for latex
-library(kableExtra)
 
 labels <- c("Scenario", 
             # "$r_{\male}$", 
@@ -168,7 +177,202 @@ kable(cv_df, booktabs = T,
       row.names = F, linesep = "", caption = caption) %>% 
   add_header_above( c(" " = 1, "Simple species" = 4, "Complex species" = 4))
 
+## =============================================================================
+## DERIVE THE CI COVERAGE USING A NORMAL DISTR ON log(N) (SUGGESTED BY REVIEWER)
+## =============================================================================
 
+## Create the data frames to store the estimated standard deviations
+if (NO_GROWTH) {
+  sd_complete_simple <- array(NA, dim = c(length(scenarios_to_keep), 12, 1000))
+  sd_complete_complex <- array(NA, dim = c(length(scenarios_to_keep), 12, 1000))
+} 
+
+## Extract the estimated standard deviations from the Hessian matrices on the link scale
+for (i in seq_along(scenarios_to_keep)) {
+  sd_complete_simple[i, , ] <- sapply(1:1000, function(j) {
+    hess <- simple_fits[[scenarios_to_keep[i]]][[j]]$hess
+    N_hat <- simple_fits[[scenarios_to_keep[i]]][[j]]$par
+    var <- diag(solve(hess))
+    ## There is one fit that resulted that did not have positive definite hessian (and thus negative variance). this one was ignored (i=19 j = 1)
+    if (any(simple_fits[[scenarios_to_keep[i]]][[j]]$var < 0)) print(paste(" STOP", i, j))
+    ci_m <- exp(qnorm(c(0.025, 0.975), N_hat[1], sqrt(var[1]))) # CI for male abundance
+    ci_f <- exp(qnorm(c(0.025, 0.975), N_hat[2], sqrt(var[2]))) # CI for female abundance
+    
+    ## Extract true N and check if in CI
+    true_N <- simple_sims[[j]]$N_hist[100, ] # extract true N in year 100
+    N_m_in_ci <- true_N[1] > ci_m[1] & true_N[1] < ci_m[2] # is male abundance in CI?
+    N_f_in_ci <- true_N[2] > ci_f[1] & true_N[2] < ci_f[2] # is female abundance in CI?
+    return(c(N_m_link = N_hat[1], sd_m_link = sqrt(var[1]), 
+             ci_m_lower = ci_m[1], ci_m_upper = ci_m[2],
+             N_m_true = true_N[1], N_m_in_ci = as.numeric(N_m_in_ci),
+             N_f_link = N_hat[2], sd_f_link = sqrt(var[2]),
+             ci_f_lower = ci_f[1], ci_f_upper = ci_f[2],
+             N_f_true = true_N[2], N_m_in_ci = as.numeric(N_f_in_ci))
+    )
+  })
+  sd_complete_complex[i, , ] <- sapply(1:1000, function(j) {
+    hess <- complex_fits[[scenarios_to_keep[i]]][[j]]$hess
+    N_hat <- complex_fits[[scenarios_to_keep[i]]][[j]]$par
+    var <- diag(solve(hess))
+    ## There is one fit that resulted that did not have positive definite hessian (and thus negative variance). this one was ignored (i=19 j = 1)
+    if (any(complex_fits[[scenarios_to_keep[i]]][[j]]$var < 0)) print(paste(" STOP", i, j))
+    ci_m <- exp(qnorm(c(0.025, 0.975), N_hat[1], sqrt(var[1]))) # CI for male abundance
+    ci_f <- exp(qnorm(c(0.025, 0.975), N_hat[2], sqrt(var[2]))) # CI for female abundance
+    
+    ## Extract true N and check if in CI
+    true_N <- complex_sims[[j]]$N_hist[100, ] # extract true N in year 100
+    N_m_in_ci <- true_N[1] > ci_m[1] & true_N[1] < ci_m[2] # is male abundance in CI?
+    N_f_in_ci <- true_N[2] > ci_f[1] & true_N[2] < ci_f[2] # is female abundance in CI?
+    return(c(N_m_link = N_hat[1], sd_m_link = sqrt(var[1]), 
+             ci_m_lower = ci_m[1], ci_m_upper = ci_m[2],
+             N_m_true = true_N[1], N_m_in_ci = as.numeric(N_m_in_ci),
+             N_f_link = N_hat[2], sd_f_link = sqrt(var[2]),
+             ci_f_lower = ci_f[1], ci_f_upper = ci_f[2],
+             N_f_true = true_N[2], N_m_in_ci = as.numeric(N_f_in_ci))
+    )
+  })
+}
+
+## Check how many times the true abundance was in this CI.
+# Simple species first
+coverage <- as.matrix(apply(sd_complete_simple, c(1), function(df) {
+  return(c(male = sum(df[6, ]) / 1000, 
+           female = sum(df[12, ]) / 1000))
+}))
+ci_coverage_simple <- data.frame(scen = scen_names[scenarios_to_keep], 
+                                 ci_coverage_male = coverage[1, ],
+                                 ci_coverage_female = coverage[2, ])
+
+# Complex species second
+coverage <- as.matrix(apply(sd_complete_complex, c(1), function(df) {
+  return(c(male = sum(df[6, ]) / 1000, 
+           female = sum(df[12, ]) / 1000))
+}))
+ci_coverage_complex <- data.frame(scen = scen_names[scenarios_to_keep], 
+                                  ci_coverage_male = coverage[1, ],
+                                  ci_coverage_female = coverage[2, ])
+
+## Save results
+save(file = "data/simulation_study/95_CI_coverage.RData", 
+     list = c("ci_coverage_complex", "ci_coverage_simple"))
+
+## Tables for LaTeX
+caption <- ""
+
+kable(cbind(ci_coverage_simple, ci_coverage_complex[, -1]), 
+      booktabs = T, 
+      format = "latex", 
+      digits = 2,
+      col.names = c("Scenario", 
+                    "Adult males", "Adult females", 
+                    "Adult males", "Adult females"), 
+      row.names = F, linesep = "", caption = caption) %>%
+  add_header_above( c(" " = 1, "Simple species" = 2, "Complex species" = 2))
+
+################################################################################
+## A version based on Distance and Burnham 1987 is presented below            ##
+## This one uses a different way to compute log normal intervals              ##
+##
+## First tries seem to suggest that the intervals are the same as previous
+################################################################################
+
+## Create the data frames to store the estimated standard deviations
+if (NO_GROWTH) {
+  sd_burnham_simple <- array(NA, dim = c(length(scenarios_to_keep), 12, 1000))
+  sd_burnham_complex <- array(NA, dim = c(length(scenarios_to_keep), 12, 1000))
+} 
+
+## Extract the estimated standard deviations from the Hessian matrices on the real scale
+for (i in seq_along(scenarios_to_keep)) {
+  sd_burnham_simple[i, , ] <- sapply(1:1000, function(j) {
+    hess <- simple_fits[[scenarios_to_keep[i]]][[j]]$hess
+    N_hat <- exp(simple_fits[[scenarios_to_keep[i]]][[j]]$par)
+    var <- diag(solve(hess))
+    var_real <- N_hat ^ 2 * (exp(var) - 1) # if X=logY, then var(Y)=E(Y)^2(e^Var(X)-1)
+    ## There is one fit that resulted that did not have positive definite hessian (and thus negative variance). this one was ignored (i=19 j = 1)
+    if (any(simple_fits[[scenarios_to_keep[i]]][[j]]$var < 0)) print(paste(" STOP", i, j))
+    
+    # Derive C from Distance book (Buckland et al., 1993; page 118), for males and females
+    C <- exp(1.96 * sqrt(log(1 + (sqrt(var_real) / N_hat) ^ 2)))
+    
+    ci_m <- c(lower = N_hat[1] / C[1], upper = N_hat[1] * C[1]) # CI for male abundance
+    ci_f <- c(lower = N_hat[2] / C[2], upper = N_hat[2] * C[2]) # CI for female abundance
+    
+    ## Extract true N and check if in CI
+    true_N <- simple_sims[[j]]$N_hist[100, ] # extract true N in year 100
+    N_m_in_ci <- true_N[1] > ci_m[1] & true_N[1] < ci_m[2] # is male abundance in CI?
+    N_f_in_ci <- true_N[2] > ci_f[1] & true_N[2] < ci_f[2] # is female abundance in CI?
+    return(c(N_m_real = N_hat[1], sd_m_real = sqrt(var[1]), 
+             ci_m_lower = ci_m[1], ci_m_upper = ci_m[2],
+             N_m_true = true_N[1], N_m_in_ci = as.numeric(N_m_in_ci),
+             N_f_real = N_hat[2], sd_f_real = sqrt(var[2]),
+             ci_f_lower = ci_f[1], ci_f_upper = ci_f[2],
+             N_f_true = true_N[2], N_m_in_ci = as.numeric(N_f_in_ci))
+    )
+  })
+  sd_burnham_complex[i, , ] <- sapply(1:1000, function(j) {
+    hess <- complex_fits[[scenarios_to_keep[i]]][[j]]$hess
+    N_hat <- exp(complex_fits[[scenarios_to_keep[i]]][[j]]$par)
+    var <- diag(solve(hess))
+    var_real <- N_hat ^ 2 * (exp(var) - 1) # if X=logY, then var(Y)=E(Y)^2(e^Var(X)-1)
+    ## There is one fit that resulted that did not have positive definite hessian (and thus negative variance). this one was ignored (i=19 j = 1)
+    if (any(complex_fits[[scenarios_to_keep[i]]][[j]]$var < 0)) print(paste(" STOP", i, j))
+    
+    # Derive C from Distance book (Buckland et al., 1993; page 118), for males and females
+    C <- exp(1.96 * sqrt(log(1 + (sqrt(var_real) / N_hat) ^ 2)))
+    
+    ci_m <- c(lower = N_hat[1] / C[1], upper = N_hat[1] * C[1]) # CI for male abundance
+    ci_f <- c(lower = N_hat[2] / C[2], upper = N_hat[2] * C[2]) # CI for female abundance
+    
+    ## Extract true N and check if in CI
+    true_N <- complex_sims[[j]]$N_hist[100, ] # extract true N in year 100
+    N_m_in_ci <- true_N[1] > ci_m[1] & true_N[1] < ci_m[2] # is male abundance in CI?
+    N_f_in_ci <- true_N[2] > ci_f[1] & true_N[2] < ci_f[2] # is female abundance in CI?
+    return(c(N_m_real = N_hat[1], sd_m_real = sqrt(var[1]), 
+             ci_m_lower = ci_m[1], ci_m_upper = ci_m[2],
+             N_m_true = true_N[1], N_m_in_ci = as.numeric(N_m_in_ci),
+             N_f_real = N_hat[2], sd_f_real = sqrt(var[2]),
+             ci_f_lower = ci_f[1], ci_f_upper = ci_f[2],
+             N_f_true = true_N[2], N_m_in_ci = as.numeric(N_f_in_ci))
+    )
+  })
+}
+
+## Check how many times the true abundance was in this CI.
+# Simple species first
+coverage <- as.matrix(apply(sd_burnham_simple, c(1), function(df) {
+  return(c(male = sum(df[6, ]) / 1000, 
+           female = sum(df[12, ]) / 1000))
+}))
+ci_coverage_burnham_simple <- data.frame(scen = scen_names[scenarios_to_keep], 
+                                 ci_coverage_male = coverage[1, ],
+                                 ci_coverage_female = coverage[2, ])
+
+# Complex species second
+coverage <- as.matrix(apply(sd_burnham_complex, c(1), function(df) {
+  return(c(male = sum(df[6, ]) / 1000, 
+           female = sum(df[12, ]) / 1000))
+}))
+ci_coverage_burnham_complex <- data.frame(scen = scen_names[scenarios_to_keep], 
+                                  ci_coverage_male = coverage[1, ],
+                                  ci_coverage_female = coverage[2, ])
+
+## Save results
+save(file = "data/simulation_study/95_CI_coverage_burnham.RData", 
+     list = c("ci_coverage_burnham_complex", "ci_coverage_burnham_simple"))
+
+## Tables for LaTeX
+caption <- ""
+
+kable(cbind(ci_coverage_burnham_simple, ci_coverage_burnham_complex[, -1]), 
+      booktabs = T, 
+      format = "latex", 
+      digits = 2,
+      col.names = c("Scenario", 
+                    "Adult males", "Adult females", 
+                    "Adult males", "Adult females"), 
+      row.names = F, linesep = "", caption = caption) %>%
+  add_header_above( c(" " = 1, "Simple species" = 2, "Complex species" = 2))
 # ## Add data to fit results
 # true_error <- 2.89          # what is the true measurement error
 # 

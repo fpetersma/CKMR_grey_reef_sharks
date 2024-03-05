@@ -30,12 +30,12 @@ scen_names <- paste0(rep(paste0(rep("ME", 5), c("-67", "-33", "+0", "+33", "+67"
                          times = 5))
 
 ## Load two lines below for the simple species
-# load("data/simulation_study/simple/simulation_1000_schemes_all_scenarios_fit_results_sim=all_no_growth.RData")
-# load("data/simulation_study/simple/1000_schemes_combined_data_with_N_hist_sim=all.RData")
+load("data/simulation_study/simple/simulation_1000_schemes_all_scenarios_fit_results_sim=all_no_growth.RData")
+load("data/simulation_study/simple/1000_schemes_combined_data_with_N_hist_sim=all.RData")
 
 ## Load the two lines below for the complex species
-load("data/simulation_study/complex/simulation_1000_schemes_all_scenarios_fit_results_sim=all_no_growth.RData")
-load("data/simulation_study/complex/1000_schemes_combined_data_with_N_hist_sim=all.RData")
+# load("data/simulation_study/complex/simulation_1000_schemes_all_scenarios_fit_results_sim=all_no_growth.RData")
+# load("data/simulation_study/complex/1000_schemes_combined_data_with_N_hist_sim=all.RData")
 
 ## =============================================================================
 ## 2. CREATE THE MASTER DATA FRAME
@@ -51,7 +51,7 @@ names(conv) <- 1:25
 
 ## Extract the truths
 true_N_m <- t(sapply(combined_data, function(dat) return(dat$N_hist[, "N_m"]))) # mature male abundance
-true_N_f <- t(sapply(combined_data, function(dat) return(dat$N_hist[, "N_f"]))) # mature male abundance
+true_N_f <- t(sapply(combined_data, function(dat) return(dat$N_hist[, "N_f"]))) # mature female abundance
 
 true_N_m_y0 <- true_N_m[, 100]
 true_N_f_y0 <- true_N_f[, 100]
@@ -379,12 +379,12 @@ y0_plot <- ggplot(data=bias_N_y0_long, aes(fill=Sex, x=1, y=Abundance)) +
              colour = "black", 
              alpha = 0.5)+
   facet_wrap(~ Scenario , nrow = 5, labeller = label_parsed) +
-  ylab("Relative error in abundance") +
+  ylab("Relative error in abundance (%)") +
   # coord_flip() +  # comment out for normal plot
   # scale_x_discrete(limits = rev(levels(est_N_5_long$Scenario))) +
   # coord_cartesian(ylim = c(-100, 500)) +
   scale_fill_discrete(name = ""); y0_plot
-# Export this plot in 1000x1000
+# Export this plot in 800x1000
 
 ## ----------------------------------------------------------
 ## The mean abundance over year 1 to 10 estimates violin plot
@@ -756,3 +756,5 @@ if (NO_GROWTH) {
         row.names = F, linesep = "", caption = caption) %>% 
     add_header_above( c(" " = 1, "simple species" = 4, "Complex species" = 4))
 }
+
+
