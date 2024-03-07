@@ -2,7 +2,10 @@
 ##  Name: estimate_variance_mle.R
 ## 
 ##  Description: Estimate variance through the variance-covariance matrix.
-##    We will use the numDeriv package for this. 
+##    We will use the numDeriv package for this.
+##  When X~N(mu, sd) and Y = logX, then var(Y) = (exp(sd^2)- 1)*exp(2mu+sd^2) 
+##  See: https://blogs.sas.com/content/iml/2014/06/04/simulate-lognormal-data-with-specified-mean-and-variance.html
+##       or the documentation of in R of stats::lnorm()
 ## =============================================================================
 
 ## =============================================================================
@@ -65,9 +68,14 @@ for (i in seq_along(scenarios_to_keep)) {
   sd_simple[i, ] <- rowMeans(sapply(1:1000, function(j) {
     
     hess <- simple_fits[[scenarios_to_keep[i]]][[j]]$hess
-    par <- exp(simple_fits[[scenarios_to_keep[i]]][[j]]$par)
+    par <- exp(simple_fits[[scenarios_to_keep[i]]][[j]]$par) # N_male, N_female
     var <- diag(solve(hess))
-    var_real <- par ^ 2 * (exp(var) - 1) # if X=logY, then var(Y)=E(Y)^2(e^Var(X)-1)
+    
+    ## NEW AND CORRECT var_real derivation
+    var_real = (exp(var) - 1) * exp(2 * log(par) + var) 
+    ## OLD var_real (incorrect)
+    # var_real <- par ^ 2 * (exp(var) - 1) # if X=logY, then var(Y)=E(Y)^2(e^Var(X)-1)
+    
     ## There is one fit that resulted that did not have positive definite hessina (and thus negative variance). this one was ignored (i=19 j = 1)
     if (any(simple_fits[[scenarios_to_keep[i]]][[j]]$var < 0)) print(paste(" STOP", i, j))
     
@@ -76,9 +84,14 @@ for (i in seq_along(scenarios_to_keep)) {
   
   cv_simple[i, ] <- rowMeans(sapply(1:1000, function(j) {
     hess <- simple_fits[[scenarios_to_keep[i]]][[j]]$hess
-    par <- exp(simple_fits[[scenarios_to_keep[i]]][[j]]$par)
+    par <- exp(simple_fits[[scenarios_to_keep[i]]][[j]]$par) # N_male, N_female
     var <- diag(solve(hess))
-    var_real <- par^2 * (exp(var) - 1) # if X=logY, then var(Y)=E(Y)^2(e^Var(X)-1)
+    
+    ## NEW AND CORRECT var_real derivation
+    var_real = (exp(var) - 1) * exp(2 * log(par) + var) 
+    ## OLD var_real (incorrect)
+    # var_real <- par ^ 2 * (exp(var) - 1) # if X=logY, then var(Y)=E(Y)^2(e^Var(X)-1)
+    
     ## There is one fit that resulted that did not have positive definite hessina (and thus negative variance). this one was ignored (i=19 j = 1)
     if (any(simple_fits[[scenarios_to_keep[i]]][[j]]$var < 0)) print(paste(" STOP", i, j))
     
@@ -102,9 +115,13 @@ for (i in seq_along(scenarios_to_keep)) {
   sd_complex[i, ] <- rowMeans(sapply(1:1000, function(j) {
     
     hess <- complex_fits[[scenarios_to_keep[i]]][[j]]$hess
-    par <- exp(complex_fits[[scenarios_to_keep[i]]][[j]]$par)
+    par <- exp(complex_fits[[scenarios_to_keep[i]]][[j]]$par) # N_male, N_female
     var <- diag(solve(hess))
-    var_real <- par^2 * (exp(var) - 1) # if X=logY, then var(Y)=E(Y)^2(e^Var(X)-1)
+    
+    ## NEW AND CORRECT var_real derivation
+    var_real = (exp(var) - 1) * exp(2 * log(par) + var) 
+    ## OLD var_real (incorrect)
+    # var_real <- par ^ 2 * (exp(var) - 1) # if X=logY, then var(Y)=E(Y)^2(e^Var(X)-1)
     
     if (any(complex_fits[[scenarios_to_keep[i]]][[j]]$var < 0)) print(paste(" STOP", i, j))
     
@@ -113,9 +130,13 @@ for (i in seq_along(scenarios_to_keep)) {
   
   cv_complex[i, ] <- rowMeans(sapply(1:1000, function(j) {
     hess <- complex_fits[[scenarios_to_keep[i]]][[j]]$hess
-    par <- exp(complex_fits[[scenarios_to_keep[i]]][[j]]$par)
+    par <- exp(complex_fits[[scenarios_to_keep[i]]][[j]]$par) # N_male, N_female
     var <- diag(solve(hess))
-    var_real <- par^2 * (exp(var) - 1) # if X=logY, then var(Y)=E(Y)^2(e^Var(X)-1)
+    
+    ## NEW AND CORRECT var_real derivation
+    var_real = (exp(var) - 1) * exp(2 * log(par) + var) 
+    ## OLD var_real (incorrect)
+    # var_real <- par ^ 2 * (exp(var) - 1) # if X=logY, then var(Y)=E(Y)^2(e^Var(X)-1)
     
     if (any(complex_fits[[scenarios_to_keep[i]]][[j]]$var < 0)) print(paste(" STOP", i, j))
     
@@ -129,14 +150,14 @@ for (i in seq_along(scenarios_to_keep)) {
 ## -----------------------------
 if (NO_GROWTH) {
   sd_df <- cbind(data.frame(scen_names[scenarios_to_keep]), 
-                 sd_simple[, c(2,1)], sd_complex[, c(2,1)])
+                 sd_simple[, c(1,2)], sd_complex[, c(1,2)])
   cv_df <- cbind(data.frame(scen_names[scenarios_to_keep]),  
-                 cv_simple[, c(2,1)], cv_complex[, c(2,1)])
+                 cv_simple[, c(1,2)], cv_complex[, c(1,2)])
 } else {
   sd_df <- cbind(data.frame(scen_names[scenarios_to_keep]), 
-                 sd_simple[, c(2,1,3,4)], sd_complex[, c(2,1,3,4)])
+                 sd_simple[, c(1,2,3,4)], sd_complex[, c(1,2,3,4)])
   cv_df <- cbind(data.frame(scen_names[scenarios_to_keep]),  
-                 cv_simple[, c(2,1,3,4)], cv_complex[, c(2,1,3,4)])
+                 cv_simple[, c(1,2,3,4)], cv_complex[, c(1,2,3,4)])
 }
 colnames(sd_df) <- c("scenario", 
                      # "simple_r_m", "simple_r_f" , 
@@ -148,6 +169,9 @@ colnames(cv_df) <- c("scenario",
                      "simple_N_y0_m" , "simple_N_y0_f",
                      # "complex_r_m", "complex_r_f" , 
                      "complex_N_y0_m" , "complex_N_y0_f") 
+
+## Save if needed
+save(list = "sd_df", file = "data/simulation_study/sd_estimates.RData")
 
 ## Create tables for latex
 
@@ -183,13 +207,13 @@ kable(cv_df, booktabs = T,
 
 ## Create the data frames to store the estimated standard deviations
 if (NO_GROWTH) {
-  sd_complete_simple <- array(NA, dim = c(length(scenarios_to_keep), 12, 1000))
-  sd_complete_complex <- array(NA, dim = c(length(scenarios_to_keep), 12, 1000))
+  uncertainty_complete_simple <- array(NA, dim = c(length(scenarios_to_keep), 12, 1000))
+  uncertainty_complete_complex <- array(NA, dim = c(length(scenarios_to_keep), 12, 1000))
 } 
 
 ## Extract the estimated standard deviations from the Hessian matrices on the link scale
 for (i in seq_along(scenarios_to_keep)) {
-  sd_complete_simple[i, , ] <- sapply(1:1000, function(j) {
+  uncertainty_complete_simple[i, , ] <- sapply(1:1000, function(j) {
     hess <- simple_fits[[scenarios_to_keep[i]]][[j]]$hess
     N_hat <- simple_fits[[scenarios_to_keep[i]]][[j]]$par
     var <- diag(solve(hess))
@@ -210,7 +234,7 @@ for (i in seq_along(scenarios_to_keep)) {
              N_f_true = true_N[2], N_m_in_ci = as.numeric(N_f_in_ci))
     )
   })
-  sd_complete_complex[i, , ] <- sapply(1:1000, function(j) {
+  uncertainty_complete_complex[i, , ] <- sapply(1:1000, function(j) {
     hess <- complex_fits[[scenarios_to_keep[i]]][[j]]$hess
     N_hat <- complex_fits[[scenarios_to_keep[i]]][[j]]$par
     var <- diag(solve(hess))
@@ -235,7 +259,7 @@ for (i in seq_along(scenarios_to_keep)) {
 
 ## Check how many times the true abundance was in this CI.
 # Simple species first
-coverage <- as.matrix(apply(sd_complete_simple, c(1), function(df) {
+coverage <- as.matrix(apply(uncertainty_complete_simple, c(1), function(df) {
   return(c(male = sum(df[6, ]) / 1000, 
            female = sum(df[12, ]) / 1000))
 }))
@@ -244,7 +268,7 @@ ci_coverage_simple <- data.frame(scen = scen_names[scenarios_to_keep],
                                  ci_coverage_female = coverage[2, ])
 
 # Complex species second
-coverage <- as.matrix(apply(sd_complete_complex, c(1), function(df) {
+coverage <- as.matrix(apply(uncertainty_complete_complex, c(1), function(df) {
   return(c(male = sum(df[6, ]) / 1000, 
            female = sum(df[12, ]) / 1000))
 }))
@@ -278,13 +302,13 @@ kable(cbind(ci_coverage_simple, ci_coverage_complex[, -1]),
 
 ## Create the data frames to store the estimated standard deviations
 if (NO_GROWTH) {
-  sd_burnham_simple <- array(NA, dim = c(length(scenarios_to_keep), 12, 1000))
-  sd_burnham_complex <- array(NA, dim = c(length(scenarios_to_keep), 12, 1000))
+  uncertainty_burnham_simple <- array(NA, dim = c(length(scenarios_to_keep), 12, 1000))
+  uncertainty_burnham_complex <- array(NA, dim = c(length(scenarios_to_keep), 12, 1000))
 } 
 
 ## Extract the estimated standard deviations from the Hessian matrices on the real scale
 for (i in seq_along(scenarios_to_keep)) {
-  sd_burnham_simple[i, , ] <- sapply(1:1000, function(j) {
+  uncertainty_burnham_simple[i, , ] <- sapply(1:1000, function(j) {
     hess <- simple_fits[[scenarios_to_keep[i]]][[j]]$hess
     N_hat <- exp(simple_fits[[scenarios_to_keep[i]]][[j]]$par)
     var <- diag(solve(hess))
@@ -310,7 +334,7 @@ for (i in seq_along(scenarios_to_keep)) {
              N_f_true = true_N[2], N_m_in_ci = as.numeric(N_f_in_ci))
     )
   })
-  sd_burnham_complex[i, , ] <- sapply(1:1000, function(j) {
+  uncertainty_burnham_complex[i, , ] <- sapply(1:1000, function(j) {
     hess <- complex_fits[[scenarios_to_keep[i]]][[j]]$hess
     N_hat <- exp(complex_fits[[scenarios_to_keep[i]]][[j]]$par)
     var <- diag(solve(hess))
@@ -340,7 +364,7 @@ for (i in seq_along(scenarios_to_keep)) {
 
 ## Check how many times the true abundance was in this CI.
 # Simple species first
-coverage <- as.matrix(apply(sd_burnham_simple, c(1), function(df) {
+coverage <- as.matrix(apply(uncertainty_burnham_simple, c(1), function(df) {
   return(c(male = sum(df[6, ]) / 1000, 
            female = sum(df[12, ]) / 1000))
 }))
@@ -349,7 +373,7 @@ ci_coverage_burnham_simple <- data.frame(scen = scen_names[scenarios_to_keep],
                                  ci_coverage_female = coverage[2, ])
 
 # Complex species second
-coverage <- as.matrix(apply(sd_burnham_complex, c(1), function(df) {
+coverage <- as.matrix(apply(uncertainty_burnham_complex, c(1), function(df) {
   return(c(male = sum(df[6, ]) / 1000, 
            female = sum(df[12, ]) / 1000))
 }))
