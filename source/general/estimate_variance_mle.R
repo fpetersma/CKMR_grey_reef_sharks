@@ -260,8 +260,8 @@ for (i in seq_along(scenarios_to_keep)) {
 ## Check how many times the true abundance was in this CI.
 # Simple species first
 coverage <- as.matrix(apply(uncertainty_complete_simple, c(1), function(df) {
-  return(c(male = sum(df[6, ]) / 1000, 
-           female = sum(df[12, ]) / 1000))
+  return(c(male = sum(df[6, ]) / 1000 * 100, 
+           female = sum(df[12, ]) / 1000 * 100))
 }))
 ci_coverage_simple <- data.frame(scen = scen_names[scenarios_to_keep], 
                                  ci_coverage_male = coverage[1, ],
@@ -269,8 +269,8 @@ ci_coverage_simple <- data.frame(scen = scen_names[scenarios_to_keep],
 
 # Complex species second
 coverage <- as.matrix(apply(uncertainty_complete_complex, c(1), function(df) {
-  return(c(male = sum(df[6, ]) / 1000, 
-           female = sum(df[12, ]) / 1000))
+  return(c(male = sum(df[6, ]) / 1000 * 100, 
+           female = sum(df[12, ]) / 1000 * 100))
 }))
 ci_coverage_complex <- data.frame(scen = scen_names[scenarios_to_keep], 
                                   ci_coverage_male = coverage[1, ],

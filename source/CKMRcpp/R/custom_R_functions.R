@@ -209,7 +209,6 @@ grandparents <- function (ID, indiv) {
   parents(parents(ID, indiv), indiv)
 }
 
-
 #' findRelativesCustom
 #' 
 #' A version of fishSim::findRelatives() that only looks as far back as great-
@@ -225,6 +224,103 @@ grandparents <- function (ID, indiv) {
 #'
 #' @examples
 findRelativesCustom <- function(indiv, 
+                                sampled = TRUE, 
+                                verbose = FALSE,
+                                delimitIndiv = TRUE) {
+  if (sampled) {
+    if (sum(!is.na(indiv[, 9])) == 0) 
+      stop("no sampled individuals")
+    if (verbose) 
+      print(data.frame(table(indiv[!is.na(indiv[, 9]), 
+                                   9], dnn = "Sample Year")))
+    sampled <- indiv[!is.na(indiv[, 9]), 1]
+  } else {
+    sampled <- indiv[, 1]
+  }
+  if (delimitIndiv) {
+    keepers <- indiv$Me %in% sampled | indiv$Me %in% indiv$Mum | 
+      indiv$Me %in% indiv$Dad
+    indiv <- indiv[keepers, ]
+  }
+  ancestors <- matrix(data = c(sampled, rep(-1, 
+                                            length(sampled) * 2)), 
+                      nrow = length(sampled))
+  colnames(ancestors) <- c("self", "father", "mother"#, 
+                           #"FF", "FM", "MF", "MM" #, 
+                           # "FFF", "FFM", "FMF", "FMM", "MFF", "MFM", 
+                           # "MMF", "MMM"
+  )
+  for (i in 1:nrow(ancestors)) {
+    ancestors[i, 2:3] <- CKMRcpp::parents(ancestors[i, 1], indiv)
+    # ancestors[i, 4:7] <- CKMRcpp::grandparents(ancestors[i, 1], indiv)
+    # ancestors[i, 8:15] <- fishSim::great.grandparents(ancestors[i, 1], indiv)
+  }
+  expand.grid.unique <- function(x, y, include.equals = FALSE) {
+    x <- unique(x)
+    y <- unique(y)
+    g <- function(i) {
+      z <- setdiff(y, x[seq_len(i - include.equals)])
+      if (length(z)) 
+        cbind(x[i], z, deparse.level = 0)
+    }
+    do.call(rbind, lapply(seq_along(x), g))
+  }
+  
+  pairs <- expand.grid.unique(ancestors[, 1], ancestors[, 1], 
+                              include.equals = FALSE) # include self comparison?
+  colnames(pairs) <- c("Var1", "Var2")
+  related <- c(rep(NA, nrow(pairs)))
+  totalRelatives <- c(rep(NA, nrow(pairs)))
+  OneTwo <- c(rep(NA, nrow(pairs)))        # For POPs
+  TwoTwo <- c(rep(NA, nrow(pairs)))        # For HSPs and FSPs
+  
+  for (i in 1:length(related)) {
+    # allAncestors <- ancestors[ancestors[, 1] == pairs[i, 1], 1:7] %in% ## gone for speed
+    #   ancestors[ancestors[, 1] == pairs[i, 2], 1:7]
+    indi1 <- pairs[i, 1]
+    indi2 <- pairs[i, 2]
+    indi1Par <- ancestors[ancestors[, 1] == pairs[i, 1], 
+                          2:3]
+    indi2Par <- ancestors[ancestors[, 1] == pairs[i, 2], 
+                          2:3]
+    # indi1GP <- ancestors[ancestors[, 1] == pairs[i, 1], 4:7]
+    # indi2GP <- ancestors[ancestors[, 1] == pairs[i, 2], 4:7]
+    # related[i] <- is.integer(any(allAncestors))## gone for speed
+    # totalRelatives[i] <- sum(allAncestors) ## gone for speed
+    OneTwo[i] <- sum(c(indi1 %in% indi2Par, indi2 %in% indi1Par)) # For POP
+    TwoTwo[i] <- sum(c(indi1Par %in% indi2Par)) # For HSP and FSP
+    
+    
+    ## Optimise this print function away; it just takes time.
+    # if (i %% 1000 == 0) {
+    #   cat("\r", i, " of ", length(related), 
+    #       " comparisons", sep = "")
+    #   flush.console()
+    # }
+  }
+  pairs <- data.frame(pairs, 
+                      # related, totalRelatives, 
+                      OneTwo, 
+                      TwoTwo
+  )
+  return(pairs)
+}
+
+#' findRelativesCustomOLD
+#' 
+#' A version of fishSim::findRelatives() that only looks as far back as great-
+#' grandparents.
+#'
+#' @param indiv 
+#' @param sampled 
+#' @param verbose 
+#' @param delimitIndiv 
+#'
+#' @return
+#' @export
+#'
+#' @examples
+findRelativesCustomOLD <- function(indiv, 
                                 sampled = TRUE, 
                                 verbose = FALSE,
                                 delimitIndiv = TRUE) {

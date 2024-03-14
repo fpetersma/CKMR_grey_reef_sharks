@@ -175,7 +175,7 @@ all(is.na(simulated_data_sets[[1]]$SampY))  # should be FALSE
 unique(simulated_data_sets[[1]]$SampY)      # check if this seems correct
 sum(!is.na(simulated_data_sets[[1]]$SampY)) # seem correct as well?
 
-# save(simulated_data_sets, file = "data/simulation_study/vanilla/1000_simulated_data_sets.RData")
+# save(simulated_data_sets, file = "data/simulation_study/1000_simulated_data_sets.RData")
 
 ## :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 ## Create summary statistics

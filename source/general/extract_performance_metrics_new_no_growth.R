@@ -29,6 +29,9 @@ scen_names <- paste0(rep(paste0(rep("ME", 5), c("-67", "-33", "+0", "+33", "+67"
                      rep(paste0(rep("GC", 5), c("-10", "-5", "+0", "+5", "+10")), 
                          times = 5))
 
+## ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+## Load data WITH recaptures below
+## ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 ## Load simulation data and fit results for simple species
 load("data/simulation_study/simple/simulation_1000_schemes_all_scenarios_fit_results_sim=all_no_growth.RData")
 load("data/simulation_study/simple/1000_schemes_combined_data_with_N_hist_sim=all.RData")
@@ -43,6 +46,25 @@ complex_sims <- combined_data
 
 ## Clean environment
 rm(scenario_fits, combined_data)
+
+## ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+## Load data WITHOUT recaptures below
+## ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+## combined data
+load("data/simulation_study/combined_data_without_recaptures.RData")
+complex_sims <- complex_combined
+simple_sims <- simple_combined
+
+rm(complex_combined, simple_combined)
+
+## simple fits
+load("data/simulation_study/fit_results_simple_without_recaptures.RData")
+load("data/simulation_study/fit_results_complex_without_recaptures.RData")
+
+simple_fits <- simple_fits_without_recaptures
+complex_fits <- complex_fits_without_recaptures
+
+rm(simple_fits_without_recaptures)
 
 ## =============================================================================
 ## 2. CREATE THE MASTER DATA FRAME

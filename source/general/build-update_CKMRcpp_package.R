@@ -16,7 +16,7 @@ Rcpp.package.skeleton(name = "CKMRcpp", path = "source")
 ## 2. Paste the cpp code (e.g., 'nllCKMRcppVanilla.cpp') in the folder 'scr' and 
 ## remove the file 'rcpp_hello_world.cpp'. Do not touch the 'RcppExports.cpp' 
 ## file. Instead, run the line below which updates this file.
-compileAttributes("source/CKMRcpp")
+Rcpp::compileAttributes("source/CKMRcpp")
 
 ## 3. Update the DESCRIPTION file if required
 

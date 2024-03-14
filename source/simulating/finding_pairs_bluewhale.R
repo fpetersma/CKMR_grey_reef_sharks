@@ -17,14 +17,15 @@ sim_i <- "all"
 # source("source/fitting/CKMR_functions.R")
 # source("source/simulating/custom_functions_fishSim.R")
 
-data_folder <- "data/simulation_study/" 
+data_folder <- "data/simulation_study/simple/" 
+data_folder <- "data/simulation_study/complex/" 
 
-## Load the correct 100_sims_vanilla file
-# load(file = paste0(data_folder, "1000_sims_sampled.RData"))
+## Load the correct simple or complex data file
+load(file = paste0(data_folder, "1000_simulated_data_sets.RData"))
 
 ## Find the pairs in parallel. 
 cat("Find the pairs...\n")
-n_cores <- 25
+n_cores <- 22
 cl <- makeCluster(n_cores)
 # clusterExport(cl, c("findRelativesCustom"))
 pairs_list <- pblapply(simulated_data_sets, function(indiv) {
@@ -40,10 +41,11 @@ pairs_list <- pblapply(simulated_data_sets, function(indiv) {
 ## Extract the pairs of interest
 ## 
 ## From the fishSim vignette:
-##    POP: OneTwo == 1
-##    HSP: TwoTwo == 1
-##    FSP: TwoTwo == 2
-##    GGP: OneThree == 1
+##    Self: OneOne == 1
+##    POP:  OneTwo == 1
+##    HSP:  TwoTwo == 1
+##    FSP:  TwoTwo == 2
+##    GGP:  OneThree == 1
 ## :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 cat("Extract the POPs...\n")
 POPs_list <- pblapply(pairs_list, function(pairs) {
