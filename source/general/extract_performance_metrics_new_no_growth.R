@@ -51,32 +51,34 @@ rm(scenario_fits, combined_data)
 ## Load data WITHOUT recaptures below
 ## ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 ## combined data
-load("data/simulation_study/combined_data_without_recaptures.RData")
+load("data/simulation_study/combined_data_only_last_capture.RData")
 complex_sims <- complex_combined
 simple_sims <- simple_combined
 
 rm(complex_combined, simple_combined)
 
 ## simple fits
-load("data/simulation_study/fit_results_simple_without_recaptures.RData")
-load("data/simulation_study/fit_results_complex_without_recaptures.RData")
+load("data/simulation_study/fit_results_simple_only_last_capture.RData")
+load("data/simulation_study/fit_results_complex_only_last_capture.RData")
 
-simple_fits <- simple_fits_without_recaptures
-complex_fits <- complex_fits_without_recaptures
+simple_fits <- simple_fits_only_last_capture
+complex_fits <- complex_fits_only_last_capture
 
-rm(simple_fits_without_recaptures)
+rm(simple_fits_only_last_capture, 
+   complex_fits_only_last_capture)
 
 ## =============================================================================
-## 2. CREATE THE MASTER DATA FRAME
+## 2. CREATE THE MASTER DATA FRAME (SIMPLE FIRST, THEN COMPLEX)
 ## =============================================================================
 
 ############################
- ##### SIMPLE SPECIES #####
+ ##### SIMPLE SPECIES #####    <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 ############################
 
 ## Extract failed fit scenarios
 conv <- sapply(simple_fits, function(scen) {
-  all(sapply(scen, function(fit) fit$message) == "relative convergence (4)")
+  all(sapply(scen, function(fit) fit$message) %in% c("relative convergence (4)", 
+                                                     "both X-convergence and relative convergence (5)"))
 })
 
 scenarios_to_keep <- (1:25)[conv] # convert TRUE/FALSE to indices
@@ -104,7 +106,6 @@ error_N_m_y0 <- est_N_m_y0 - matrix(true_N_m_y0, nrow = 1000,
                                     ncol = ncol(est_N_m_y0), byrow = F) 
 error_N_f_y0 <- est_N_f_y0 - matrix(true_N_f_y0, nrow = 1000, 
                                     ncol = ncol(est_N_f_y0), byrow = F) 
-
 # new: bias
 bias_N_m_y0 <- error_N_m_y0 / matrix(true_N_m_y0, nrow = 1000, ncol = ncol(est_N_m_y0), byrow = F) * 100
 bias_N_f_y0 <- error_N_f_y0 / matrix(true_N_f_y0, nrow = 1000, ncol = ncol(est_N_f_y0), byrow = F) * 100
@@ -157,14 +158,6 @@ coeff_var <- std_dev_error / mean_est * 100
 ## =============================================================================
 ## 3. CREATE FIGURES AND TABLES FOR MANUSCRIPT
 ## =============================================================================
-
-## :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-## Boxplots for the main manuscript 
-##
-## Initially we had estimated abundance, but these no longer work with the new
-## simulation strategy. Therefore, we now make similar plots, but based the 
-## error. 
-## :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
 ## ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::: 
 ## Below are the new bias plots
@@ -378,6 +371,292 @@ kable(summary_N_f_y0, booktabs = T, format = "latex", digits = 2,
 kable(summary_N_m_y0, booktabs = T, format = "latex", digits = 2,
       col.names = labels, row.names = F, linesep = "", caption = caption)
 
+save(list = c("summary_N_f_y0", "summary_N_m_y0"), 
+     file = "source/result_summaries/performance_metrics_simple_only_last_capture.RData")
+
+############################
+##### COMPLEX SPECIES #####     <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+############################
+
+## Extract failed fit scenarios
+conv <- sapply(complex_fits, function(scen) {
+  all(sapply(scen, function(fit) fit$message) %in% c("relative convergence (4)", 
+                                                     "both X-convergence and relative convergence (5)"))
+})
+
+scenarios_to_keep <- (1:25)[conv] # convert TRUE/FALSE to indices
+
+## Extract the truths
+true_N_m <- t(sapply(complex_sims, function(dat) return(dat$N_hist[, "N_m"]))) # mature male abundance
+true_N_f <- t(sapply(complex_sims, function(dat) return(dat$N_hist[, "N_f"]))) # mature female abundance
+
+true_N_m_y0 <- true_N_m[, 100]
+true_N_f_y0 <- true_N_f[, 100]
+
+## Extract the estimated abundances in y0
+est_N_m_y0 <- sapply(complex_fits, function(scen) { # mature male abundance
+  sapply(scen, function(fit) return(exp(fit$par["N_t0_m"])))
+}) 
+est_N_m_y0[, !conv] <- NA # set failed convergence estimates to NA
+
+est_N_f_y0 <- sapply(complex_fits, function(scen) { # mature female abundance
+  sapply(scen, function(fit) return(exp(fit$par["N_t0_f"])))
+})  
+est_N_f_y0[, !conv] <- NA # set failed convergence estimates to NA
+
+## Mean error
+error_N_m_y0 <- est_N_m_y0 - matrix(true_N_m_y0, nrow = 1000, 
+                                    ncol = ncol(est_N_m_y0), byrow = F) 
+error_N_f_y0 <- est_N_f_y0 - matrix(true_N_f_y0, nrow = 1000, 
+                                    ncol = ncol(est_N_f_y0), byrow = F) 
+
+# new: bias
+bias_N_m_y0 <- error_N_m_y0 / matrix(true_N_m_y0, nrow = 1000, ncol = ncol(est_N_m_y0), byrow = F) * 100
+bias_N_f_y0 <- error_N_f_y0 / matrix(true_N_f_y0, nrow = 1000, ncol = ncol(est_N_f_y0), byrow = F) * 100
+
+## Mean estimates
+median_est <- data.frame(N_f_y0 = colMedians(est_N_f_y0), 
+                         N_m_y0 = colMedians(est_N_m_y0))
+mean_est <- data.frame(N_f_y0 = colmeans(est_N_f_y0), 
+                       N_m_y0 = colmeans(est_N_m_y0))
+
+## Average error
+median_error <- data.frame(N_f_y0 = colMedians(error_N_f_y0), 
+                           N_m_y0 = colMedians(error_N_m_y0))
+
+mean_error <- data.frame(N_f_y0 = colmeans(error_N_f_y0), 
+                         N_m_y0 = colmeans(error_N_m_y0))
+
+
+## Average bias
+median_bias <- data.frame(N_f_y0 = colMedians(bias_N_f_y0), 
+                          N_m_y0 = colMedians(bias_N_m_y0))
+
+mean_bias <- data.frame(N_f_y0 = colmeans(bias_N_f_y0), 
+                        N_m_y0 = colmeans(bias_N_m_y0))
+
+## Mean absolute error
+mean_abs_error <- data.frame(N_f_y0 = colmeans(abs(error_N_f_y0)), 
+                             N_m_y0 = colmeans(abs(error_N_m_y0)))
+
+## Mean squared error
+mean_sqrd_error <- data.frame(N_f_y0 = colmeans((error_N_f_y0) ^ 2), 
+                              N_m_y0 = colmeans((error_N_m_y0) ^ 2))
+
+## standard deviation and variance of error
+std_dev_error <- data.frame(N_f_y0 = apply(error_N_f_y0, 2, sd),
+                            N_m_y0 = apply(error_N_m_y0, 2, sd))
+variance_error <- std_dev_error ^ 2
+
+## standard deviation and variance of estimates
+std_dev <- data.frame(N_f_y0 = apply(est_N_f_y0, 2, sd),
+                      N_m_y0 = apply(est_N_m_y0, 2, sd))
+variance <- std_dev ^ 2
+
+## Coefficient of variation (works as the support for these estimates is 
+## strictly positive)
+## This one is the correct one: std_dev_error comes from the error, mean_est 
+## will standardise it
+coeff_var <- std_dev_error / mean_est * 100
+
+## =============================================================================
+## 3. CREATE FIGURES AND TABLES FOR MANUSCRIPT
+## =============================================================================
+
+## ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::: 
+## Below are the new bias plots
+## :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+## -----------------------------------------
+## The error in y0 estimates violin plot
+## -----------------------------------------
+bias_N_f_y0_long <- bias_N_f_y0
+colnames(bias_N_f_y0_long) <- scen_names
+bias_N_f_y0_long <- reshape2::melt(bias_N_f_y0_long,
+                                   # na.rm = TRUE
+                                   value.name = "Abundance")[, -1]
+
+bias_N_f_y0_long$Measurment_scenario <- rep(c("-67% of true length measurement error (2.89)",
+                                              "-33% of true length measurement error (2.89)",
+                                              "The true length measurement error (2.89)",
+                                              "+33% of true length measurement error (2.89)",
+                                              "+67% of true length measurement error (2.89)"),
+                                            each = 5000)
+bias_N_f_y0_long$VBGF_scenario <- rep(rep(c("Growth curve shifted vertically by -10%",
+                                            "Growth curve shifted vertically by -5%",
+                                            "The true growth curve",
+                                            "Growth curve shifted vertically by +5%",
+                                            "Growth curve shifted vertically by +10%"),
+                                          each = 1000), 
+                                      times = 5)
+bias_N_f_y0_long$Sex = "Female"
+bias_N_f_y0_long <- na.omit(bias_N_f_y0_long)
+
+bias_N_m_y0_long <- bias_N_m_y0
+colnames(bias_N_m_y0_long) <- scen_names
+bias_N_m_y0_long <- reshape2::melt(bias_N_m_y0_long,
+                                   value.name = "Abundance")[, -1]
+
+bias_N_m_y0_long$Measurment_scenario <- rep(c("-67% of true length measurement error (2.89)",
+                                              "-33% of true length measurement error (2.89)",
+                                              "The true length measurement error (2.89)",
+                                              "+33% of true length measurement error (2.89)",
+                                              "+67% of true length measurement error (2.89)"),
+                                            each = 5000)
+bias_N_m_y0_long$VBGF_scenario <- rep(rep(c("Growth curve shifted vertically by -10%",
+                                            "Growth curve shifted vertically by -5%",
+                                            "The true growth curve",
+                                            "Growth curve shifted vertically by +5%",
+                                            "Growth curve shifted vertically by +10%"),
+                                          each = 1000), 
+                                      times = 5)
+bias_N_m_y0_long$Sex = "Male"
+# bias_N_m_y0_long <- na.omit(bias_N_m_y0_long)
+
+bias_N_y0_long <- rbind(bias_N_m_y0_long[, c(1, 3, 4, 2, 5)], 
+                        bias_N_f_y0_long[, c(1, 3, 4, 2, 5)])
+colnames(bias_N_y0_long)[1] <- c("Scenario")
+bias_N_y0_long$Scenario <- factor(bias_N_y0_long$Scenario, levels = scen_names)
+
+## A 5x5 PLOT
+y0_plot <- ggplot(data=bias_N_y0_long, aes(fill=Sex, x=1, y=Abundance)) +
+  geom_boxplot(position="dodge", 
+               outlier.alpha = 0.1,
+               # outlier.shape = NA,
+               # draw_quantiles = c(0.5), # for violin plots
+               coef = 5,   # for boxplots, how many times the IQR values are included (defaults to 1.5)
+               alpha=0.5) +
+  stat_summary(mapping = aes(fill=Sex), position=position_dodge(0.75),
+               fun = mean, geom="point", shape=21, color="black") +
+  theme_minimal() +
+  theme(legend.position = "bottom", 
+        axis.title.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        axis.text.x = element_blank()) +
+  geom_hline(yintercept = 0, 
+             colour = "black", 
+             alpha = 0.5)+
+  facet_wrap(~ Scenario , nrow = 5, labeller = label_parsed) +
+  ylab("Relative error in abundance (%)") +
+  # coord_flip() +  # comment out for normal plot
+  # scale_x_discrete(limits = rev(levels(est_N_5_long$Scenario))) +
+  # coord_cartesian(ylim = c(-100, 500)) +
+  scale_fill_discrete(name = ""); y0_plot
+# Export this plot in 800x1000
+
+## -------------------------------
+## Combine all plots into one plot
+## -------------------------------
+
+library(gridExtra)
+# library(svglite)
+lay <- rbind(c(1),
+             # c(1),
+             c(2),
+             # c(2),
+             c(3))
+
+p <- grid.arrange(y0_plot + 
+                    theme(legend.position = "none",
+                          axis.text.x = element_blank()) +
+                    ylab("Relative error\nabundance (100)") +
+                    xlab(element_blank()) +
+                    coord_cartesian(ylim=c(-100, 500)), # truncate without removing values outside
+                  mean_y_5_plot +
+                    theme(legend.position = "none",
+                          axis.text.x = element_blank()) +
+                    ylab("Relative error\nmean abundance (96-100)") +
+                    xlab(element_blank()) +
+                    coord_cartesian(ylim=c(-100, 500)), # truncate  without removing values outside
+                  r_plot + 
+                    # coord_cartesian(ylim=c(-100, 100))+ # for simple
+                    coord_cartesian(ylim=c(-50, 50))+ # for complex
+                    ylab("Relative error\nyearly growth rate"),
+                  layout_matrix = lay); p
+
+## now export it with width 1000 and height 750
+
+## Alternative for the no growth version:
+lay <- rbind(c(1))
+
+p <- grid.arrange(y0_plot + 
+                    # theme(legend.position = "none",
+                    #       axis.text.x = element_blank()) +
+                    ylab("Relative error\nabundance (100)") +
+                    # xlab(element_blank()) +
+                    coord_cartesian(ylim=c(-100, 500)),
+                  layout_matrix = lay); p
+
+## now export it with width 1000 and height 500
+
+## Some custom code to combine the two plots, as there is no need to keep them
+## separate when only N is estimated
+lay <- rbind(c(1), c(2))
+
+p <- grid.arrange(y0_plot_simple + 
+                    theme(legend.position = "none",
+                          axis.text.x = element_blank()) +
+                    ylab("Simple species") +
+                    xlab(element_blank()) +
+                    coord_cartesian(ylim=c(-100, 500)),
+                  y0_plot_complex + 
+                    # theme(legend.position = "none",
+                    #       axis.text.x = element_blank()) +
+                    ylab("Complex species") +
+                    coord_cartesian(ylim=c(-100, 500)),
+                  layout_matrix = lay, 
+                  left = "Relative error in adult abundance estimate"); p
+
+
+## :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+## Create a big table with all the results for the supplementary materials
+## :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+
+summarise_performance_metrics <- function(column, truth) {
+  df <- data.frame(
+    # true = truth, 
+    # median_est = median_est[, column],
+    # mean_est = mean_est[, column],
+    # std_dev = std_dev[, column],
+    # coeff_var = coeff_var[, column],
+    median_rel_error = median_bias[, column],
+    mean_rel_error = mean_bias[, column],
+    median_error = median_error[, column], 
+    mean_error = mean_error[, column], 
+    mean_abs_error = mean_abs_error[, column], 
+    root_mean_sqrd_error = sqrt(mean_sqrd_error[, column]))
+  # error_std_dev = std_dev_error[, column])
+  
+  df$scenario <- scen_names
+  df <- na.omit(df[, c(ncol(df), 1:(ncol(df)-1))])
+  return(df)
+}
+
+summary_N_f_y0 <- summarise_performance_metrics("N_f_y0", true_N_f_y0)
+
+summary_N_m_y0 <- summarise_performance_metrics("N_m_y0", true_N_m_y0)
+
+labels <- c("Scen.", 
+            # "Mdn. Est.", 
+            # "Mean Est.", 
+            # "Std. Dev.", 
+            # "CV", 
+            "Mnd. Rel. Err.",
+            "Mean Rel. Err.",
+            "Mdn. Err.", 
+            "Mean Err.", 
+            "MAE", 
+            "RMSE")
+
+caption <- "Various performance metrics for the parameter [quantity], extracted from 1000 simulations of the [species] shark population. The columns are, from left to right: scenario, median estimate, mean estimate, standard deviation, coefficient of variation (\\%), median error, mean error, mean absolute error, and mean squared error. Scenarios 1-1, 1-2, 1-3, 2-1, 2-2, and 3-1 were not included as (most of) the simulations did not fit successfully. Scenario 3-3 uses the correct measurement error (2.89) and growth curve specification."
+kable(summary_N_f_y0, booktabs = T, format = "latex", digits = 2,
+      col.names = labels, row.names = F, linesep = "", caption = caption)
+
+kable(summary_N_m_y0, booktabs = T, format = "latex", digits = 2,
+      col.names = labels, row.names = F, linesep = "", caption = caption)
+
+save(list = c("summary_N_f_y0", "summary_N_m_y0"), 
+     file = "source/result_summaries/performance_metrics_complex_only_last_capture.RData")
+
 ## =============================================================================
 ## 4. CREATE STANDARD DEVIATION AND CV TABLES FOR APPENDIX D
 ## =============================================================================
@@ -403,6 +682,9 @@ if (NO_GROWTH) {
   colnames(cv_df) <- c("scenario", 
                        "simple_N_y0_m" , "simple_N_y0_f",
                        "complex_N_y0_m" , "complex_N_y0_f") 
+  
+  # save(file="source/result_summaries/empirical_sd_only_last_capture.RData", list = "sd_df")
+  
   
   ## Create tables for latex
   library(kableExtra)

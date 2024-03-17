@@ -2,10 +2,14 @@
 ##                                                                            ##
 ##  Script that fits models with incorrect measurement error and              ##
 ##  models with misspecified VBGFs, and all combinations.                     ##
+##
+##  Make sure the naming is correct (e.g., only_last_capture or 
+##  only_first_capture)
+##  
 ##  12/03/24                                                                  ##
 ################################################################################
 
-load("data/simulation_study/sufficient_dfs_without_recaptures.RData")
+load("data/simulation_study/sufficient_dfs_only_last_capture.RData")
 
 ## :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 ## Load data and libraries
@@ -59,7 +63,7 @@ n <- 1000
 
 ## Simple fits
 ## ==============
-simple_fits_without_recaptures <- lapply(1:nrow(pars), function(i) {
+simple_fits_only_last_capture <- lapply(1:nrow(pars), function(i) {
   # scenario_fits <- lapply(13, function(i) {
   cat("Fitting the CKMR model in scenario:" , i, "\n")
   
@@ -125,13 +129,13 @@ simple_fits_without_recaptures <- lapply(1:nrow(pars), function(i) {
 })
 
 ## Save the scenario_fits object
-save(list = "simple_fits_without_recaptures",
-     file = "data/simulation_study/fit_results_simple_without_recaptures.RData")
+save(list = "simple_fits_only_last_capture",
+     file = "data/simulation_study/fit_results_simple_only_last_capture.RData")
 
 
 ## Complex fits
 ## ==============
-complex_fits_without_recaptures <- lapply(1:nrow(pars), function(i) {
+complex_fits_only_last_capture <- lapply(1:nrow(pars), function(i) {
   cat("Fitting the CKMR model in scenario:" , i, "\n")
   
   a0 <- pars[i, "a_0"]
@@ -197,5 +201,5 @@ complex_fits_without_recaptures <- lapply(1:nrow(pars), function(i) {
 })
 
 ## Save the scenario_fits object
-save(list = "complex_fits_without_recaptures",
-     file = "data/simulation_study/fit_results_complex_without_recaptures.RData")
+save(list = "complex_fits_only_last_capture",
+     file = "data/simulation_study/fit_results_complex_only_last_capture.RData")

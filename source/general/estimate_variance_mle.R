@@ -42,13 +42,34 @@ complex_sims <- combined_data
 ## Clean environment
 rm(scenario_fits, combined_data)
 
+## ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+## Load data WITHOUT recaptures below
+## ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+## combined data
+load("data/simulation_study/combined_data_only_last_capture.RData")
+complex_sims <- complex_combined
+simple_sims <- simple_combined
+
+rm(complex_combined, simple_combined)
+
+## simple fits
+load("data/simulation_study/fit_results_simple_only_last_capture.RData")
+load("data/simulation_study/fit_results_complex_only_last_captures.RData")
+
+simple_fits <- simple_fits_without_recaptures
+complex_fits <- complex_fits_without_recaptures
+
+rm(simple_fits_without_recaptures, 
+   complex_fits_without_recaptures)
+
 ## -----------------------------------------------------------------------------
 ## Extract the variances
 ## -----------------------------------------------------------------------------
 
 ## Extract failed fit scenarios
 conv <- sapply(simple_fits, function(scen) {
-  all(sapply(scen, function(fit) fit$message) == "relative convergence (4)")
+  all(sapply(scen, function(fit) fit$message) %in% c("relative convergence (4)", 
+                                                     "both X-convergence and relative convergence (5)"))
 })
 
 scenarios_to_keep <- (1:25)[conv] # convert TRUE/FALSE to indices
@@ -171,7 +192,7 @@ colnames(cv_df) <- c("scenario",
                      "complex_N_y0_m" , "complex_N_y0_f") 
 
 ## Save if needed
-save(list = "sd_df", file = "data/simulation_study/sd_estimates.RData")
+save(list = "sd_df", file = "source/result_summaries/estimated_sd_only_last_capture.RData")
 
 ## Create tables for latex
 
@@ -277,7 +298,7 @@ ci_coverage_complex <- data.frame(scen = scen_names[scenarios_to_keep],
                                   ci_coverage_female = coverage[2, ])
 
 ## Save results
-save(file = "data/simulation_study/95_CI_coverage.RData", 
+save(file = "source/result_summaries/95_CI_coverage_only_last_capture.RData", 
      list = c("ci_coverage_complex", "ci_coverage_simple"))
 
 ## Tables for LaTeX

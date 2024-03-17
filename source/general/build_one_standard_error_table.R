@@ -1,10 +1,28 @@
+## option a) Old version of loading data
 load("source/result_summaries/sd_cv_both_species_[estimates incorrect but empirical correct].RData")
 load("source/result_summaries/sd_estimates_correct.RData")
 load("data/simulation_study/simple/simulation_1000_schemes_all_scenarios_fit_results_sim=all_no_growth.RData")
 
+## option b) New version of loading data without recaptures (only first capture)
+load("source/result_summaries/empirical_sd_only_first_capture.RData")
+emp_sd_df <- sd_df
+load("source/result_summaries/estimated_sd_only_first_capture.RData")
+est_sd_df <- sd_df
+rm(sd_df)
+load("data/simulation_study/fit_results_simple_without_recaptures.RData")
+
+## option c) New version of loading data without recaptures (only last capture)
+load("source/result_summaries/empirical_sd_only_last_capture.RData")
+emp_sd_df <- sd_df
+load("source/result_summaries/estimated_sd_only_last_capture.RData")
+est_sd_df <- sd_df
+rm(sd_df)
+load("data/simulation_study/fit_results_simple_only_last_capture.RData")
+
 ## Extract failed fit scenarios
-conv <- sapply(scenario_fits, function(scen) {
-  all(sapply(scen, function(fit) fit$message) == "relative convergence (4)")
+conv <- sapply(simple_fits, function(scen) {
+  all(sapply(scen, function(fit) fit$message) %in% c("relative convergence (4)", 
+                                                     "both X-convergence and relative convergence (5)"))
 })
 
 scenarios_to_keep <- (1:25)[conv] # convert TRUE/FALSE to indices
@@ -23,6 +41,11 @@ caption <- ""
 
 ## TWO TABLE VERSION WITH DIFFERENCES
 ## ==================================
+
+## Create correct tables for situation without recaptures
+sd_df <- est_sd_df
+sd_simple_true <- emp_sd_df[, 2:3]
+sd_complex_true <- emp_sd_df[, 4:5]
 
 ## Simple species
 df_simple <- data.frame(sd_df[, 1], # scenario
