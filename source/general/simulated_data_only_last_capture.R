@@ -31,7 +31,7 @@ save(list = c("simple_sims_reduced", "complex_sims_reduced"),
 ## Phase 2
 ## ==============
 
-## Only keep last sampling  year
+## Only keep last sampling year
 simple_sims_only_last_capture <- lapply(simple_sims_reduced, function(x) {
   freq <- sum(x$no_samples == 2)
   x[x$no_samples == 2, 10:12] <- matrix(c(2014, NA, 1), nrow = freq, 
@@ -166,7 +166,7 @@ simple_dfs <- pblapply(simple_combined, function(x) {
   indiv <- x$indiv
   
   sampled_indiv <- indiv
-  sampled_indiv$SampY[sampled_indiv$SampY == "2013_2014"] <- 2013
+  sampled_indiv$SampY[sampled_indiv$SampY == "2013_2014"] <- 2014
   sampled_indiv$SampY <- as.integer(sampled_indiv$SampY)
   
   ## Keep relevant information and rename columns to match theory
