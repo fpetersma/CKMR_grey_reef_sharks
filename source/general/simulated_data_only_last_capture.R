@@ -58,7 +58,7 @@ library(pbapply)
 library(parallel)
 
 ## Find the pairs in parallel. 
-n_cores <- 22
+n_cores <- 16
 cl <- makeCluster(n_cores)
 simple_pairs <- pblapply(simple_sims_only_last_capture, function(indiv) {
   return(CKMRcpp::findRelativesCustom(indiv = indiv, verbose = FALSE,
@@ -71,7 +71,6 @@ simple_POPs <- pblapply(simple_pairs, function(pairs) {
 rm(simple_pairs)
 
 # Find the complex pairs in parallel. 
-n_cores <- 22
 cl <- makeCluster(n_cores)
 complex_pairs <- pblapply(complex_sims_only_last_capture, function(indiv) {
   return(CKMRcpp::findRelativesCustom(indiv = indiv, verbose = FALSE,
@@ -94,7 +93,6 @@ save(list = c("simple_POPs", "complex_POPs"),
 load(file = paste0("data/simulation_study/simple/1000_simulated_data_sets.RData"))
 simple_sims_complete <- simulated_data_sets
 
-n_cores <- 22
 cl <- makeCluster(n_cores)
 first_breed_male <- 10
 first_breed_female <- 10
@@ -117,7 +115,6 @@ simple_N_hist <- pblapply(simulated_data_sets, function(indiv) {
 load(file = paste0("data/simulation_study/complex/1000_simulated_data_sets.RData"))
 complex_sims_complete <- simulated_data_sets
 
-n_cores <- 22
 cl <- makeCluster(n_cores)
 
 first_breed_male <- 17          # applies only to males
@@ -159,7 +156,6 @@ save(list = c("simple_combined", "complex_combined"),
 ## Prepare final data frames for analysis
 ## Simple species first
 ## ==================================
-n_cores <- 16
 cl <- makeCluster(n_cores)
 simple_dfs <- pblapply(simple_combined, function(x) {
   POPs <- x$POPs
@@ -238,7 +234,7 @@ simple_dfs <- pblapply(simple_combined, function(x) {
 ## :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 ## Run below to add noise the length with the preferred uncertainty
 ## :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-set.seed(2023) # seed for reproducibility
+set.seed(2025) # seed for reproducibility
 
 simple_dfs <- pblapply(simple_dfs, function(x) {
   x$indiv_1_length <- 
@@ -262,14 +258,13 @@ save(list = "simple_dfs",
 
 ## Complex species now
 ## ===============================
-n_cores <- 16
 cl <- makeCluster(n_cores)
 complex_dfs <- pblapply(complex_combined, function(x) {
   POPs <- x$POPs
   indiv <- x$indiv
   
   sampled_indiv <- indiv
-  sampled_indiv$SampY[sampled_indiv$SampY == "2013_2014"] <- 2013
+  sampled_indiv$SampY[sampled_indiv$SampY == "2013_2014"] <- 2014
   sampled_indiv$SampY <- as.integer(sampled_indiv$SampY)
   
   ## Keep relevant information and rename columns to match theory
@@ -342,7 +337,7 @@ complex_dfs <- pblapply(complex_combined, function(x) {
 ## :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 ## Run below to add noise the length with the preferred uncertainty
 ## :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-set.seed(2024) # seed for reproducibility
+set.seed(2026) # seed for reproducibility
 
 complex_dfs <- pblapply(complex_dfs, function(x) {
   x$indiv_1_length <- 
@@ -368,8 +363,7 @@ save(list = "complex_dfs",
 ## Run below to add unique covariate combo ids and return sufficient dfs
 ## :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
-## Simple
-n_cores <- 32
+## Simple ##################################################
 cl <- makeCluster(n_cores)
 # clusterExport(cl, c("vbgf"))
 simple_suff <- pblapply(simple_dfs, function(x) {
@@ -400,8 +394,7 @@ simple_suff <- pblapply(simple_dfs, function(x) {
   return(as.data.frame(df_sufficient))
 }, cl = cl); stopCluster(cl)
 
-## Complex
-n_cores <- 32
+## Complex ############################################
 cl <- makeCluster(n_cores)
 # clusterExport(cl, c("vbgf"))
 complex_suff <- pblapply(complex_dfs, function(x) {
