@@ -2,10 +2,10 @@
 ##                                                                            ##
 ##  Script that fits models with incorrect measurement error and              ##
 ##  models with misspecified VBGFs, and all combinations.                     ##
-##
-##  Make sure the naming is correct (e.g., only_last_capture or 
-##  only_first_capture)
-##  
+##                                                                            ##
+##  Make sure the naming is correct (e.g., only_last_capture or               ##
+##  only_first_capture)                                                       ##
+##                                                                            ##
 ##  12/03/24                                                                  ##
 ################################################################################
 
@@ -64,14 +64,13 @@ n <- 1000
 ## Simple fits
 ## ==============
 simple_fits_only_last_capture <- lapply(1:nrow(pars), function(i) {
-  # scenario_fits <- lapply(13, function(i) {
   cat("Fitting the CKMR model in scenario:" , i, "\n")
   
   a0 <- pars[i, "a_0"]
   l_inf <- pars[i, "l_inf"]
   sigma_l <- pars[i, "sigma_l"]
   
-  n_cores <- 32
+  n_cores <- 16
   cl <- makeCluster(n_cores)
   clusterExport(cl = cl, list("a0", "l_inf", "sigma_l"), envir = environment())
   results <- pblapply(simple_suff[1:n], function(df_select) {
@@ -142,7 +141,7 @@ complex_fits_only_last_capture <- lapply(1:nrow(pars), function(i) {
   l_inf <- pars[i, "l_inf"]
   sigma_l <- pars[i, "sigma_l"]
   
-  n_cores <- 32
+  n_cores <- 16
   cl <- makeCluster(n_cores)
   clusterExport(cl = cl, list("a0", "l_inf", "sigma_l"), envir = environment())
   results <- pblapply(complex_suff[1:n], function(df_select) {
