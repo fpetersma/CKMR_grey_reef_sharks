@@ -258,71 +258,10 @@ y0_plot <- ggplot(data=bias_N_y0_long, aes(fill=Sex, x=1, y=Abundance)) +
   # scale_x_discrete(limits = rev(levels(est_N_5_long$Scenario))) +
   # coord_cartesian(ylim = c(-100, 500)) +
   scale_fill_discrete(name = ""); y0_plot
-# Export this plot in 800x1000
 
-## -------------------------------
-## Combine all plots into one plot
-## -------------------------------
-
-library(gridExtra)
-# library(svglite)
-lay <- rbind(c(1),
-             # c(1),
-             c(2),
-             # c(2),
-             c(3))
-
-p <- grid.arrange(y0_plot + 
-                    theme(legend.position = "none",
-                          axis.text.x = element_blank()) +
-                    ylab("Relative error\nabundance (100)") +
-                    xlab(element_blank()) +
-                    coord_cartesian(ylim=c(-100, 500)), # truncate without removing values outside
-                  mean_y_5_plot +
-                    theme(legend.position = "none",
-                          axis.text.x = element_blank()) +
-                    ylab("Relative error\nmean abundance (96-100)") +
-                    xlab(element_blank()) +
-                    coord_cartesian(ylim=c(-100, 500)), # truncate  without removing values outside
-                  r_plot + 
-                    # coord_cartesian(ylim=c(-100, 100))+ # for simple
-                    coord_cartesian(ylim=c(-50, 50))+ # for complex
-                    ylab("Relative error\nyearly growth rate"),
-                  layout_matrix = lay); p
-
-## now export it with width 1000 and height 750
-
-## Alternative for the no growth version:
-lay <- rbind(c(1))
-
-p <- grid.arrange(y0_plot + 
-                    # theme(legend.position = "none",
-                    #       axis.text.x = element_blank()) +
-                    ylab("Relative error\nabundance (100)") +
-                    # xlab(element_blank()) +
-                    coord_cartesian(ylim=c(-100, 500)),
-                  layout_matrix = lay); p
-
-## now export it with width 1000 and height 500
-
-## Some custom code to combine the two plots, as there is no need to keep them
-## separate when only N is estimated
-lay <- rbind(c(1), c(2))
-
-p <- grid.arrange(y0_plot_simple + 
-                    theme(legend.position = "none",
-                          axis.text.x = element_blank()) +
-                    ylab("Simple species") +
-                    xlab(element_blank()) +
-                    coord_cartesian(ylim=c(-100, 500)),
-                  y0_plot_complex + 
-                    # theme(legend.position = "none",
-                    #       axis.text.x = element_blank()) +
-                    ylab("Complex species") +
-                    coord_cartesian(ylim=c(-100, 500)),
-                  layout_matrix = lay, 
-                  left = "Relative error in adult abundance estimate"); p
-
+################################## 
+## Export this plot in 800x1000 ##  <<< !!!!!!!
+##################################
 
 ## :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 ## Create a big table with all the results for the supplementary materials

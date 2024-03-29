@@ -1,5 +1,5 @@
 ################################################################################
-## Reduce simulated data sets and save
+## Reduce simulated data sets and save. Only keep first capture.
 ## 12/03/2024
 ################################################################################
 
@@ -31,35 +31,35 @@ save(list = c("simple_sims_reduced", "complex_sims_reduced"),
 ## Phase 2
 ## ==============
 
-simple_sims_without_recaptures <- lapply(simple_sims_reduced, function(x) {
+simple_sims_only_first_capture <- lapply(simple_sims_reduced, function(x) {
   freq <- sum(x$no_samples == 2)
   x[x$no_samples == 2, 10:12] <- matrix(c(2013, NA, 1), nrow = freq, 
                                        ncol = 3, byrow = TRUE)
   return(x)
 })
 
-complex_sims_without_recaptures <- lapply(complex_sims_reduced, function(x) {
+complex_sims_only_first_capture <- lapply(complex_sims_reduced, function(x) {
   freq <- sum(x$no_samples == 2)
   x[x$no_samples == 2, 11:13] <- matrix(c(2013, NA, 1), nrow = freq, 
                                        ncol = 3, byrow = TRUE)
   return(x)
 })
 
-save(list = c("simple_sims_without_recaptures", "complex_sims_without_recaptures"),
-     file = "data/simulation_study/simulated_data_without_recaptures_both_species.RData")
+save(list = c("simple_sims_only_first_capture", "complex_sims_only_first_capture"),
+     file = "data/simulation_study/simulated_data_only_first_capture_both_species.RData")
 
 ## Find pairs
 ## ===============
 
 ## If the lines before have been run before, just load the Rdata file
-# load("data/simulation_study/simulated_data_without_recaptures_both_species.RData")
+# load("data/simulation_study/simulated_data_only_first_capture_both_species.RData")
 library(pbapply)
 library(parallel)
 
 ## Find the pairs in parallel. 
 n_cores <- 22
 cl <- makeCluster(n_cores)
-simple_pairs <- pblapply(simple_sims_without_recaptures, function(indiv) {
+simple_pairs <- pblapply(simple_sims_only_first_capture, function(indiv) {
   return(CKMRcpp::findRelativesCustom(indiv = indiv, verbose = FALSE,
                                       sampled = TRUE))
 }, cl = cl); stopCluster(cl)
@@ -72,7 +72,7 @@ rm(simple_pairs)
 # Find the complex pairs in parallel. 
 n_cores <- 22
 cl <- makeCluster(n_cores)
-complex_pairs <- pblapply(complex_sims_without_recaptures, function(indiv) {
+complex_pairs <- pblapply(complex_sims_only_first_capture, function(indiv) {
   return(CKMRcpp::findRelativesCustom(indiv = indiv, verbose = FALSE,
                                       sampled = TRUE))
 }, cl = cl); stopCluster(cl)
@@ -84,7 +84,7 @@ complex_POPs <- pblapply(complex_pairs, function(pairs) {
 rm(simple_pairs, complex_pairs)
 
 save(list = c("simple_POPs", "complex_POPs"),
-     file = "data/simulation_study/POPs_without_recaptures.RData")
+     file = "data/simulation_study/POPs_only_first_capture.RData")
 
 ## Add population histories
 ## If population size is the same, just do this once and repeat for every sampling scheme
@@ -139,21 +139,21 @@ complex_N_hist <- pblapply(simulated_data_sets, function(indiv) {
 rm(simulated_data_sets)
 
 ## Create combined data objects in reduced format
-simple_combined <- pblapply(1:length(simple_sims_without_recaptures), function(i) {
+simple_combined <- pblapply(1:length(simple_sims_only_first_capture), function(i) {
   out <- list(POPs = simple_POPs[[i]],
               N_hist = simple_N_hist[[i]],
-              indiv = simple_sims_without_recaptures[[i]])
+              indiv = simple_sims_only_first_capture[[i]])
   return(out)
 })
-complex_combined <- pblapply(1:length(complex_sims_without_recaptures), function(i) {
+complex_combined <- pblapply(1:length(complex_sims_only_first_capture), function(i) {
   out <- list(POPs = complex_POPs[[i]],
               N_hist = complex_N_hist[[i]],
-              indiv = complex_sims_without_recaptures[[i]])
+              indiv = complex_sims_only_first_capture[[i]])
   return(out)
 })
 
 save(list = c("simple_combined", "complex_combined"),
-     file = "data/simulation_study/combined_data_without_recaptures.RData")
+     file = "data/simulation_study/combined_data_only_first_capture.RData")
 
 ## Prepare final data frames for analysis
 ## Simple species first
@@ -257,7 +257,7 @@ simple_dfs <- pblapply(simple_dfs, function(x) {
 
 ## Save dfs
 save(list = "simple_dfs", 
-     file = "data/simulation_study/simple_dfs_without_recaptures.RData")
+     file = "data/simulation_study/simple_dfs_only_first_capture.RData")
 
 ## Complex species now
 ## ===============================
@@ -361,7 +361,7 @@ complex_dfs <- pblapply(complex_dfs, function(x) {
 
 ## Save dfs
 save(list = "complex_dfs", 
-     file = "data/simulation_study/complex_dfs_without_recaptures.RData")
+     file = "data/simulation_study/complex_dfs_only_first_capture.RData")
 
 ## :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 ## Run below to add unique covariate combo ids and return sufficient dfs
@@ -432,4 +432,4 @@ complex_suff <- pblapply(complex_dfs, function(x) {
 }, cl = cl); stopCluster(cl)
 
 save(list = c("simple_suff", "complex_suff"),
-     file = "data/simulation_study/sufficient_dfs_without_recaptures.RData")
+     file = "data/simulation_study/sufficient_dfs_only_first_capture.RData")

@@ -1,5 +1,5 @@
 ################################################################################
-## Reduce simulated data sets and save. Only keep last capture.
+## Reduce simulated data sets and save. With recaptures.
 ## 12/03/2024
 ################################################################################
 
@@ -28,39 +28,35 @@ rm(simulated_data_sets)
 save(list = c("simple_sims_reduced", "complex_sims_reduced"),
      file = "data/simulation_study/simulated_data_reduced_both_species.RData")
 
-## Phase 2
-## ==============
+## Phase 2: split the recaptures into 2 lines, one for 2013 and one for 2014
+## =========================================================================
 
-## Only keep last sampling year
-simple_sims_only_last_capture <- lapply(simple_sims_reduced, function(x) {
-  freq <- sum(x$no_samples == 2)
-  x[x$no_samples == 2, 10:12] <- matrix(c(2014, NA, 1), nrow = freq, 
-                                        ncol = 3, byrow = TRUE)
-  return(x)
+simple_sims_with_recaptures <- lapply(simple_sims_reduced, function(x) {
+  recaptures <- subset(x, no_samples == 2)
+  recaptures_2013 <- recaptures %>% mutate(SampY = 2013, no_samples = 1,
+                                           AgeLast = AgeLast - 1) # AgeLast in the data is the age at last capture, so subtract one to match first capture
+  recaptures_2014 <- recaptures %>% mutate(SampY = 2014, no_samples = 1)
+  return(rbind(subset(x, no_samples == 1), recaptures_2013, recaptures_2014))
 })
-
-complex_sims_only_last_capture <- lapply(complex_sims_reduced, function(x) {
-  freq <- sum(x$no_samples == 2)
-  x[x$no_samples == 2, 11:13] <- matrix(c(2014, NA, 1), nrow = freq, 
-                                        ncol = 3, byrow = TRUE)
-  return(x)
+complex_sims_with_recaptures <- lapply(complex_sims_reduced, function(x) {
+  recaptures <- subset(x, no_samples == 2)
+  recaptures_2013 <- recaptures %>% mutate(SampY = 2013, no_samples = 1,
+                                           AgeLast = AgeLast - 1) # AgeLast in the data is the age at last capture, so subtract one to match first capture
+  recaptures_2014 <- recaptures %>% mutate(SampY = 2014, no_samples = 1)
+  return(rbind(subset(x, no_samples == 1), recaptures_2013, recaptures_2014))
 })
-
-save(list = c("simple_sims_only_last_capture", "complex_sims_only_last_capture"),
-     file = "data/simulation_study/simulated_data_only_last_capture_both_species.RData")
-
 ## Find pairs
 ## ===============
 
-## If the lines before have been run before, just load the RData file
-# load("data/simulation_study/simulated_data_only_last_capture_both_species.RData")
+## If the lines before have been run before, just load the Rdata file
+# load("data/simulation_study/simulated_data_with_recaptures_both_species.RData")
 library(pbapply)
 library(parallel)
 
 ## Find the pairs in parallel. 
 n_cores <- 16
 cl <- makeCluster(n_cores)
-simple_pairs <- pblapply(simple_sims_only_last_capture, function(indiv) {
+simple_pairs <- pblapply(simple_sims_with_recaptures, function(indiv) {
   return(CKMRcpp::findRelativesCustom(indiv = indiv, verbose = FALSE,
                                       sampled = TRUE))
 }, cl = cl); stopCluster(cl)
@@ -72,7 +68,7 @@ rm(simple_pairs)
 
 # Find the complex pairs in parallel. 
 cl <- makeCluster(n_cores)
-complex_pairs <- pblapply(complex_sims_only_last_capture, function(indiv) {
+complex_pairs <- pblapply(complex_sims_with_recaptures, function(indiv) {
   return(CKMRcpp::findRelativesCustom(indiv = indiv, verbose = FALSE,
                                       sampled = TRUE))
 }, cl = cl); stopCluster(cl)
@@ -81,10 +77,10 @@ complex_POPs <- pblapply(complex_pairs, function(pairs) {
   return(pairs[pairs$OneTwo == 1, ]) ## Parent-Offspring pairs)
 })
 
-rm(complex_pairs)
+rm(simple_pairs, complex_pairs)
 
 save(list = c("simple_POPs", "complex_POPs"),
-     file = "data/simulation_study/POPs_only_last_capture.RData")
+     file = "data/simulation_study/with_recaptures/POPs_with_recaptures.RData")
 
 ## Add population histories
 ## If population size is the same, just do this once and repeat for every sampling scheme
@@ -94,6 +90,7 @@ load(file = paste0("data/simulation_study/simple/1000_simulated_data_sets.RData"
 simple_sims_complete <- simulated_data_sets
 
 cl <- makeCluster(n_cores)
+
 first_breed_male <- 10
 first_breed_female <- 10
 clusterExport(cl, varlist = c("first_breed_male", "first_breed_female"))
@@ -137,21 +134,21 @@ complex_N_hist <- pblapply(simulated_data_sets, function(indiv) {
 rm(simulated_data_sets)
 
 ## Create combined data objects in reduced format
-simple_combined <- pblapply(1:length(simple_sims_only_last_capture), function(i) {
+simple_combined <- lapply(1:length(simple_sims_with_recaptures), function(i) {
   out <- list(POPs = simple_POPs[[i]],
               N_hist = simple_N_hist[[i]],
-              indiv = simple_sims_only_last_capture[[i]])
+              indiv = simple_sims_with_recaptures[[i]])
   return(out)
 })
-complex_combined <- pblapply(1:length(complex_sims_only_last_capture), function(i) {
+complex_combined <- lapply(1:length(complex_sims_with_recaptures), function(i) {
   out <- list(POPs = complex_POPs[[i]],
               N_hist = complex_N_hist[[i]],
-              indiv = complex_sims_only_last_capture[[i]])
+              indiv = complex_sims_with_recaptures[[i]])
   return(out)
 })
 
 save(list = c("simple_combined", "complex_combined"),
-     file = "data/simulation_study/combined_data_only_last_capture.RData")
+     file = "data/simulation_study/combined_data_with_recaptures.RData")
 
 ## Prepare final data frames for analysis
 ## Simple species first
@@ -162,7 +159,6 @@ simple_dfs <- pblapply(simple_combined, function(x) {
   indiv <- x$indiv
   
   sampled_indiv <- indiv
-  sampled_indiv$SampY[sampled_indiv$SampY == "2013_2014"] <- 2014
   sampled_indiv$SampY <- as.integer(sampled_indiv$SampY)
   
   ## Keep relevant information and rename columns to match theory
@@ -234,7 +230,7 @@ simple_dfs <- pblapply(simple_combined, function(x) {
 ## :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 ## Run below to add noise the length with the preferred uncertainty
 ## :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-set.seed(2025) # seed for reproducibility
+set.seed(2021) # seed for reproducibility
 
 simple_dfs <- pblapply(simple_dfs, function(x) {
   x$indiv_1_length <- 
@@ -254,7 +250,7 @@ simple_dfs <- pblapply(simple_dfs, function(x) {
 
 ## Save dfs
 save(list = "simple_dfs", 
-     file = "data/simulation_study/simple_dfs_only_last_capture.RData")
+     file = "data/simulation_study/simple_dfs_with_recaptures.RData")
 
 ## Complex species now
 ## ===============================
@@ -264,7 +260,6 @@ complex_dfs <- pblapply(complex_combined, function(x) {
   indiv <- x$indiv
   
   sampled_indiv <- indiv
-  sampled_indiv$SampY[sampled_indiv$SampY == "2013_2014"] <- 2014
   sampled_indiv$SampY <- as.integer(sampled_indiv$SampY)
   
   ## Keep relevant information and rename columns to match theory
@@ -337,7 +332,7 @@ complex_dfs <- pblapply(complex_combined, function(x) {
 ## :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 ## Run below to add noise the length with the preferred uncertainty
 ## :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-set.seed(2026) # seed for reproducibility
+set.seed(2022) # seed for reproducibility
 
 complex_dfs <- pblapply(complex_dfs, function(x) {
   x$indiv_1_length <- 
@@ -357,13 +352,13 @@ complex_dfs <- pblapply(complex_dfs, function(x) {
 
 ## Save dfs
 save(list = "complex_dfs", 
-     file = "data/simulation_study/complex_dfs_only_last_capture.RData")
+     file = "data/simulation_study/complex_dfs_with_recaptures.RData")
 
 ## :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 ## Run below to add unique covariate combo ids and return sufficient dfs
 ## :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
-## Simple ##################################################
+## Simple
 cl <- makeCluster(n_cores)
 # clusterExport(cl, c("vbgf"))
 simple_suff <- pblapply(simple_dfs, function(x) {
@@ -394,7 +389,7 @@ simple_suff <- pblapply(simple_dfs, function(x) {
   return(as.data.frame(df_sufficient))
 }, cl = cl); stopCluster(cl)
 
-## Complex ############################################
+## Complex
 cl <- makeCluster(n_cores)
 # clusterExport(cl, c("vbgf"))
 complex_suff <- pblapply(complex_dfs, function(x) {
@@ -426,4 +421,4 @@ complex_suff <- pblapply(complex_dfs, function(x) {
 }, cl = cl); stopCluster(cl)
 
 save(list = c("simple_suff", "complex_suff"),
-     file = "data/simulation_study/sufficient_dfs_only_last_capture.RData")
+     file = "data/simulation_study/sufficient_dfs_with_recaptures.RData")

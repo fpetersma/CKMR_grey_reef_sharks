@@ -124,8 +124,7 @@ dfs <- pblapply(combined_data, function(x) {
   indiv <- x$indiv
   
   ## Extract sampled individuals from the population
-  sampled_indiv <- indiv[!is.na(indiv$SampY),] # a total of 1258 sampled 
-  # individuals = 1581306 comparisons
+  sampled_indiv <- indiv[!is.na(indiv$SampY),]
   
   ## Add the recaptures [This is new can can be removed if it does not work]
   self <- self[rep(seq_len(nrow(self)), self$no_samples), ]
