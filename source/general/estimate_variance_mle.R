@@ -6,6 +6,8 @@
 ##  When X~N(mu, sd) and Y = logX, then var(Y) = (exp(sd^2)- 1)*exp(2mu+sd^2) 
 ##  See: https://blogs.sas.com/content/iml/2014/06/04/simulate-lognormal-data-with-specified-mean-and-variance.html
 ##       or the documentation of in R of stats::lnorm()
+##
+## Notes: the script still derives CV, but this is no longer used for analysis
 ## =============================================================================
 
 ## =============================================================================
@@ -192,7 +194,7 @@ colnames(cv_df) <- c("scenario",
                      "complex_N_y0_m" , "complex_N_y0_f") 
 
 ## Save if needed
-save(list = "sd_df", file = "source/result_summaries/estimated_sd_only_last_capture.RData")
+save(list = "sd_df", file = "source/result_summaries/estimated_sd_with_recaptures.RData")
 
 ## Create tables for latex
 
@@ -298,7 +300,7 @@ ci_coverage_complex <- data.frame(scen = scen_names[scenarios_to_keep],
                                   ci_coverage_female = coverage[2, ])
 
 ## Save results
-save(file = "source/result_summaries/95_CI_coverage_only_last_capture.RData", 
+save(file = "source/result_summaries/95_CI_coverage_with_recaptures.RData", 
      list = c("ci_coverage_complex", "ci_coverage_simple"))
 
 ## Tables for LaTeX
