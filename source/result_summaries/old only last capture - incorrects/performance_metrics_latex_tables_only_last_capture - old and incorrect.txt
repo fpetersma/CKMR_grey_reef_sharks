@@ -132,7 +132,7 @@ ME+67:GC+10 & -61.51 & -60.17 & -394.30 & -391.56 & 391.56 & 398.03\\
 \end{tabular}
 \end{table}
 
-CI COVERAGE ONLY LAST CAPTURE [estimated_variance_mle.R]
+CI COVERAGE ONLY LAST CAPTURE [estimate_variance_mle.R]
 
 \begin{table}
 \caption{}

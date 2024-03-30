@@ -51,15 +51,15 @@ rm(scenario_fits, combined_data)
 ## Load data WITHOUT recaptures below
 ## ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 ## combined data
-load("data/simulation_study/combined_data_only_last_capture.RData")
+load("data/simulation_study/only_last_capture/combined_data_only_last_capture.RData")
 complex_sims <- complex_combined
 simple_sims <- simple_combined
 
 rm(complex_combined, simple_combined)
 
 ## simple fits
-load("data/simulation_study/fit_results_simple_only_last_capture.RData")
-load("data/simulation_study/fit_results_complex_only_last_capture.RData")
+load("data/simulation_study/only_last_capture/fit_results_simple_only_last_capture.RData")
+load("data/simulation_study/only_last_capture/fit_results_complex_only_last_capture.RData")
 
 simple_fits <- simple_fits_only_last_capture
 complex_fits <- complex_fits_only_last_capture
@@ -154,6 +154,9 @@ variance <- std_dev ^ 2
 ## This one is the correct one: std_dev_error comes from the error, mean_est 
 ## will standardise it
 coeff_var <- std_dev_error / mean_est * 100
+
+## Store standard errors for simple species
+sd_simple <- std_dev_error[conv, c(2, 1)]
 
 ## =============================================================================
 ## 3. CREATE FIGURES AND TABLES FOR MANUSCRIPT
@@ -311,7 +314,7 @@ kable(summary_N_m_y0, booktabs = T, format = "latex", digits = 2,
       col.names = labels, row.names = F, linesep = "", caption = caption)
 
 save(list = c("summary_N_f_y0", "summary_N_m_y0"), 
-     file = "source/result_summaries/performance_metrics_simple_only_last_capture.RData")
+     file = "source/result_summaries/performance_metrics_simple_with_recaptures.RData")
 
 ############################
 ##### COMPLEX SPECIES #####     <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
@@ -398,6 +401,9 @@ variance <- std_dev ^ 2
 ## will standardise it
 coeff_var <- std_dev_error / mean_est * 100
 
+## Store standard errors for complex species
+sd_complex <- std_dev_error[conv, c(2, 1)]
+
 ## =============================================================================
 ## 3. CREATE FIGURES AND TABLES FOR MANUSCRIPT
 ## =============================================================================
@@ -482,70 +488,6 @@ y0_plot <- ggplot(data=bias_N_y0_long, aes(fill=Sex, x=1, y=Abundance)) +
   scale_fill_discrete(name = ""); y0_plot
 # Export this plot in 800x1000
 
-## -------------------------------
-## Combine all plots into one plot
-## -------------------------------
-
-library(gridExtra)
-# library(svglite)
-lay <- rbind(c(1),
-             # c(1),
-             c(2),
-             # c(2),
-             c(3))
-
-p <- grid.arrange(y0_plot + 
-                    theme(legend.position = "none",
-                          axis.text.x = element_blank()) +
-                    ylab("Relative error\nabundance (100)") +
-                    xlab(element_blank()) +
-                    coord_cartesian(ylim=c(-100, 500)), # truncate without removing values outside
-                  mean_y_5_plot +
-                    theme(legend.position = "none",
-                          axis.text.x = element_blank()) +
-                    ylab("Relative error\nmean abundance (96-100)") +
-                    xlab(element_blank()) +
-                    coord_cartesian(ylim=c(-100, 500)), # truncate  without removing values outside
-                  r_plot + 
-                    # coord_cartesian(ylim=c(-100, 100))+ # for simple
-                    coord_cartesian(ylim=c(-50, 50))+ # for complex
-                    ylab("Relative error\nyearly growth rate"),
-                  layout_matrix = lay); p
-
-## now export it with width 1000 and height 750
-
-## Alternative for the no growth version:
-lay <- rbind(c(1))
-
-p <- grid.arrange(y0_plot + 
-                    # theme(legend.position = "none",
-                    #       axis.text.x = element_blank()) +
-                    ylab("Relative error\nabundance (100)") +
-                    # xlab(element_blank()) +
-                    coord_cartesian(ylim=c(-100, 500)),
-                  layout_matrix = lay); p
-
-## now export it with width 1000 and height 500
-
-## Some custom code to combine the two plots, as there is no need to keep them
-## separate when only N is estimated
-lay <- rbind(c(1), c(2))
-
-p <- grid.arrange(y0_plot_simple + 
-                    theme(legend.position = "none",
-                          axis.text.x = element_blank()) +
-                    ylab("Simple species") +
-                    xlab(element_blank()) +
-                    coord_cartesian(ylim=c(-100, 500)),
-                  y0_plot_complex + 
-                    # theme(legend.position = "none",
-                    #       axis.text.x = element_blank()) +
-                    ylab("Complex species") +
-                    coord_cartesian(ylim=c(-100, 500)),
-                  layout_matrix = lay, 
-                  left = "Relative error in adult abundance estimate"); p
-
-
 ## :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 ## Create a big table with all the results for the supplementary materials
 ## :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
@@ -594,13 +536,21 @@ kable(summary_N_m_y0, booktabs = T, format = "latex", digits = 2,
       col.names = labels, row.names = F, linesep = "", caption = caption)
 
 save(list = c("summary_N_f_y0", "summary_N_m_y0"), 
-     file = "source/result_summaries/performance_metrics_complex_only_last_capture.RData")
+     file = "source/result_summaries/performance_metrics_complex_with_recaptures.RData")
 
 ## =============================================================================
 ## 4. CREATE STANDARD DEVIATION AND CV TABLES FOR APPENDIX D
 ## =============================================================================
 
 ## Create tables for CV and SD similar to "estimate_variance_mle.R" 
+sd_df <- cbind(data.frame(scen_names[conv]), sd_simple, sd_complex)
+colnames(sd_df) <- c("scenario", 
+                     "simple_N_y0_m" , "simple_N_y0_f",
+                     "complex_N_y0_m" , "complex_N_y0_f")
+
+save(file="source/result_summaries/empirical_sd_with_recaptures.RData", list = "sd_df")
+
+## Below is old and not used for analysis
 
 if (NO_GROWTH) {
   ## Run section 1 and 2 above first for simple, then run lines below

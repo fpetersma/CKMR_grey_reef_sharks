@@ -141,7 +141,7 @@ complex_fits_with_recaptures <- lapply(1:nrow(pars), function(i) {
   l_inf <- pars[i, "l_inf"]
   sigma_l <- pars[i, "sigma_l"]
   
-  n_cores <- 16
+  n_cores <- 40
   cl <- makeCluster(n_cores)
   clusterExport(cl = cl, list("a0", "l_inf", "sigma_l"), envir = environment())
   results <- pblapply(complex_suff[1:n], function(df_select) {

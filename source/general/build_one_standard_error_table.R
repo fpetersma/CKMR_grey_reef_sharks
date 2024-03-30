@@ -1,23 +1,46 @@
+################################################################################
+## This script combines the model based and empirical standard errors into    ##
+## one nice table. This table is then saved and turned into a latex table.    ##
+################################################################################
+
+## =============================================================================
+## Run option a) when analysing with recaptures, b) for only the first capture,
+## and c) for only the last capture.
+## =============================================================================
+
 ## option a) Old version of loading data
-load("source/result_summaries/sd_cv_both_species_[estimates incorrect but empirical correct].RData")
-load("source/result_summaries/sd_estimates_correct.RData")
+## =====================================
+
+load("source/result_summaries/with_recaptures/empirical_sd_with_recaptures.RData")
+emp_sd_df <- sd_df
+load("source/result_summaries/with_recaptures/estimated_sd_with_recaptures.RData")
+est_sd_df <- sd_df
+rm(sd_df)
 load("data/simulation_study/simple/simulation_1000_schemes_all_scenarios_fit_results_sim=all_no_growth.RData")
+simple_fits <- scenario_fits
+rm(scenario_fits)
 
 ## option b) New version of loading data without recaptures (only first capture)
-load("source/result_summaries/empirical_sd_only_first_capture.RData")
+## =============================================================================
+load("source/result_summaries/only_first_capture/empirical_sd_only_first_capture.RData")
 emp_sd_df <- sd_df
-load("source/result_summaries/estimated_sd_only_first_capture.RData")
+load("source/result_summaries/only_first_capture/estimated_sd_only_first_capture.RData")
 est_sd_df <- sd_df
 rm(sd_df)
-load("data/simulation_study/fit_results_simple_without_recaptures.RData")
+load("data/simulation_study/only_first_capture/fit_results_simple_only_first_capture.RData")
+simple_fits <- simple_fits_only_first_capture
+rm(simple_fits_only_first_capture)
 
 ## option c) New version of loading data without recaptures (only last capture)
-load("source/result_summaries/empirical_sd_only_last_capture.RData")
+## =============================================================================
+load("source/result_summaries/only_last_capture/empirical_sd_only_last_capture.RData")
 emp_sd_df <- sd_df
-load("source/result_summaries/estimated_sd_only_last_capture.RData")
+load("source/result_summaries/only_last_capture/estimated_sd_only_last_capture.RData")
 est_sd_df <- sd_df
 rm(sd_df)
-load("data/simulation_study/fit_results_simple_only_last_capture.RData")
+load("data/simulation_study/only_last_capture/fit_results_simple_only_last_capture.RData")
+simple_fits <- simple_fits_only_last_capture
+rm(simple_fits_only_last_capture)
 
 ## Extract failed fit scenarios
 conv <- sapply(simple_fits, function(scen) {

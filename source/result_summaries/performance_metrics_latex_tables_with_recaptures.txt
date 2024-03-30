@@ -1,0 +1,239 @@
+SIMPLE SPECIES ONLY LAST CAPTURE, FEMALE FIRST THEN MALE [extract_performance_metrics_new_no_growth.R]
+
+> kable(summary_N_f_y0, booktabs = T, format = "latex", digits = 2,
++       col.names = labels, row.names = F, linesep = "", caption = caption)
+\begin{table}
+
+\caption{Various performance metrics for the parameter [quantity], extracted from 1000 simulations of the [species] shark population. The columns are, from left to right: scenario, median estimate, mean estimate, standard deviation, coefficient of variation (\%), median error, mean error, mean absolute error, and mean squared error. Scenarios 1-1, 1-2, 1-3, 2-1, 2-2, and 3-1 were not included as (most of) the simulations did not fit successfully. Scenario 3-3 uses the correct measurement error (2.89) and growth curve specification.}
+\centering
+\begin{tabular}[t]{lrrrrrr}
+\toprule
+Scen. & Mnd. Rel. Err. & Mean Rel. Err. & Mdn. Err. & Mean Err. & MAE & RMSE\\
+\midrule
+ME-67:GC+5 & -28.48 & -25.66 & -223.83 & -203.94 & 220.61 & 245.14\\
+ME-67:GC+10 & -62.69 & -61.36 & -495.14 & -487.72 & 487.72 & 495.50\\
+ME-33:GC+0 & 2.88 & 7.32 & 22.72 & 58.23 & 142.91 & 201.11\\
+ME-33:GC+5 & -28.54 & -25.71 & -224.94 & -204.40 & 220.93 & 245.38\\
+ME-33:GC+10 & -62.78 & -61.34 & -495.26 & -487.58 & 487.58 & 495.28\\
+ME+0:GC-5 & 31.80 & 37.56 & 252.60 & 298.59 & 304.39 & 390.33\\
+ME+0:GC+0 & 2.57 & 7.14 & 20.83 & 56.78 & 142.47 & 200.48\\
+ME+0:GC+5 & -28.72 & -25.85 & -227.03 & -205.50 & 221.78 & 246.05\\
+ME+0:GC+10 & -62.70 & -61.23 & -494.06 & -486.74 & 486.74 & 494.33\\
+ME+33:GC-10 & 43.85 & 50.21 & 343.32 & 399.15 & 400.98 & 488.70\\
+ME+33:GC-5 & 30.59 & 36.34 & 243.51 & 288.88 & 295.53 & 381.69\\
+ME+33:GC+0 & 2.23 & 6.76 & 18.13 & 53.74 & 141.65 & 199.10\\
+ME+33:GC+5 & -29.21 & -26.29 & -230.69 & -209.01 & 224.53 & 248.47\\
+ME+33:GC+10 & -62.81 & -61.25 & -494.00 & -486.85 & 486.85 & 494.26\\
+ME+67:GC-10 & 41.04 & 47.21 & 320.66 & 375.24 & 377.73 & 466.13\\
+ME+67:GC-5 & 29.16 & 34.90 & 232.41 & 277.39 & 285.22 & 371.65\\
+ME+67:GC+0 & 1.79 & 6.12 & 13.53 & 48.64 & 140.45 & 196.86\\
+ME+67:GC+5 & -29.80 & -26.97 & -235.30 & -214.35 & 228.79 & 252.27\\
+ME+67:GC+10 & -62.85 & -61.37 & -495.30 & -487.84 & 487.84 & 495.04\\
+\bottomrule
+\end{tabular}
+\end{table}
+> 
+> kable(summary_N_m_y0, booktabs = T, format = "latex", digits = 2,
++       col.names = labels, row.names = F, linesep = "", caption = caption)
+\begin{table}
+
+\caption{Various performance metrics for the parameter [quantity], extracted from 1000 simulations of the [species] shark population. The columns are, from left to right: scenario, median estimate, mean estimate, standard deviation, coefficient of variation (\%), median error, mean error, mean absolute error, and mean squared error. Scenarios 1-1, 1-2, 1-3, 2-1, 2-2, and 3-1 were not included as (most of) the simulations did not fit successfully. Scenario 3-3 uses the correct measurement error (2.89) and growth curve specification.}
+\centering
+\begin{tabular}[t]{lrrrrrr}
+\toprule
+Scen. & Mnd. Rel. Err. & Mean Rel. Err. & Mdn. Err. & Mean Err. & MAE & RMSE\\
+\midrule
+ME-67:GC+5 & -28.40 & -25.93 & -223.56 & -206.14 & 217.13 & 243.78\\
+ME-67:GC+10 & -62.28 & -61.38 & -488.98 & -487.42 & 487.42 & 494.97\\
+ME-33:GC+0 & 2.96 & 6.74 & 24.43 & 52.92 & 144.84 & 189.98\\
+ME-33:GC+5 & -28.53 & -25.99 & -224.78 & -206.64 & 217.45 & 244.05\\
+ME-33:GC+10 & -62.41 & -61.37 & -489.77 & -487.34 & 487.34 & 494.79\\
+ME+0:GC-5 & 31.59 & 36.63 & 247.66 & 289.87 & 297.53 & 374.35\\
+ME+0:GC+0 & 2.79 & 6.55 & 22.52 & 51.44 & 144.49 & 189.38\\
+ME+0:GC+5 & -28.72 & -26.14 & -226.29 & -207.83 & 218.33 & 244.83\\
+ME+0:GC+10 & -62.30 & -61.28 & -489.39 & -486.58 & 486.58 & 493.89\\
+ME+33:GC-10 & 43.72 & 49.00 & 341.71 & 387.75 & 390.42 & 470.34\\
+ME+33:GC-5 & 30.62 & 35.41 & 238.47 & 280.12 & 289.00 & 365.82\\
+ME+33:GC+0 & 2.34 & 6.16 & 19.50 & 48.30 & 143.76 & 188.06\\
+ME+33:GC+5 & -29.16 & -26.59 & -228.60 & -211.41 & 221.07 & 247.38\\
+ME+33:GC+10 & -62.32 & -61.30 & -489.56 & -486.78 & 486.78 & 493.90\\
+ME+67:GC-10 & 40.98 & 46.03 & 320.23 & 364.13 & 367.87 & 448.20\\
+ME+67:GC-5 & 29.36 & 33.96 & 229.31 & 268.62 & 279.08 & 355.90\\
+ME+67:GC+0 & 1.72 & 5.51 & 13.73 & 43.13 & 142.59 & 185.95\\
+ME+67:GC+5 & -29.89 & -27.27 & -233.68 & -216.81 & 225.38 & 251.36\\
+ME+67:GC+10 & -62.58 & -61.44 & -490.18 & -487.86 & 487.86 & 494.77\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+
+NOW FOR THE COMPLEX SPECIES, FEMALE THEN MALE
+
+> kable(summary_N_f_y0, booktabs = T, format = "latex", digits = 2,
++       col.names = labels, row.names = F, linesep = "", caption = caption)
+\begin{table}
+
+\caption{Various performance metrics for the parameter [quantity], extracted from 1000 simulations of the [species] shark population. The columns are, from left to right: scenario, median estimate, mean estimate, standard deviation, coefficient of variation (\%), median error, mean error, mean absolute error, and mean squared error. Scenarios 1-1, 1-2, 1-3, 2-1, 2-2, and 3-1 were not included as (most of) the simulations did not fit successfully. Scenario 3-3 uses the correct measurement error (2.89) and growth curve specification.}
+\centering
+\begin{tabular}[t]{lrrrrrr}
+\toprule
+Scen. & Mnd. Rel. Err. & Mean Rel. Err. & Mdn. Err. & Mean Err. & MAE & RMSE\\
+\midrule
+ME-67:GC+5 & -38.21 & -35.96 & -194.00 & -185.43 & 187.72 & 199.33\\
+ME-67:GC+10 & -69.41 & -68.34 & -355.48 & -352.09 & 352.09 & 356.40\\
+ME-33:GC+0 & 1.89 & 5.30 & 9.12 & 26.84 & 82.06 & 112.47\\
+ME-33:GC+5 & -38.37 & -36.07 & -194.96 & -185.99 & 188.23 & 199.71\\
+ME-33:GC+10 & -69.34 & -68.26 & -354.98 & -351.70 & 351.70 & 355.94\\
+ME+0:GC-5 & 55.54 & 61.97 & 282.61 & 318.31 & 318.38 & 365.22\\
+ME+0:GC+0 & 1.35 & 4.64 & 6.48 & 23.44 & 81.55 & 111.32\\
+ME+0:GC+5 & -38.63 & -36.31 & -195.61 & -187.25 & 189.38 & 200.68\\
+ME+0:GC+10 & -69.19 & -68.16 & -353.91 & -351.15 & 351.15 & 355.29\\
+ME+33:GC-10 & 109.97 & 119.20 & 556.22 & 612.37 & 612.37 & 666.21\\
+ME+33:GC-5 & 53.20 & 59.79 & 270.34 & 307.08 & 307.24 & 354.45\\
+ME+33:GC+0 & 0.57 & 3.70 & 2.63 & 18.60 & 80.97 & 109.82\\
+ME+33:GC+5 & -39.05 & -36.72 & -197.27 & -189.35 & 191.32 & 202.37\\
+ME+33:GC+10 & -69.23 & -68.08 & -353.09 & -350.72 & 350.72 & 354.71\\
+ME+67:GC-10 & 105.31 & 114.40 & 534.45 & 587.65 & 587.65 & 641.11\\
+ME+67:GC-5 & 50.39 & 57.13 & 258.11 & 293.33 & 293.59 & 341.34\\
+ME+67:GC+0 & -0.63 & 2.49 & -3.03 & 12.36 & 80.40 & 108.17\\
+ME+67:GC+5 & -39.51 & -37.25 & -200.26 & -192.09 & 193.91 & 204.65\\
+ME+67:GC+10 & -69.15 & -68.02 & -352.44 & -350.42 & 350.42 & 354.27\\
+\bottomrule
+\end{tabular}
+\end{table}
+> kable(summary_N_m_y0, booktabs = T, format = "latex", digits = 2,
++       col.names = labels, row.names = F, linesep = "", caption = caption)
+\begin{table}
+
+\caption{Various performance metrics for the parameter [quantity], extracted from 1000 simulations of the [species] shark population. The columns are, from left to right: scenario, median estimate, mean estimate, standard deviation, coefficient of variation (\%), median error, mean error, mean absolute error, and mean squared error. Scenarios 1-1, 1-2, 1-3, 2-1, 2-2, and 3-1 were not included as (most of) the simulations did not fit successfully. Scenario 3-3 uses the correct measurement error (2.89) and growth curve specification.}
+\centering
+\begin{tabular}[t]{lrrrrrr}
+\toprule
+Scen. & Mnd. Rel. Err. & Mean Rel. Err. & Mdn. Err. & Mean Err. & MAE & RMSE\\
+\midrule
+ME-67:GC+5 & -31.74 & -29.79 & -203.73 & -194.20 & 201.00 & 220.13\\
+ME-67:GC+10 & -61.34 & -60.03 & -393.89 & -390.66 & 390.66 & 397.78\\
+ME-33:GC+0 & 2.13 & 5.35 & 12.74 & 34.22 & 113.74 & 152.24\\
+ME-33:GC+5 & -31.95 & -29.89 & -204.63 & -194.80 & 201.48 & 220.51\\
+ME-33:GC+10 & -61.30 & -59.99 & -393.09 & -390.44 & 390.44 & 397.48\\
+ME+0:GC-5 & 45.75 & 51.88 & 297.86 & 336.61 & 337.30 & 401.99\\
+ME+0:GC+0 & 1.59 & 4.91 & 10.28 & 31.35 & 113.06 & 151.03\\
+ME+0:GC+5 & -32.33 & -30.13 & -206.50 & -196.36 & 202.81 & 221.63\\
+ME+0:GC+10 & -61.23 & -59.98 & -392.55 & -390.36 & 390.36 & 397.27\\
+ME+33:GC-10 & 88.97 & 98.09 & 579.49 & 636.75 & 636.75 & 703.85\\
+ME+33:GC-5 & 44.11 & 50.38 & 288.00 & 326.83 & 327.73 & 392.72\\
+ME+33:GC+0 & 1.05 & 4.24 & 6.59 & 27.01 & 112.18 & 149.32\\
+ME+33:GC+5 & -32.61 & -30.56 & -208.75 & -199.14 & 205.21 & 223.70\\
+ME+33:GC+10 & -61.30 & -60.04 & -392.71 & -390.76 & 390.76 & 397.51\\
+ME+67:GC-10 & 85.75 & 94.83 & 559.04 & 615.54 & 615.54 & 682.57\\
+ME+67:GC-5 & 42.24 & 48.54 & 276.01 & 314.85 & 316.10 & 381.44\\
+ME+67:GC+0 & 0.14 & 3.35 & 0.95 & 21.20 & 111.13 & 147.24\\
+ME+67:GC+5 & -33.16 & -31.13 & -211.30 & -202.85 & 208.45 & 226.55\\
+ME+67:GC+10 & -61.38 & -60.19 & -394.36 & -391.68 & 391.68 & 398.23\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+CI COVERAGE ONLY LAST CAPTURE [estimate_variance_mle.R]
+
+\begin{table}
+\caption{}
+\centering
+\begin{tabular}[t]{lrrrr}
+\toprule
+\multicolumn{1}{c}{ } & \multicolumn{2}{c}{Simple species} & \multicolumn{2}{c}{Complex species} \\
+\cmidrule(l{3pt}r{3pt}){2-3} \cmidrule(l{3pt}r{3pt}){4-5}
+Scenario & Adult males & Adult females & Adult males & Adult females\\
+\midrule
+ME-67:GC+5 & 58.5 & 60.0 & 49.0 & 30.5\\
+ME-67:GC+10 & 1.6 & 2.7 & 2.7 & 0.8\\
+ME-33:GC+0 & 96.3 & 96.4 & 95.9 & 95.8\\
+ME-33:GC+5 & 58.0 & 59.9 & 48.6 & 30.3\\
+ME-33:GC+10 & 1.5 & 2.6 & 2.7 & 0.8\\
+ME+0:GC-5 & 73.2 & 74.4 & 49.7 & 28.4\\
+ME+0:GC+0 & 96.1 & 96.4 & 95.9 & 95.4\\
+ME+0:GC+5 & 57.7 & 59.7 & 48.3 & 29.9\\
+ME+0:GC+10 & 1.7 & 2.5 & 2.6 & 0.7\\
+ME+33:GC-10 & 56.4 & 56.8 & 4.2 & 0.7\\
+ME+33:GC-5 & 74.7 & 76.4 & 51.6 & 31.0\\
+ME+33:GC+0 & 96.1 & 96.2 & 95.7 & 94.8\\
+ME+33:GC+5 & 56.3 & 58.4 & 47.5 & 29.0\\
+ME+33:GC+10 & 1.7 & 2.6 & 2.4 & 0.6\\
+ME+67:GC-10 & 60.7 & 62.1 & 5.3 & 1.1\\
+ME+67:GC-5 & 77.1 & 78.2 & 54.6 & 35.4\\
+ME+67:GC+0 & 96.3 & 96.2 & 95.5 & 94.4\\
+ME+67:GC+5 & 54.4 & 55.9 & 46.4 & 27.8\\
+ME+67:GC+10 & 1.5 & 2.6 & 2.4 & 0.4\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+ESTIMATED AND EMPIRICAL SD, SIMPLE FIRST THEN COMPLEX [build_one_standard_error_table.R]
+
+\begin{table}
+
+\caption{}
+\centering
+\begin{tabular}[t]{lrrrrrrrr}
+\toprule
+\multicolumn{1}{c}{ } & \multicolumn{4}{c}{Males} & \multicolumn{4}{c}{Females} \\
+\cmidrule(l{3pt}r{3pt}){2-5} \cmidrule(l{3pt}r{3pt}){6-9}
+Scenario & Est SE & Emp SE & Est SE - Emp SE & Delta SE / Emp SE & Est SE & Emp SE & Est SE - Emp SE & Delta SE / Emp SE\\
+\midrule
+ME-67:GC+5 & 126.84 & 130.20 & -3.36 & -2.58 & 128.27 & 136.09 & -7.82 & -5.75\\
+ME-67:GC+10 & 65.96 & 86.14 & -20.18 & -23.43 & 66.49 & 87.54 & -21.05 & -24.05\\
+ME-33:GC+0 & 183.04 & 182.56 & 0.49 & 0.27 & 185.51 & 192.59 & -7.08 & -3.68\\
+ME-33:GC+5 & 126.75 & 129.92 & -3.17 & -2.44 & 128.19 & 135.83 & -7.65 & -5.63\\
+ME-33:GC+10 & 65.99 & 85.56 & -19.57 & -22.87 & 66.53 & 87.02 & -20.49 & -23.54\\
+ME+0:GC-5 & 234.63 & 237.00 & -2.37 & -1.00 & 238.17 & 251.53 & -13.36 & -5.31\\
+ME+0:GC+0 & 182.76 & 182.35 & 0.41 & 0.22 & 185.23 & 192.36 & -7.14 & -3.71\\
+ME+0:GC+5 & 126.51 & 129.46 & -2.96 & -2.28 & 127.97 & 135.38 & -7.41 & -5.47\\
+ME+0:GC+10 & 66.17 & 84.72 & -18.55 & -21.89 & 66.74 & 86.31 & -19.57 & -22.67\\
+ME+33:GC-10 & 256.19 & 266.36 & -10.17 & -3.82 & 260.46 & 282.11 & -21.66 & -7.68\\
+ME+33:GC-5 & 232.56 & 235.40 & -2.84 & -1.21 & 236.10 & 249.59 & -13.49 & -5.41\\
+ME+33:GC+0 & 182.11 & 181.85 & 0.27 & 0.15 & 184.61 & 191.81 & -7.20 & -3.76\\
+ME+33:GC+5 & 125.76 & 128.52 & -2.77 & -2.15 & 127.24 & 134.44 & -7.20 & -5.35\\
+ME+33:GC+10 & 66.15 & 83.65 & -17.50 & -20.92 & 66.74 & 85.30 & -18.56 & -21.76\\
+ME+67:GC-10 & 251.11 & 261.46 & -10.35 & -3.96 & 255.29 & 276.67 & -21.38 & -7.73\\
+ME+67:GC-5 & 230.12 & 233.59 & -3.46 & -1.48 & 233.65 & 247.46 & -13.81 & -5.58\\
+ME+67:GC+0 & 181.04 & 180.97 & 0.07 & 0.04 & 183.54 & 190.85 & -7.31 & -3.83\\
+ME+67:GC+5 & 124.62 & 127.23 & -2.62 & -2.06 & 126.11 & 133.08 & -6.97 & -5.24\\
+ME+67:GC+10 & 65.94 & 82.44 & -16.50 & -20.02 & 66.55 & 84.13 & -17.58 & -20.89\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+NOW COMPLEX
+
+\begin{table}
+
+\caption{}
+\centering
+\begin{tabular}[t]{lrrrrrrrr}
+\toprule
+\multicolumn{1}{c}{ } & \multicolumn{4}{c}{Males} & \multicolumn{4}{c}{Females} \\
+\cmidrule(l{3pt}r{3pt}){2-5} \cmidrule(l{3pt}r{3pt}){6-9}
+Scenario & Est SE & Emp SE & Est SE - Emp SE & Delta SE / Emp SE & Est SE & Emp SE & Est SE - Emp SE & Delta SE / Emp SE\\
+\midrule
+ME-67:GC+5 & 94.60 & 103.71 & -9.11 & -8.78 & 64.03 & 73.15 & -9.12 & -12.47\\
+ME-67:GC+10 & 53.66 & 74.95 & -21.29 & -28.40 & 31.49 & 55.27 & -23.78 & -43.02\\
+ME-33:GC+0 & 142.41 & 148.42 & -6.01 & -4.05 & 105.71 & 109.27 & -3.56 & -3.26\\
+ME-33:GC+5 & 94.49 & 103.38 & -8.90 & -8.61 & 63.93 & 72.79 & -8.85 & -12.16\\
+ME-33:GC+10 & 53.72 & 74.51 & -20.80 & -27.91 & 31.58 & 54.80 & -23.22 & -42.37\\
+ME+0:GC-5 & 205.94 & 219.86 & -13.92 & -6.33 & 163.31 & 179.16 & -15.85 & -8.85\\
+ME+0:GC+0 & 141.84 & 147.82 & -5.98 & -4.05 & 105.08 & 108.88 & -3.80 & -3.49\\
+ME+0:GC+5 & 94.18 & 102.81 & -8.63 & -8.40 & 63.71 & 72.22 & -8.51 & -11.78\\
+ME+0:GC+10 & 53.75 & 73.85 & -20.10 & -27.22 & 31.70 & 54.06 & -22.36 & -41.36\\
+ME+33:GC-10 & 269.24 & 300.08 & -30.84 & -10.28 & 221.69 & 262.50 & -40.81 & -15.55\\
+ME+33:GC-5 & 203.93 & 217.85 & -13.92 & -6.39 & 161.13 & 177.10 & -15.97 & -9.02\\
+ME+33:GC+0 & 140.97 & 146.93 & -5.97 & -4.06 & 104.17 & 108.29 & -4.12 & -3.81\\
+ME+33:GC+5 & 93.63 & 101.96 & -8.33 & -8.17 & 63.33 & 71.47 & -8.14 & -11.39\\
+ME+33:GC+10 & 53.68 & 72.97 & -19.29 & -26.44 & 31.80 & 53.13 & -21.33 & -40.15\\
+ME+67:GC-10 & 264.83 & 295.13 & -30.30 & -10.27 & 216.85 & 256.41 & -39.57 & -15.43\\
+ME+67:GC-5 & 201.47 & 215.43 & -13.96 & -6.48 & 158.47 & 174.64 & -16.17 & -9.26\\
+ME+67:GC+0 & 139.79 & 145.77 & -5.98 & -4.10 & 102.99 & 107.51 & -4.53 & -4.21\\
+ME+67:GC+5 & 92.89 & 100.93 & -8.05 & -7.97 & 62.82 & 70.62 & -7.81 & -11.05\\
+ME+67:GC+10 & 53.51 & 71.95 & -18.44 & -25.62 & 31.88 & 52.10 & -20.22 & -38.81\\
+\bottomrule
+\end{tabular}
+\end{table}
