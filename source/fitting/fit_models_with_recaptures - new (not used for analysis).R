@@ -2,18 +2,14 @@
 ##                                                                            ##
 ##  Script that fits models with incorrect measurement error and              ##
 ##  models with misspecified VBGFs, and all combinations.                     ##
-##                                                                            ##    
+##                                                                            ##
+##  Make sure the naming is correct (e.g., with_recaptures or               ##
+##  only_first_capture)                                                       ##
 ##                                                                            ##
 ##  12/03/24                                                                  ##
 ################################################################################
 
-load("data/simulation_study/simple/1000_schemes_dfs_suff_unique_combos_sim=all.RData")
-simple_suff <- dfs_suff
-
-load("data/simulation_study/complex/1000_schemes_dfs_suff_unique_combos_sim=all.RData")
-complex_suff <- dfs_suff
-
-rm(dfs_suff)
+load("data/simulation_study/with_recaptures/sufficient_dfs_with_recaptures.RData")
 
 ## :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 ## Load data and libraries
